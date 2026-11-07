@@ -223,7 +223,7 @@ fun SettingsScreen() {
                         }
                     }) { Text("모델 목록 불러오기 (키 확인 겸)") }
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        models.take(16).forEach { m -> Pill(m, m == s.geminiModel) { save { it.copy(geminiModel = m) } } }
+                        models.forEach { m -> Pill(m, m == s.geminiModel) { save { it.copy(geminiModel = m) } } }
                     }
                     Text("flash 계열은 빠르고 저렴하며, pro 계열은 평가 품질이 더 높습니다.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }

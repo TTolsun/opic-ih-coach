@@ -60,7 +60,7 @@ data class Settings(
     val aiEnabled: Boolean = false,
     val aiModel: String = DEFAULT_MODEL,
     val aiProvider: AiProvider = AiProvider.GEMINI,
-    val geminiModel: String = "gemini-2.5-flash",
+    val geminiModel: String = "gemini-3.5-flash",
     val aiTextConsent: Boolean = false,
     val cloudSttEnabled: Boolean = false,
     val audioUploadConsent: Boolean = false,
