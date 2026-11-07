@@ -53,6 +53,7 @@ import com.opicih.coach.ui.components.formatMs
  * Everything else (all metrics, other fixes, missing sentences, model answer, transcript, limits) is folded
  * into "자세히 보기" so the learner speaks again instead of reading.
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun ResultPanel(r: AnalyzedAttempt, ui: SpeakingUi, vm: SpeakingViewModel, onRetry: () -> Unit) {
     val fb = r.feedback
@@ -95,22 +96,27 @@ internal fun ResultPanel(r: AnalyzedAttempt, ui: SpeakingUi, vm: SpeakingViewMod
             Text("빠진 내용", style = MaterialTheme.typography.titleSmall)
             missing.take(2).forEach { Bullet(it.sentence, color = MaterialTheme.colorScheme.onSurfaceVariant) }
         }
-        if (fb.retryMission.isNotBlank()) {
+        visibleMission(fb)?.let {
             Spacer(Modifier.height(8.dp))
-            Text(fb.retryMission, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary)
+            Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary)
         }
 
         Spacer(Modifier.height(12.dp))
         Button(onClick = onRetry, modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp)) {
             Icon(Icons.Filled.Mic, null); Spacer(Modifier.width(8.dp)); Text("같은 질문 다시 말하기", style = MaterialTheme.typography.titleMedium)
         }
-        Row(Modifier.fillMaxWidth().padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        // FlowRow, not Row: with a large system font the three buttons do not fit one line, and a Row squeezed
+        // "다음 질문" into a one-character-wide column. Here it moves to the next line instead.
+        FlowRow(
+            Modifier.fillMaxWidth().padding(top = 6.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
             if (a.audioPath != null) {
-                FilledTonalButton(onClick = { vm.playRecording(1.0f) }) { Icon(Icons.Filled.PlayArrow, null); Text("내 녹음") }
-                OutlinedButton(onClick = { vm.playRecording(0.75f) }) { Text("0.75x") }
+                FilledTonalButton(onClick = { vm.playRecording(1.0f) }) { Icon(Icons.Filled.PlayArrow, null); Text("내 녹음", maxLines = 1) }
+                OutlinedButton(onClick = { vm.playRecording(0.75f) }) { Text("0.75x", maxLines = 1) }
             }
-            Spacer(Modifier.weight(1f))
-            OutlinedButton(onClick = { vm.next() }) { Icon(Icons.Filled.SkipNext, null); Text("다음 질문") }
+            OutlinedButton(onClick = { vm.next() }) { Icon(Icons.Filled.SkipNext, null); Text("다음 질문", maxLines = 1) }
         }
 
         Spacer(Modifier.height(6.dp))
@@ -212,3 +218,14 @@ private fun TextLink(label: String, onClick: () -> Unit) {
 }
 
 private fun signed(v: Int) = if (v > 0) "+$v" else "$v"
+
+/**
+ * The retry mission, unless it only repeats the first fix's suggestion that is already shown right above it.
+ * Local feedback builds the mission as "다시 말하기: " + that suggestion, and saved records keep that text,
+ * so the check is done here rather than only when the feedback is composed.
+ */
+internal fun visibleMission(fb: com.opicih.coach.analysis.Feedback): String? {
+    val mission = fb.retryMission.trim().ifBlank { return null }
+    val shownBetter = fb.fixes.firstOrNull()?.better?.trim().orEmpty()
+    return if (shownBetter.isNotEmpty() && mission.contains(shownBetter)) null else mission
+}

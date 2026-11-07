@@ -127,15 +127,24 @@ fun SpeakingScreen(scriptId: Long?, mode: PracticeMode?, onOpenSettings: () -> U
             return@Column
         }
 
+        val examLike = PracticeModes.of(ui.mode).stage != PracticeStage.MEMORIZE
+
         // Question card
         SectionCard {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            // FlowRow so a tag that does not fit moves to the next line instead of being squeezed.
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+                itemVerticalAlignment = Alignment.CenterVertically,
+            ) {
                 Text(q.topic, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
                 SourceTag(QuestionType.of(q.type).label)
                 SourceTag(q.sourceLabel)
             }
             Spacer(Modifier.height(10.dp))
-            if (ui.mode == PracticeMode.BLIND && ui.phase != Phase.RESULT) {
+            // Recall/apply stages copy exam conditions: the exam asks by audio only, so the text stays hidden
+            // until the learner asks for it or the result is shown.
+            if (examLike && ui.phase != Phase.RESULT) {
                 var reveal by remember(q.text) { mutableStateOf(false) }
                 if (reveal) Text(q.text, style = EnglishReading)
                 else OutlinedButton(onClick = { reveal = true }) { Icon(Icons.Filled.Visibility, null); Spacer(Modifier.width(6.dp)); Text("질문 보기") }
@@ -148,8 +157,17 @@ fun SpeakingScreen(scriptId: Long?, mode: PracticeMode?, onOpenSettings: () -> U
             }
             Spacer(Modifier.height(10.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
-                FilledTonalButton(onClick = { vm.playQuestion(1.0f) }) { Icon(Icons.AutoMirrored.Filled.VolumeUp, null); Spacer(Modifier.width(6.dp)); Text("질문 듣기") }
-                TextButton(onClick = { vm.playQuestion(0.75f) }) { Text("0.75x") }
+                if (examLike) {
+                    // Exam rule: one listen plus one replay. 0.75x is a memorize-stage aid only.
+                    val left = EXAM_PLAYS - ui.replays
+                    FilledTonalButton(enabled = left > 0, onClick = { vm.playQuestion(1.0f) }) {
+                        Icon(Icons.AutoMirrored.Filled.VolumeUp, null); Spacer(Modifier.width(6.dp))
+                        Text(if (ui.replays == 0) "질문 듣기" else "다시 듣기 (${left.coerceAtLeast(0)})")
+                    }
+                } else {
+                    FilledTonalButton(onClick = { vm.playQuestion(1.0f) }) { Icon(Icons.AutoMirrored.Filled.VolumeUp, null); Spacer(Modifier.width(6.dp)); Text("질문 듣기") }
+                    TextButton(onClick = { vm.playQuestion(0.75f) }) { Text("0.75x") }
+                }
                 Spacer(Modifier.weight(1f))
                 if (ui.mode.usesScript) IconButton(onClick = { showPicker = true }) { Icon(Icons.Filled.List, "스크립트 선택") }
                 IconButton(onClick = { vm.next() }) { Icon(Icons.Filled.SkipNext, "다음 질문") }
@@ -177,8 +195,15 @@ fun SpeakingScreen(scriptId: Long?, mode: PracticeMode?, onOpenSettings: () -> U
             }
             if (ui.phase == Phase.RECORDING) {
                 LevelBar(ui.level, Modifier.fillMaxWidth(0.6f))
-                if (ui.liveText.isNotBlank()) Text(ui.liveText, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                if (ui.elapsedMs in 60_000..65_000) Text("1분 · 목표 1~2분", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.secondary)
+                if (examLike) {
+                    // No live captions here: reading your own words while speaking is not possible in the exam.
+                    when {
+                        ui.elapsedMs >= 120_000 -> Text("2분 넘음 · 마무리하기", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.tertiary)
+                        ui.elapsedMs >= 60_000 -> Text("목표 구간 (1~2분)", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.secondary)
+                    }
+                } else if (ui.liveText.isNotBlank()) {
+                    Text(ui.liveText, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
             }
             if (ui.phase == Phase.IDLE || ui.showTypedFallback) {
                 TextButton(onClick = { showTyped = true }) { Icon(Icons.Filled.Edit, null); Spacer(Modifier.width(4.dp)); Text("직접 입력") }
@@ -222,6 +247,9 @@ fun SpeakingScreen(scriptId: Long?, mode: PracticeMode?, onOpenSettings: () -> U
         )
     }
 }
+
+/** First listen plus one replay, as in the exam. */
+private const val EXAM_PLAYS = 2
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable

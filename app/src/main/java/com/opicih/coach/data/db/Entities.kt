@@ -138,6 +138,12 @@ enum class PracticeMode(val label: String, val usesScript: Boolean) {
     FREE("자유 발화", false),
     MOCK("모의시험", false);
 
+    /**
+     * Whether the answer is scored against the script text. Variation asks the learner to change tense or reuse
+     * the story for another question, so matching the original wording would reward reciting instead of adapting.
+     */
+    val comparesToScript: Boolean get() = usesScript && this != VARIATION
+
     companion object {
         fun of(name: String?): PracticeMode = entries.firstOrNull { it.name == name } ?: FREE
     }
