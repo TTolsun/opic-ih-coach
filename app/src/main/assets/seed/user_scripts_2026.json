@@ -1,0 +1,213 @@
+{
+  "source": "Google Drive '2026년 OPIc Script' (2026-02-20 수정본)",
+  "note": "original = 사용자 원문. ihTarget/short/keywords/reasonKo = 앱 내장 개선안(AI 작성, 승인 전 PENDING).",
+  "scripts": [
+    {
+      "topic": "Overseas Travel", "title": "Recent Trip", "type": "PAST_EXPERIENCE", "stories": "S1",
+      "question": "Tell me about a trip you took to another country recently. Where did you go, and what did you do there?",
+      "original": "I went to japan last summer using jeju air. I stayed for 3 nights and 4 days.\nJapan is famous for Osaka Castle, which is a huge tourist attraction. There are so many people, and the castle was magnificent\nSecond, I clearly remember the hotel I stayed at. The best part was that the hotel offered unlimited beer service. Also, there was a hot spring. The water was steaming hot, which was perfect for relieving my fatigue.\nI felt completely rejuvenated. It is my latest and most memorable trip.",
+      "ihTarget": "Last summer, I went to Osaka, Japan with my family. We flew Jeju Air and stayed for three nights and four days. First, we visited Osaka Castle, which is one of the biggest tourist attractions there. It was so crowded, but the castle was really magnificent, especially with the blue sky behind it. But honestly, the best part was our hotel. It had an unlimited beer service and a hot spring. After walking all day, I soaked in the steaming hot water with a cold beer, and I felt completely rejuvenated. It was my most recent trip abroad, and it's still my favorite. Next year, I'm planning to go back to Japan, maybe to Fukuoka this time, because I want to try a different hot spring.",
+      "short": "Last summer, I went to Osaka with my family for four days. I saw Osaka Castle, and my hotel had unlimited beer and a hot spring. I felt completely rejuvenated.",
+      "keywords": ["Osaka · last summer · family", "Osaka Castle · crowded · magnificent", "hotel · unlimited beer · hot spring", "felt rejuvenated", "next year · Fukuoka"],
+      "reasonKo": "- 'First → But honestly → Next year' 흐름으로 묘사 → 경험 → 감정 → 미래 구조를 만들었습니다.\n- 'Second'만 있고 'First'가 없던 부분을 정리했습니다.\n- 미래 시제 문장을 1개 추가했습니다. IH는 여러 시간대를 넘나드는 능력을 봅니다.\n- 'japan', 'jeju air'를 대문자 고유명사로 고쳤습니다."
+    },
+    {
+      "topic": "Overseas Travel", "title": "Memorable Experience", "type": "PAST_EXPERIENCE", "stories": "S1",
+      "question": "Did anything memorable or unexpected happen during your trip abroad?",
+      "original": "As I told you, I went to Osaka and visited Dotonbori with my family.\nAnd you know what? We had Takoyaki. It's a really famous street food in Japan. There were lots of different types, but I liked the sweet one the most.\nI was enjoying it a lot, but suddenly I had a terrible stomachache. I was really uncomfortable. I guess I had indigestion and it was pretty bad. So I went to the drug store and bought some medicine.\nAfter that I went back to the hotel and had a really nice sleep.",
+      "ihTarget": "Actually, something unexpected happened on that trip to Osaka. One evening, my family and I went to Dotonbori, the famous street food area. We tried takoyaki, which are little octopus balls. There were so many different kinds, and I liked the sweet one the most, so I kept eating. But about an hour later, I suddenly had a terrible stomachache. I think I ate way too much. I was really uncomfortable, so we had to find a drugstore, and I tried to explain my symptoms with gestures. Thankfully, the pharmacist understood me and gave me some medicine. After that, I went back to the hotel and slept like a baby. Looking back, it was a bit embarrassing, but now it's a funny story we always laugh about.",
+      "short": "In Dotonbori, I ate too much takoyaki and got a terrible stomachache. I explained my symptoms at a drugstore with gestures. Now it's a funny story.",
+      "keywords": ["Dotonbori · family", "takoyaki · sweet one", "stomachache · ate too much", "drugstore · gestures", "slept · funny story now"],
+      "reasonKo": "- 'Actually, something unexpected happened'로 질문 의도(예상 못한 경험)에 바로 답합니다.\n- 약국에서 몸짓으로 설명한 디테일을 넣어 문제 해결 과정을 구체화했습니다.\n- 'Looking back, ... now'로 과거에서 현재로 시점을 옮겼습니다.\n- 주의: 배탈 반전이 여러 답변에 반복됩니다. 이 답변에만 남기는 것을 권장합니다."
+    },
+    {
+      "topic": "Domestic Travel", "title": "Favorite Destination", "type": "DESCRIPTION", "stories": "S2",
+      "question": "Where do you like to go for domestic trips? Describe your favorite travel destination in your country.",
+      "original": "To be honest, I'm a huge fan of traveling, and my favorite spot is Ganwon-do.\nYou know, since Korea is a peninsula, there are many beautiful coasts, but Gangwon-do is special because of its stunning mountains.\nLast fall, I went there for apple farming. The scenery was absolutely breathtaking, especially when I was up on the ladder. It felt like I was on top of the world!",
+      "ihTarget": "To be honest, I'm a huge fan of traveling, and my favorite place in Korea is Gangwon-do. Since Korea is a peninsula, there are a lot of beautiful beaches, but Gangwon-do is special because it has both the ocean and stunning mountains. The air is so fresh, and the scenery changes a lot depending on the season. In summer, people go to the beaches in Gangneung, and in fall, the mountains turn red and yellow. Last fall, I went there to pick apples at a farm. When I was up on the ladder, the view was absolutely breathtaking. It felt like I was on top of the world. I'm hoping to go back this winter to see the snowy mountains.",
+      "short": "My favorite place in Korea is Gangwon-do. It has the ocean and stunning mountains. Last fall, I picked apples there, and the view was breathtaking.",
+      "keywords": ["Gangwon-do · huge fan", "ocean + mountains", "seasons · Gangneung · fall leaves", "apple picking · ladder · top of the world", "this winter · snowy mountains"],
+      "reasonKo": "- 'Ganwon-do' 오타를 고쳤습니다.\n- 계절별 묘사를 추가해 묘사 문항의 길이와 구체성을 늘렸습니다.\n- 마지막에 미래 계획 문장을 넣었습니다."
+    },
+    {
+      "topic": "Domestic Travel", "title": "Travel Routine", "type": "ROUTINE", "stories": "",
+      "question": "What do you usually prepare before you go on a trip? What are some things you always do while traveling?",
+      "original": "Okay.. you're asking me about my travel routines. right?\nI usually visit places within 4 hours because I don't like long-distance driving.\nAnd I always bring a mobile charger because I need to find famous restaurants on my phone. Also, I like to watch the news and play games. So I need it for sure.\nAnd I usually don't reserve hotels to stay. To be honest, I'm an introvert, so I like my home more than traveling. I prefer quiet trips.\nThese are my travel routines.",
+      "ihTarget": "Let me tell you about my travel routine. First of all, I usually choose places within four hours from my home, because I don't like driving for a long time. Before I leave, I always pack a portable charger. That's because I use my phone for everything on a trip, like finding famous restaurants, checking the news, and playing games at night. Also, I don't usually book a hotel in advance. Honestly, I'm kind of an introvert, so I prefer short and quiet trips, and sometimes I just come back home on the same day. When I arrive, the first thing I do is look for a popular local restaurant. These days, I'm thinking about trying camping, so next time I might bring a tent too.",
+      "short": "I usually travel within four hours from home. I always bring a portable charger to find restaurants. I prefer short, quiet trips.",
+      "keywords": ["within 4 hours · no long driving", "portable charger · restaurants · news · games", "no hotel booking · introvert · quiet", "local restaurant first", "camping next time"],
+      "reasonKo": "- 'Okay.. you're asking me...' 같은 시간 끌기 표현은 한 번만 쓰도록 줄였습니다.\n- 'reserve hotels to stay'를 'book a hotel in advance'로 자연스럽게 바꿨습니다.\n- 루틴 순서(출발 전 → 도착 후)를 명확히 하고 미래 문장을 추가했습니다."
+    },
+    {
+      "topic": "Domestic Travel", "title": "Travel Experience", "type": "PAST_EXPERIENCE", "stories": "S2",
+      "question": "Tell me about a memorable domestic trip you went on recently. Where did you go, and what did you do?",
+      "original": "I remember a time when I went to Gangwon-do for apple farming.\nThere were so many apples, and they looked so delicious. I couldn't resist, so I ate a lot of them while picking.\nBut suddenly, I had a terrible stomachache. I guess I had indigestion. I was so uncomfortable that I had to rush to a nearby drug store for some medicine.\nThankfully, I felt much better after a long nap at my friend's house.\nIt was a bittersweet memory for me.",
+      "ihTarget": "I remember a trip to Gangwon-do last fall. My friend's family has an apple farm there, so I went to help them pick apples. There were so many apples, and they looked so delicious that I couldn't resist eating some while I was working. Everything was perfect until the afternoon. Suddenly, dark clouds came in and it started pouring rain. We didn't have any umbrellas, so we got completely soaked. We had to run to a small storage shed and wait there for almost an hour. While we were waiting, we ate fresh apples and talked a lot, and it turned out to be really fun. Looking back, it was a bittersweet memory, and I still think about it whenever I eat an apple.",
+      "short": "Last fall, I picked apples in Gangwon-do. Suddenly it started pouring and we got soaked. We waited in a shed eating apples, and it turned out fun.",
+      "keywords": ["last fall · friend's apple farm", "ate apples while picking", "pouring rain · soaked", "storage shed · waited an hour", "turned out fun · bittersweet"],
+      "reasonKo": "- 원본의 '배탈 → 약국' 전개가 오사카·영화 답변과 겹칩니다. 한 시험에서 두 번 나오면 암기한 답변처럼 들릴 수 있어서, 같은 사과농장 경험에 '소나기' 반전을 제안합니다. 원래 반전을 유지하고 싶으면 거절하세요.\n- 'Everything was perfect until...' 구조는 다른 경험 질문에도 재사용할 수 있습니다.\n- 마지막에 현재 시제 문장으로 과거와 현재를 연결했습니다."
+    },
+    {
+      "topic": "Movies", "title": "Favorite Movies", "type": "DESCRIPTION", "stories": "",
+      "question": "What kind of movies do you like to watch? Who is your favorite actor or actress?",
+      "original": "Let me think.. I usually enjoy romance movies like 'La La Land'.\nIt delivers beautiful messages through music and dance. I especially like the main characters because they struggle between their dreams and reality. But they have different personalities, and the relationship is finally broken.\nIt's very touching.",
+      "ihTarget": "I usually enjoy romance movies, and my all-time favorite is La La Land. It's a musical, so it tells a beautiful story through music and dance. The two main characters are both chasing their dreams, one as a jazz pianist and the other as an actress. They fall in love, but because they have different goals, they end up breaking up. The ending is really bittersweet, and it made me think about my own choices between dreams and reality. My favorite actress is Emma Stone, because her acting feels so natural. I've watched the movie three times, and I still get emotional during the last scene. I'm planning to watch it again this Christmas.",
+      "short": "My favorite movie is La La Land. It tells a love story through music and dance. The bittersweet ending always makes me emotional.",
+      "keywords": ["romance · La La Land · musical", "jazz pianist + actress · dreams", "end up breaking up · bittersweet", "Emma Stone · natural acting", "watched 3 times · this Christmas"],
+      "reasonKo": "- 질문의 두 번째 부분(좋아하는 배우)에 대한 답이 빠져 있어서 배우 문장을 추가했습니다. 실제로 좋아하는 배우로 바꾸세요.\n- 'the relationship is finally broken'을 'they end up breaking up'으로 자연스럽게 바꿨습니다.\n- 현재완료(I've watched)와 미래(planning to)로 시제 범위를 넓혔습니다."
+    },
+    {
+      "topic": "Movies", "title": "Movie Routine", "type": "ROUTINE", "stories": "",
+      "question": "What is your routine when you go to the movies? What do you do before and after the movie?",
+      "original": "Let me tell you about the routine when I go to a movie theater.\nWhen I go to the theater, I usually check the schedule on a mobile app first. Then I grab some popcorn and a drink, and I find my seat.\nThe best part is leaving a review or rating after the movie to express my feelings.\nIt's a great way to finish the day.",
+      "ihTarget": "Let me tell you about my routine when I go to the movies. First, I check the schedule and book a seat on a mobile app, usually a seat in the middle. I try to arrive about fifteen minutes early. Then I grab some popcorn and a drink, and I find my seat. During the movie, I always turn off my phone, because I want to fully focus on the story. After the movie, the best part is leaving a review or a rating on the app. It's a good way to sort out my feelings. Sometimes I go to a cafe with my friend, and we talk about the movie for an hour. It's a great way to finish the day.",
+      "short": "I book a seat on an app, grab popcorn and a drink, and find my seat. After the movie, I leave a review on the app.",
+      "keywords": ["book on app · middle seat", "15 minutes early · popcorn & drink", "phone off", "review · rating", "cafe · talk about the movie"],
+      "reasonKo": "- 루틴을 '전 → 중 → 후' 세 단계로 나눠 질문에 정확히 맞췄습니다.\n- 루틴은 현재 시제로 말해야 합니다. 이전 버전의 'I found my seat'(과거형) 같은 실수를 주의하세요.\n- 영화 후 활동을 하나 더 추가해 길이를 늘렸습니다."
+    },
+    {
+      "topic": "Movies", "title": "Memorable Experience", "type": "PAST_EXPERIENCE", "stories": "S3",
+      "question": "Have you ever had a memorable or unexpected experience at a movie theater? What happened?",
+      "original": "Actually, I have a bittersweet memory about a movie.\nLast year, I went to a theater to watch a movie called 'Basketball'.\nBefore the movie started, I grabbed a lot of snacks and drinks because I was starving.\nEverything was fine until the movie reached its climax. Right when the main character was about to shoot the final ball, I suddenly had a terrible stomachache. To be honest, I was so embarrassed and uncomfortable.\nI had no choice but to run to the toilet immediately. When I finally arrived back at my seat, the movie had already ended. I missed the most important scene!\nIt was a totally frustrating and unforgettable experience for me.",
+      "ihTarget": "Actually, I have a bittersweet memory about a movie. Last year, I went to see a movie called 'Basketball' with my friend. Before it started, I grabbed a lot of snacks and a huge drink because I was starving. Everything was fine until the movie reached its climax. Right when the main character was about to take the final shot, I really needed to go to the restroom. I tried to hold it, but I couldn't, so I had no choice but to run out. When I finally came back to my seat, the movie had already ended and the credits were rolling. I completely missed the most important scene! My friend couldn't stop laughing. Since then, I never buy a large drink at the theater.",
+      "short": "I drank a huge soda at the movie 'Basketball' and had to run to the restroom at the climax. When I came back, it was over. Now I never buy a large drink.",
+      "keywords": ["last year · 'Basketball' · friend", "snacks · huge drink", "climax · final shot · restroom", "missed the ending · credits", "friend laughed · never a large drink"],
+      "reasonKo": "- 배탈 대신 '큰 음료 때문에 화장실'로 바꿔 다른 답변과 반전이 겹치지 않게 했습니다. 원래 내용을 원하면 거절하세요.\n- 'Since then, I never...'로 현재 습관과 연결해 시제 범위를 넓혔습니다.\n- 'shoot the final ball'을 'take the final shot'으로 자연스럽게 바꿨습니다."
+    },
+    {
+      "topic": "Vacation", "title": "Vacation at Home", "type": "ROUTINE", "stories": "S7",
+      "question": "How do you usually spend your vacation? Do you prefer staying at home or going out? Tell me about your vacation routine.",
+      "original": "To be honest, I'm a total homebody, so I love staying at home on vacation. My favorite place is the big sofa in my living room. It's very comfy.\nUsually, I spend my time there playing video games on my big TV. The games look so realistic, so I completely lose track of time.\nThe best part is that playing games helps me get rid of all my stress. It's the best way for me to recharge my batteries.",
+      "ihTarget": "To be honest, I'm a total homebody, so I love staying at home on vacation. On the first day, I usually sleep in and order some delivery food. Then I spend most of my time on the big gray sofa in my living room, playing video games on my big TV. The graphics are so realistic that I completely lose track of time. The best part is that playing games helps me get rid of all my stress. It's the best way for me to recharge my batteries. But I don't stay inside all day. In the evening, I usually go jogging in the park to get some fresh air. This year, I'm planning to spend my winter vacation the same way, but I also want to read a few books.",
+      "short": "I'm a total homebody. I play video games on my big sofa and lose track of time. In the evening, I go jogging to get some fresh air.",
+      "keywords": ["homebody", "sleep in · delivery food", "gray sofa · video games · lose track of time", "stress · recharge", "evening jogging", "winter vacation · books"],
+      "reasonKo": "- 하루 흐름(아침 → 낮 → 저녁)으로 루틴 구조를 만들었습니다.\n- 다음 꼬리 질문(밖에서 하는 활동)으로 자연스럽게 이어지는 문장을 넣었습니다.\n- 미래 계획 문장을 추가했습니다."
+    },
+    {
+      "topic": "Vacation", "title": "Going Outside", "type": "ROUTINE", "stories": "S5",
+      "question": "You mentioned you like active vacations. What do you do when you go outside?",
+      "original": "However, I don't just stay inside. After playing games, I usually go outside for some fresh air. I go to Central park near my house.\nI love jogging while listening to music. My favorite song is 'Butter' by BTS. It is very upbeat, so it makes me feel happy and energetic.\nRunning in the fresh air while listening to my favorite songs makes me feel alive. This is my perfect vacation routine!",
+      "ihTarget": "Well, I don't just stay inside. After playing games for a few hours, I usually go outside for some fresh air. There's a big park called Central Park near my house, and I go jogging there. I always wear my Bluetooth earphones, because running with music makes it much more fun. My favorite song these days is 'Butter' by BTS. It's very upbeat, so it makes me feel happy and energetic. I usually run for about forty minutes along the lake, and then I stop at a convenience store for a cold drink. Running in the fresh air while listening to my favorite songs makes me feel alive. This is my perfect vacation routine.",
+      "short": "After gaming, I go jogging in Central Park near my house. I listen to 'Butter' by BTS. It makes me feel alive.",
+      "keywords": ["not just inside", "Central Park · jogging", "earphones · 'Butter' · upbeat", "40 minutes · lake · cold drink", "feel alive"],
+      "reasonKo": "- 'However'로 시작하면 앞 문장이 없을 때 어색해서 'Well, I don't just stay inside'로 바꿨습니다.\n- 시간·장소 디테일(40분, 호수, 편의점)을 넣어 구체성을 높였습니다. 사실과 다르면 고치세요."
+    },
+    {
+      "topic": "Vacation", "title": "Memorable Vacation", "type": "PAST_EXPERIENCE", "stories": "S1",
+      "question": "Tell me about a memorable vacation you took recently.",
+      "original": "I took a 4-day trip to Osaka, Japan last summer.\nMy hotel was amazing-it had unlimited beer and a hot spring that was perfect for relieving my fatigue.\nHowever, I have one bittersweet memory. I ate too much Takoyaki and suddenly got a terrible stomachache. I even had to run to a drugstore for medicine. It was dizzying then, but looking back, it's a memorable experience.",
+      "ihTarget": "The most memorable vacation I took recently was a four-day trip to Osaka last summer. My hotel was amazing. It had unlimited beer and a hot spring, so after walking around all day, I could relax and relieve my fatigue. During the day, we visited Osaka Castle and walked around the shopping streets. However, I also had one small problem. One night, I ate too much takoyaki and got a stomachache, so I had to find a drugstore. It was stressful at that moment, but looking back, it's a funny and memorable experience. That trip reminded me that a short break can really recharge me, so I'm planning another trip next summer.",
+      "short": "My most memorable vacation was a four-day trip to Osaka. The hotel had unlimited beer and a hot spring. I ate too much takoyaki once, but now it's funny.",
+      "keywords": ["Osaka · 4 days · last summer", "hotel · unlimited beer · hot spring", "castle · shopping streets", "takoyaki · drugstore", "looking back · next summer"],
+      "reasonKo": "- 'amazing-it had' 구두점 오류와 'It was dizzying then'(의미가 어색함)을 고쳤습니다.\n- 해외여행 답변과 같은 이야기입니다. 시험에서 둘 다 나오면 이 답변은 호텔·휴식 중심으로 짧게 말하세요."
+    },
+    {
+      "topic": "Home & Furniture", "title": "Description of Your House", "type": "DESCRIPTION", "stories": "S7",
+      "question": "Could you describe your home in detail? What does it look like, and how many rooms are there?",
+      "original": "I live on the 6th floor of an apartment. It has three rooms, including a dedicated dress room and a study room filled with books.\nMy favorite spot is the large, gray sofa in the living room. It's incredibly comfy, making it the perfect place to play video games or take a nap.",
+      "ihTarget": "I live in an apartment on the sixth floor. It's not very big, but it's cozy. There are three rooms. One is my bedroom, one is a dress room just for clothes, and the last one is a study room filled with books. The living room is the biggest space, and it has a large window, so a lot of sunlight comes in during the day. My favorite spot is the large gray sofa in the living room. It's incredibly comfy, so it's the perfect place to play video games or take a nap. I moved here about three years ago, and I've really started to love this place. Someday, I'd like to live in a house with a small garden.",
+      "short": "I live on the sixth floor of an apartment with three rooms. My favorite spot is the big gray sofa in the living room. It's perfect for games or a nap.",
+      "keywords": ["6th floor · cozy", "3 rooms · bedroom · dress room · study", "living room · big window · sunlight", "gray sofa · games · nap", "moved 3 years ago · garden someday"],
+      "reasonKo": "- 2문장이던 묘사를 '전체 → 방 → 거실 → 좋아하는 곳' 순서로 확장했습니다.\n- 과거(moved), 현재완료, 미래(someday) 문장을 넣어 시간대를 넓혔습니다.\n- 'three years ago'는 예시입니다. 실제 사실에 맞게 고치세요."
+    },
+    {
+      "topic": "Home & Furniture", "title": "Favorite Furniture", "type": "DESCRIPTION", "stories": "S7",
+      "question": "Tell me about your favorite piece of furniture in your house. What is it, and why do you like it?",
+      "original": "I live in an apartment, and my favorite furniture is the sofa in my living room. It's a large, gray sofa, and it's my favorite place in the whole world.\nWhile I'm sitting there, I usually play video games or just take a nap.\nIt's the perfect place for relaxing.",
+      "ihTarget": "My favorite piece of furniture is definitely the sofa in my living room. It's a large gray fabric sofa, and it's big enough for three people. I bought it about two years ago after comparing a lot of sofas online and in stores. The reason I love it is that it's super comfy. When I sit on it, I feel like all my stress just melts away. I usually play video games or watch Netflix there, and sometimes I fall asleep on it without realizing it. It's my favorite place in the whole world. Honestly, I think it's the best thing I've ever bought. I'm planning to buy a matching cushion soon.",
+      "short": "My favorite furniture is my big gray sofa. It's super comfy, and I play games or take naps on it. It's the best thing I've ever bought.",
+      "keywords": ["gray fabric sofa · 3 people", "bought 2 years ago · compared", "super comfy · stress melts away", "games · Netflix · fall asleep", "best thing · matching cushion"],
+      "reasonKo": "- 좋아하는 이유를 'The reason I love it is that...' 구조로 분명하게 만들었습니다.\n- 구입 경험(과거)과 계획(미래)을 넣어 짧은 묘사를 문단 길이로 늘렸습니다.\n- 이 구조는 다른 '좋아하는 물건' 돌발 질문에도 재사용할 수 있습니다."
+    },
+    {
+      "topic": "Home & Furniture", "title": "Comparison (Past vs. Present)", "type": "COMPARISON", "stories": "S4",
+      "question": "Compare the furniture you have now to the furniture you had when you were a child. How is it different?",
+      "original": "Honestly, I don't remember my childhood but I try to remember I guess furniture was very small.\nFirst of all, I want to point out the size. When I was young, my sofa was quite small and I used to jump on the sofa.\nBecause I jumped on the sofa, my sofa was broken sometimes. But now, I have a bigger sofa. So I usually spend a lot of time on the sofa. Because it is really comfy.\nSo I think that's the big change that I have got.",
+      "ihTarget": "There's a big difference between the furniture I had as a kid and the furniture I have now. When I was young, our sofa was quite small and old. I used to jump on it like a trampoline, so it broke a few times, and my mom got really upset. Back then, furniture was mostly just practical. These days, my sofa is much bigger and more comfortable, and I chose it carefully for my own taste. I spend a lot of time on it, playing games or just relaxing. I think the biggest change is that furniture used to be just something to use, but now it's part of my lifestyle. It shows my personality and helps me rest.",
+      "short": "When I was a kid, our sofa was small and I used to jump on it. Now my sofa is much bigger and more comfortable. Furniture is part of my lifestyle now.",
+      "keywords": ["big difference", "kid · small old sofa · trampoline · broke", "back then · practical", "now · bigger · comfy · my taste", "biggest change · lifestyle"],
+      "reasonKo": "- 'Honestly, I don't remember... I guess...' 도입은 자신 없는 IM 신호라서 비교 프레임 문장으로 바꿨습니다.\n- 과거(used to) → 현재(these days) → 차이와 이유 → 느낌 순서로 IH 비교 구조를 만들었습니다.\n- 'my sofa was broken sometimes'를 'it broke a few times'로 고쳤습니다."
+    },
+    {
+      "topic": "Home & Furniture", "title": "Past Experience", "type": "PAST_EXPERIENCE", "stories": "S4",
+      "question": "Tell me about a memorable experience regarding furniture you had in your childhood.",
+      "original": "To be honest, I clearly remember my old sofa from childhood. Back then, it was quite small, but to me, it felt like a huge trampoline.\nI used to jump on it all day long! My mom was always angry, it was such a fun and energetic time.\nActually, I recently bought a brand-new sofa for my mother. I felt a bit sorry for breaking the sofa when I was kid, so I wanted to make it up to her. She was so moved and happy about it.\nI feel much better now that I've finally replaced the one I ruined!",
+      "ihTarget": "To be honest, I clearly remember my old sofa from my childhood. Back then, it was quite small, but to me, it felt like a huge trampoline. I used to jump on it all day long, and my mom was always angry at me. One day, I jumped too hard and one of the legs broke. I was so scared that I hid in my room. It was such a fun and energetic time, though. Actually, last year, I bought a brand-new sofa for my mother. I felt a bit sorry for breaking her sofa when I was a kid, so I wanted to make it up to her. She was so moved and happy. I feel much better now that I've finally replaced the one I ruined.",
+      "short": "As a kid, I used to jump on our small sofa like a trampoline and broke it. Last year, I bought my mom a new sofa to make it up to her. She was so moved.",
+      "keywords": ["old sofa · trampoline", "jumped all day · mom angry", "leg broke · hid in my room", "last year · new sofa for mom · make it up", "moved · feel better now"],
+      "reasonKo": "- 'One day, ...'로 구체적인 사건 하나를 넣어 경험 서사를 선명하게 했습니다.\n- 'My mom was always angry, it was...'처럼 쉼표로 두 문장을 이은 오류를 나눴습니다.\n- 'when I was kid'를 'when I was a kid'로 관사를 고쳤습니다."
+    },
+    {
+      "topic": "Home & Furniture", "title": "Routine at Home", "type": "ROUTINE", "stories": "S7",
+      "question": "What do you usually do when you are at home? Tell me about your typical routine on your days off.",
+      "original": "On my days off, I usually spend my time on the sofa playing video games on my big TV.\nThe games look so realistic, so I completely lose track of time. The best part is that it helps me get rid of all my stress and recharge my batteries.",
+      "ihTarget": "On my days off, I'm basically a homebody. I usually sleep in until around ten, and then I make a quick brunch. After that, I head straight to the big gray sofa in my living room and play video games on my TV. The graphics are so realistic that I completely lose track of time. In the evening, if the weather is nice, I go jogging in Central Park to get some fresh air. Honestly, this simple routine is the best way for me to recharge my batteries. Next weekend, I'm planning to try a new game that my friend recommended, so I'm really looking forward to it.",
+      "short": "On my days off, I'm a homebody. I play video games on my big sofa and lose track of time. In the evening, I jog in the park to recharge.",
+      "keywords": ["homebody", "sofa + games", "lose track of time", "jogging", "next weekend · new game"],
+      "reasonKo": "- 2문장이던 답변을 시간 흐름(아침 → 오후 → 저녁) 구조로 바꿨습니다.\n- 미래 시제 문장을 1개 추가했습니다.\n- 기존 표현(lose track of time, recharge my batteries)을 재사용해 암기 부담을 줄였습니다."
+    },
+    {
+      "topic": "Park & Music", "title": "Park Description", "type": "DESCRIPTION", "stories": "S5",
+      "question": "Describe a park you often visit. What does it look like, and what do people usually do there?",
+      "original": "I often go to Central Park near my house. It is a great place for jogging.There are a lot of joggers in that park, so we can exercise together.\nActually, my hobby is jogging. Do you like jogging too?\nAnd I love listening to upbeat music list 'Butter' by BTS while running. It makes me feel happy and energetic throughout the day.",
+      "ihTarget": "I often go to Central Park, which is about ten minutes from my house. It's a big park with a lake in the middle and a long jogging track around it. There are lots of trees, so it's really green and peaceful, especially in the morning. On weekends, it's always busy. People walk their dogs, families have picnics on the grass, and a lot of people go jogging like me. Actually, my hobby is jogging, so I go there three or four times a week. I love listening to upbeat music like 'Butter' by BTS while I'm running. It makes me feel happy and energetic for the whole day. Do you like jogging too?",
+      "short": "I often go to Central Park near my house. It has a lake and a jogging track, and people walk dogs and have picnics. I jog there listening to BTS.",
+      "keywords": ["Central Park · 10 minutes", "lake · jogging track · trees", "weekends · dogs · picnics", "my hobby · 3-4 times a week", "'Butter' · energetic"],
+      "reasonKo": "- 'music list 'Butter''를 'music like 'Butter''로 고쳤습니다.\n- 질문의 두 번째 부분(사람들이 무엇을 하는지)에 대한 묘사를 추가했습니다.\n- 청자에게 묻는 문장은 장점이라 마지막으로 옮겨 유지했습니다."
+    },
+    {
+      "topic": "Park & Music", "title": "Park/Music Routine", "type": "ROUTINE", "stories": "S5",
+      "question": "What do you usually do at the park? Do you listen to music while exercising?",
+      "original": "I always wear knee pads before jogging. And I also wear Bluetooth earphones to immerse myself in the music.\nActually, I'm a huge fan of upbeat music, especially songs by BTS. My favorite track these days is 'Butter'. It's so energetic that it's perfect to listen to while jogging.\nRunning in the fresh air while listening to my favorite songs makes me feel alive.",
+      "ihTarget": "Before I go jogging, I always stretch for a few minutes and put on my knee pads, because my knees get sore easily. I also wear Bluetooth earphones so I can be immersed in the music. When I get to the park, I usually walk for five minutes to warm up, and then I run around the lake. I'm a huge fan of upbeat music, especially songs by BTS. My favorite track these days is 'Butter'. It's so energetic that it's perfect for running. After running, I sit on a bench and cool down. Running in the fresh air while listening to my favorite songs makes me feel alive. I'm hoping to run a 10K race next spring.",
+      "short": "I put on knee pads and earphones, then run around the lake. I listen to 'Butter' by BTS because it's energetic. It makes me feel alive.",
+      "keywords": ["stretch · knee pads", "earphones · immersed", "warm up · run around the lake", "BTS · 'Butter' · energetic", "bench · cool down", "10K next spring"],
+      "reasonKo": "- 준비 → 운동 → 마무리 순서로 루틴을 정리했습니다.\n- 무릎 보호대를 쓰는 이유를 붙여 문장 연결을 자연스럽게 했습니다.\n- 미래 목표 문장을 추가했습니다."
+    },
+    {
+      "topic": "Park & Music", "title": "Favorite Musician", "type": "DESCRIPTION", "stories": "",
+      "question": "Who is your favorite musician or composer? Why do you like their music?",
+      "original": "My favorite musician is BTS. There are 7 boys in a group.\nDo you know them well? If there's a chance to watch their performance video, you probably can figure out why I like them. Because they are great performers.\nI especially like the song “Butter” by BTS. It's a very upbeat song, so it's great to listen to while jogging",
+      "ihTarget": "My favorite musician is BTS. They're a Korean boy group with seven members, and they're famous all around the world. Do you know them? If you watch one of their performance videos, you'll understand why I like them. They're amazing performers. Their dancing is perfectly in sync, and their songs have positive messages about loving yourself. I especially like the song 'Butter'. It's very upbeat, so it's great to listen to while I'm jogging. I first got into their music a few years ago when one of my coworkers recommended it. Since then, I've listened to them almost every day. Someday, I really want to go to one of their concerts.",
+      "short": "My favorite musician is BTS. They're amazing performers with positive messages. I especially like 'Butter' because it's great for jogging.",
+      "keywords": ["BTS · seven members · worldwide", "performance video · amazing performers", "in sync · positive messages", "'Butter' · jogging", "coworker recommended · concert someday"],
+      "reasonKo": "- 'There are 7 boys in a group'을 'a Korean boy group with seven members'로 자연스럽게 바꿨습니다.\n- 좋아하게 된 계기(과거)와 콘서트 희망(미래)을 넣었습니다."
+    },
+    {
+      "topic": "Park & Music", "title": "Music Taste Change", "type": "COMPARISON", "stories": "",
+      "question": "How has your music taste changed from when you were younger to now? Tell me about the music you used to like and what you listen to these days.",
+      "original": "When I was young, I went to the army and I liked dance music. I like '비' and his English name is rain.\nEspecially the song's name is rainism. The music is very wonderful. You know that? The music makes me feel like a dancer.\nBut these days, the rainism is kind of old. So I like BTS.",
+      "ihTarget": "My taste in music has changed a lot over time. When I was in my twenties, especially when I was in the army, I really liked dance music. My favorite singer was Rain, and my favorite song was 'Rainism'. Whenever I listened to it, I felt like a dancer, and it gave me a lot of energy during hard training. But these days, I don't listen to that kind of music much, because it feels a little old now. Instead, I listen to BTS. Their songs are still upbeat, but the lyrics are more meaningful to me. I think the biggest change is that I used to like music just for energy, but now I care about the message too.",
+      "short": "When I was in the army, I liked dance music like Rain's 'Rainism'. These days, I listen to BTS because their lyrics are more meaningful.",
+      "keywords": ["changed a lot", "twenties · army · dance music", "Rain · 'Rainism' · felt like a dancer", "these days · BTS · meaningful lyrics", "biggest change · message"],
+      "reasonKo": "- 'When I was young, I went to the army'는 시기 논리가 어색해서 'When I was in my twenties, especially in the army'로 바꿨습니다.\n- 'I like 비'를 과거형 'My favorite singer was Rain'으로 바꿔 시제를 맞췄습니다.\n- 과거 → 현재 → 가장 큰 변화 순서로 비교 답변을 완성했습니다."
+    },
+    {
+      "topic": "Park & Music", "title": "Memorable Experience at the Park", "type": "PAST_EXPERIENCE", "stories": "S5",
+      "question": "Tell me about something interesting or unexpected that happened while you were at the park.",
+      "original": "I remember a time when I was jogging in the park. I was lost in the music, so I didn't see a woman walking toward me.\nSuddenly, I bumped into her very hard. She was shocked, and I was terribly sorry. I kept apologizing until she said she was okay.\nAfter that, I realized I should be more careful when I exercise with my earphones on.\nIt was a very embarrassing moment for me.",
+      "ihTarget": "I remember something embarrassing that happened in the park last spring. I was jogging with my earphones on, and I was completely lost in the music. Because of that, I didn't see a woman walking toward me with her dog. Suddenly, I bumped into her really hard, and she almost fell down. She was shocked, and her dog started barking at me. I felt terrible, so I kept apologizing and asked if she was okay. Luckily, she wasn't hurt, and she told me not to worry about it. After that, I realized I should be more careful when I exercise with earphones. These days, I always keep the volume low so I can hear what's around me.",
+      "short": "Last spring, I was jogging and lost in the music, so I bumped into a woman. I kept apologizing. Now I keep the volume low.",
+      "keywords": ["last spring · jogging · lost in music", "didn't see a woman · dog", "bumped · almost fell · barking", "apologized · not hurt", "lesson · volume low now"],
+      "reasonKo": "- 시점(last spring)과 디테일(강아지)을 넣어 이야기를 생생하게 만들었습니다.\n- 마지막에 현재 습관 변화를 넣어 '사건 → 교훈 → 지금' 구조를 만들었습니다."
+    },
+    {
+      "topic": "Geography", "title": "Geography Description", "type": "DESCRIPTION", "stories": "",
+      "question": "Describe the geography of your country. What does the landscape look like?",
+      "original": "South Korea is a peninsula located in East Asia, surrounded by the ocean on three sides.\nAlso, about 70% of our land is mountainous.\nSo, wherever you go, you can see stunning mountains and beautiful scenery. Especially in the fall, the colorful leaves are absolutely breathtaking.\nWe also have four distinct seasons, so the landscape changes beautifully throughout the year.",
+      "ihTarget": "South Korea is a peninsula in East Asia, so it's surrounded by the ocean on three sides. About seventy percent of the land is mountainous, so wherever you go, you can see mountains. The east coast has clear blue water and long sandy beaches, while the west coast has wide mud flats. There's also Jeju Island in the south, which is famous for its volcano, Hallasan. We have four distinct seasons, so the landscape changes beautifully throughout the year. Especially in the fall, the colorful leaves on the mountains are absolutely breathtaking. That's why hiking is one of the most popular hobbies in Korea. I'm planning to hike Seoraksan next fall to see the leaves.",
+      "short": "Korea is a peninsula, and about 70% of it is mountains. We have beaches, mud flats, and Jeju Island. The fall leaves are breathtaking.",
+      "keywords": ["peninsula · ocean on three sides", "70% mountains", "east coast beaches · west coast mud flats · Jeju", "four seasons · fall leaves", "hiking popular · Seoraksan"],
+      "reasonKo": "- 동해, 서해, 제주로 묘사 범위를 넓혔습니다.\n- 'That's why...'로 지형과 사람들의 활동을 연결했습니다. 야외 활동 꼬리 질문에도 대비할 수 있습니다.\n- 미래 계획 문장을 추가했습니다."
+    },
+    {
+      "topic": "Geography", "title": "Neighboring Countries", "type": "DESCRIPTION", "stories": "S6",
+      "question": "Tell me about the neighboring countries of your country. What are they like?",
+      "original": "We have two close neighbors, China and Japan.\nJapan is very close, but honestly, our history is a bit complicated. In the past, they invaded Korea and hurt many people. So personally, thinking about that history makes me feel sad.\nOn the other hand, China grew really fast. I went there for a business trip, and I saw many tall buildings and luxury cars. But because they grew so fast, the gap between the rich and poor is very big.",
+      "ihTarget": "Korea has two close neighbors, China and Japan. Japan is very close, so it only takes about an hour by plane, and a lot of Koreans travel there. But honestly, our history is a bit complicated. In the past, Japan invaded Korea and hurt many people, so thinking about that history still makes me sad. These days, though, the two countries share a lot of culture, like food, music, and dramas. China, on the other hand, has grown really fast. I went there on a business trip a few years ago, and I saw so many tall buildings and luxury cars. But because it grew so fast, the gap between the rich and the poor is very big. I hope all three countries can get along better in the future.",
+      "short": "Our neighbors are China and Japan. Japan is close, but our history is complicated. China has grown fast, but the gap between rich and poor is big.",
+      "keywords": ["China & Japan", "Japan · 1-hour flight · complicated history · sad", "share culture now", "China · grew fast · business trip · tall buildings", "rich-poor gap · get along in the future"],
+      "reasonKo": "- 과거 역사 → 현재 교류 → 미래 희망으로 세 시간대를 모두 넣었습니다.\n- 'On the other hand'로 두 나라를 대조하는 구조를 유지했습니다.\n- 민감한 주제는 감정을 한 문장 정도로 짧게 말하는 것이 안전합니다."
+    }
+  ]
+}
