@@ -321,12 +321,33 @@ private fun ToggleRow(label: String, value: Boolean, onChange: (Boolean) -> Unit
 private fun KeyField(keys: ApiKeyStore, p: ApiKeyStore.Provider, onMessage: (String) -> Unit) {
     var has by remember { mutableStateOf(keys.has(p)) }
     var input by remember { mutableStateOf("") }
+    var status by remember { mutableStateOf<String?>(null) }
+    val focus = androidx.compose.ui.platform.LocalFocusManager.current
+    fun saveKey() {
+        if (input.isBlank()) return
+        keys.set(p, input)
+        input = ""; has = true
+        status = "저장했습니다. 이 기기에 암호화되어 보관됩니다."
+        focus.clearFocus()
+        onMessage("키를 암호화해 저장했습니다.")
+    }
     Column(Modifier.padding(vertical = 6.dp)) {
-        Text(p.label + if (has) " · 저장됨" else " · 없음", style = MaterialTheme.typography.labelLarge)
+        Text(p.label + if (has) " · 저장됨" else " · 없음", style = MaterialTheme.typography.labelLarge,
+            color = if (has) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.onSurface)
         Row(verticalAlignment = Alignment.CenterVertically) {
-            OutlinedTextField(input, { input = it }, singleLine = true, visualTransformation = PasswordVisualTransformation(), placeholder = { Text(if (has) "변경하려면 새 키 입력" else "키 붙여넣기") }, modifier = Modifier.weight(1f))
-            TextButton(enabled = input.isNotBlank(), onClick = { keys.set(p, input); input = ""; has = true; onMessage("키를 암호화해 저장했습니다.") }) { Text("저장") }
-            if (has) TextButton(onClick = { keys.set(p, null); has = false; onMessage("키를 삭제했습니다.") }) { Text("삭제") }
+            OutlinedTextField(
+                input, { input = it; status = null }, singleLine = true, visualTransformation = PasswordVisualTransformation(),
+                placeholder = { Text(if (has) "변경하려면 새 키 입력" else "키 붙여넣기") }, modifier = Modifier.weight(1f),
+                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(imeAction = androidx.compose.ui.text.input.ImeAction.Done),
+                keyboardActions = androidx.compose.foundation.text.KeyboardActions(onDone = { saveKey() }),
+            )
+            Spacer(Modifier.padding(4.dp))
+            Button(enabled = input.isNotBlank(), onClick = { saveKey() }) { Text("저장") }
+            if (has && input.isBlank()) TextButton(onClick = { keys.set(p, null); has = false; status = "키를 삭제했습니다."; onMessage("키를 삭제했습니다.") }) { Text("삭제") }
+        }
+        when {
+            input.isNotBlank() -> Text("아직 저장되지 않았습니다. '저장' 또는 키보드의 완료를 누르세요.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.tertiary)
+            status != null -> Text(status!!, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
         }
     }
 }
