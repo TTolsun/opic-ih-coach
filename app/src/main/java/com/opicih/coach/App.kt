@@ -14,6 +14,7 @@ import com.opicih.coach.data.backup.BackupManager
 import com.opicih.coach.data.db.AppDatabase
 import com.opicih.coach.data.prefs.Settings
 import com.opicih.coach.data.prefs.SettingsRepository
+import com.opicih.coach.data.repo.ExamRepository
 import com.opicih.coach.data.repo.PracticeRepository
 import com.opicih.coach.data.repo.ScriptRepository
 import com.opicih.coach.data.secure.ApiKeyStore
@@ -39,6 +40,7 @@ class AppContainer(context: Context) {
     val practice = PracticeRepository(dao)
     val importer = ImportService(ctx)
     val backup = BackupManager(ctx, db)
+    val exams = ExamRepository(db, settings)
     val seed = SeedLoader(ctx, dao, settings)
     val localCoach = LocalCoach()
 
@@ -73,6 +75,7 @@ class App : Application() {
         Notifications.createChannels(this)
         appScope.launch {
             runCatching { container.seed.seedIfNeeded() }
+            runCatching { container.exams.bootstrapIfNeeded() }
             val s = container.settings.current()
             if (s.alarmEnabled) AlarmScheduler.schedule(this@App, s.alarmHour, s.alarmMinute, s.useExactAlarm)
             ReminderWorker.ensure(this@App, s.eveningReminder)

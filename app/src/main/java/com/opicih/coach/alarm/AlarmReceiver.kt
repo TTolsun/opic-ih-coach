@@ -30,7 +30,8 @@ class AlarmReceiver : BroadcastReceiver() {
                     AlarmScheduler.ACTION_FIRE -> {
                         val today = LocalDate.now()
                         val due = app.container.dao.scripts().count { it.dueEpochDay <= today.toEpochDay() }
-                        val plan = PlanGenerator.today(today, s.examDate, s.studyLevel.minutes, due, false)
+                        val focus = app.container.exams.focus()
+                        val plan = PlanGenerator.forExam(today, focus?.type, focus?.date, s.studyLevel.minutes, due, false)
                         val mission = "${plan.focus.titleKo} · 약 ${plan.totalMinutes}분\n아침 표현 5분부터 시작하세요. 복습할 스크립트 ${due}개"
                         Notifications.showMorning(context, plan.dLabel, mission, s.alarmSound, s.alarmVibrate)
                         // Re-arm for tomorrow (alarms are one-shot).

@@ -36,6 +36,10 @@ enum class CaptureMode(val label: String, val description: String) {
 }
 
 data class Settings(
+    /**
+     * Legacy single exam date (v2). Since v3 the schedule lives in `exam_registrations`; this value is only read once
+     * by ExamBootstrap and is no longer used for planning.
+     */
     val examDate: LocalDate = DEFAULT_EXAM,
     val studyLevel: StudyLevel = StudyLevel.STANDARD,
     val alarmEnabled: Boolean = true,
@@ -64,6 +68,10 @@ data class Settings(
     val gradeDeadline: LocalDate? = LocalDate.of(2026, 12, 31),
     val examSlots: Set<String> = emptySet(),
     val registerLeadDays: Int = 7,
+    /** 1 = v2 exam data has been converted into registrations (runs once). */
+    val examBootstrapVersion: Int = 0,
+    /** OPIc waivers the user reports holding; -1 = not entered. Waiver rules themselves are unverified (B phase). */
+    val opicWaivers: Int = -1,
 ) {
     fun slotDates(): List<LocalDate> = examSlots.mapNotNull { runCatching { LocalDate.parse(it) }.getOrNull() }.sorted()
 
@@ -108,6 +116,8 @@ class SettingsRepository(private val context: Context) {
         val deadline = longPreferencesKey("grade_deadline")
         val slots = stringSetPreferencesKey("exam_slots")
         val lead = intPreferencesKey("register_lead_days")
+        val examBootstrap = intPreferencesKey("exam_bootstrap_version")
+        val opicWaivers = intPreferencesKey("opic_waivers")
     }
 
     val flow: Flow<Settings> = context.dataStore.data.map { it.toSettings() }
@@ -144,6 +154,8 @@ class SettingsRepository(private val context: Context) {
             p[K.deadline] = s.gradeDeadline?.toEpochDay() ?: -1L
             p[K.slots] = s.examSlots
             p[K.lead] = s.registerLeadDays
+            p[K.examBootstrap] = s.examBootstrapVersion
+            p[K.opicWaivers] = s.opicWaivers
         }
     }
 
@@ -177,6 +189,8 @@ class SettingsRepository(private val context: Context) {
             gradeDeadline = this[K.deadline]?.let { if (it < 0) null else LocalDate.ofEpochDay(it) } ?: d.gradeDeadline,
             examSlots = this[K.slots] ?: d.examSlots,
             registerLeadDays = this[K.lead] ?: d.registerLeadDays,
+            examBootstrapVersion = this[K.examBootstrap] ?: d.examBootstrapVersion,
+            opicWaivers = this[K.opicWaivers] ?: d.opicWaivers,
         )
     }
 }

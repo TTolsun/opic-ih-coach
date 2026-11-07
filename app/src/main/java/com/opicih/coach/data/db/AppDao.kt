@@ -81,6 +81,24 @@ interface AppDao {
     @Update suspend fun updateExam(e: ExamEntity)
     @Query("SELECT * FROM exams WHERE epochDay = :day LIMIT 1") suspend fun examOn(day: Long): ExamEntity?
 
+    // ---- Exam registrations (v3)
+    @Query("SELECT * FROM exam_registrations ORDER BY dateLocal, startTimeLocal") fun registrationsFlow(): Flow<List<ExamRegistrationEntity>>
+    @Query("SELECT * FROM exam_registrations ORDER BY dateLocal, startTimeLocal") suspend fun registrations(): List<ExamRegistrationEntity>
+    @Query("SELECT * FROM exam_registrations WHERE id = :id") suspend fun registration(id: Long): ExamRegistrationEntity?
+    @Insert suspend fun insertRegistration(r: ExamRegistrationEntity): Long
+    @Insert suspend fun insertRegistrations(r: List<ExamRegistrationEntity>)
+    @Update suspend fun updateRegistration(r: ExamRegistrationEntity)
+    @Query("DELETE FROM exam_registrations WHERE id = :id") suspend fun deleteRegistration(id: Long)
+    @Query("SELECT * FROM exam_status_events ORDER BY createdAt") suspend fun statusEvents(): List<ExamStatusEventEntity>
+    @Query("SELECT * FROM exam_status_events WHERE registrationId = :id ORDER BY createdAt") suspend fun statusEventsFor(id: Long): List<ExamStatusEventEntity>
+    @Insert suspend fun insertStatusEvent(e: ExamStatusEventEntity): Long
+    @Insert suspend fun insertStatusEvents(e: List<ExamStatusEventEntity>)
+    @Query("DELETE FROM exam_status_events WHERE registrationId = :id") suspend fun deleteStatusEventsFor(id: Long)
+    @Query("SELECT * FROM exam_training_sessions ORDER BY startedAt DESC") suspend fun trainingSessions(): List<ExamTrainingSessionEntity>
+    @Insert suspend fun insertTrainingSession(s: ExamTrainingSessionEntity): Long
+    @Insert suspend fun insertTrainingSessions(s: List<ExamTrainingSessionEntity>)
+    @Update suspend fun updateTrainingSession(s: ExamTrainingSessionEntity)
+
     // ---- Stories / questions
     @Query("SELECT * FROM stories ORDER BY id") suspend fun stories(): List<StoryEntity>
     @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun insertStories(s: List<StoryEntity>)
@@ -99,6 +117,9 @@ interface AppDao {
     @Query("DELETE FROM exams") suspend fun clearExams()
     @Query("DELETE FROM stories") suspend fun clearStories()
     @Query("DELETE FROM questions") suspend fun clearQuestions()
+    @Query("DELETE FROM exam_registrations") suspend fun clearRegistrations()
+    @Query("DELETE FROM exam_status_events") suspend fun clearStatusEvents()
+    @Query("DELETE FROM exam_training_sessions") suspend fun clearTrainingSessions()
 
     @Insert suspend fun insertScriptsRaw(s: List<ScriptEntity>)
     @Insert suspend fun insertAttempts(a: List<PracticeAttemptEntity>)
@@ -111,5 +132,6 @@ interface AppDao {
     suspend fun wipeAll() {
         clearScripts(); clearRevisions(); clearImports(); clearAttempts(); clearErrors(); clearChunks()
         clearDailyLogs(); clearMocks(); clearExams(); clearStories(); clearQuestions()
+        clearRegistrations(); clearStatusEvents(); clearTrainingSessions()
     }
 }

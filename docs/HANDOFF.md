@@ -34,6 +34,14 @@
 - 다음 시험 추천 기능(방향 B: 준비도 게이트 + 시험 직후 복기) 추가. **SAIL 재응시 규칙은 공개 자료로 확인하지 못함** → 25일을 미검증 기본값으로 두고 설정에서 수정 가능. 사내 회차 날짜 입력 지원.
 - 남은 확인: 실제 목소리 인식 정확도, Claude 호출, 실제 재부팅 후 알람.
 
+## 0-C. 다중 시험 A1 (2026-11-07 저녁)
+
+- 요청서: 저장소 루트 `REQUEST_A_then_B.md` (A단계: 11/11 SAIL 전, B단계: 재응시·Waiver 규칙 엔진).
+- A1 완료: Room v3(`exam_registrations`, `exam_status_events`, `exam_training_sessions`, `attempts.trainingSessionId`), 사용자 확인 시험 데이터 1회 등록, 홈 다음 시험 헤더·시험 현황, 시험 일정 화면, SAIL D-day 계획, 백업 v2.
+- 고친 결함: 다음 시험 화면이 추천일을 `Settings.examDate`에 덮어쓰던 문제. 이제 추천일은 OPIc "접수 예정 (미확정)" 기록으로만 추가됩니다.
+- `Settings.examDate`는 더 이상 계획에 쓰지 않습니다. 모든 화면은 `ExamRepository.focus()`를 씁니다.
+- 다음: A2 SAIL 대화 시뮬레이터. 그 뒤 B단계(정답 데이터 B0 먼저).
+
 ## 0. 현재 상태 (클라우드 세션 작성 당시)
 
 | 항목 | 상태 |

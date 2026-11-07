@@ -39,6 +39,11 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.opicih.coach.alarm.AlarmScheduler
 import com.opicih.coach.data.db.ExamEntity
+import com.opicih.coach.data.db.ExamRegistrationEntity
+import com.opicih.coach.data.db.ExamType
+import com.opicih.coach.data.db.RegistrationSource
+import com.opicih.coach.data.db.RegistrationStatus
+import com.opicih.coach.learning.ExamSchedule
 import com.opicih.coach.data.prefs.Settings
 import com.opicih.coach.learning.ProgressCalculator
 import com.opicih.coach.learning.RetestAdvisor
@@ -53,11 +58,21 @@ import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.ZoneId
 
-/** Which exam the advice is about: the most recent exam on or before today, otherwise the upcoming first exam. */
-fun lastExamDate(s: Settings, exams: List<ExamEntity>, today: LocalDate): LocalDate {
-    val past = exams.map { LocalDate.ofEpochDay(it.epochDay) } + listOf(s.examDate)
-    return past.filter { !it.isAfter(today) }.maxOrNull() ?: s.examDate
+/**
+ * Base date for the OPIc retake advice: the last COMPLETED OPIc sitting (month-only dates use the month's last day,
+ * the conservative value). Other exam types (SAIL) never count. Falls back to old v2 exam rows, then to today.
+ * The legacy Settings.examDate is no longer used: it could hold a recommendation, not a sitting.
+ */
+fun lastExamDate(s: Settings, exams: List<ExamEntity>, today: LocalDate, regs: List<ExamRegistrationEntity> = emptyList()): LocalDate {
+    ExamSchedule.lastCompleted(regs, ExamType.OPIC)?.let { return it.date }
+    val linkedNonOpic = regs.filter { it.type != ExamType.OPIC }.mapNotNull { it.legacyExamId }.toSet()
+    return exams.filter { it.id !in linkedNonOpic }.map { LocalDate.ofEpochDay(it.epochDay) }.filter { !it.isAfter(today) }.maxOrNull() ?: today
 }
+
+/** Most recent exam day (any type) that is over or today, for the debrief card. */
+fun lastSatDate(regs: List<ExamRegistrationEntity>, today: LocalDate): LocalDate? =
+    regs.filter { it.state == RegistrationStatus.REGISTERED || it.state == RegistrationStatus.COMPLETED }
+        .mapNotNull { it.date }.filter { !it.isAfter(today) }.maxOrNull()
 
 fun rulesOf(s: Settings) = RetestAdvisor.Rules(
     retakeDays = s.retakeDays, verified = s.retakeVerified, resultLagDays = s.resultLagDays,
@@ -74,14 +89,16 @@ fun NextExamScreen(onOpenSettings: () -> Unit) {
     val exams by c.dao.examsFlow().collectAsState(initial = emptyList())
     val attempts by c.dao.attemptsFlow().collectAsState(initial = emptyList())
     val logs by c.dao.dailyLogsFlow().collectAsState(initial = emptyList())
+    val regs by c.exams.flow.collectAsState(initial = emptyList())
     var message by remember { mutableStateOf<String?>(null) }
 
     val today = LocalDate.now()
-    val last = lastExamDate(s, exams, today)
+    val last = lastExamDate(s, exams, today, regs)
     val sinceMs = last.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
     val readiness = ProgressCalculator.readiness(attempts, logs, last.toEpochDay(), sinceMs)
     val advice = RetestAdvisor.advise(today, last, rulesOf(s), readiness)
-    val examRow = exams.firstOrNull { it.epochDay == last.toEpochDay() }
+    val debriefDate = lastSatDate(regs, today) ?: last
+    val examRow = exams.firstOrNull { it.epochDay == debriefDate.toEpochDay() }
 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
         message?.let { Banner(it, "닫기", tone = MaterialTheme.colorScheme.primary) { message = null } }
@@ -90,7 +107,7 @@ fun NextExamScreen(onOpenSettings: () -> Unit) {
             Text(advice.verdict.label, style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.primary)
             Spacer(Modifier.height(8.dp))
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                MetricTile("기준 시험", "${last.monthValue}/${last.dayOfMonth}")
+                MetricTile("기준 OPIc 응시", "${last.monthValue}/${last.dayOfMonth}", hint = ExamSchedule.lastCompleted(regs, ExamType.OPIC)?.let { if (it.exact) null else "월말로 가정" })
                 MetricTile("재응시 가능", "${advice.earliest.monthValue}/${advice.earliest.dayOfMonth}", hint = if (s.retakeVerified) "확인됨" else "미검증")
                 advice.recommended?.let { MetricTile("추천 응시일", "${it.monthValue}/${it.dayOfMonth}") }
                 advice.registerBy?.let { MetricTile("접수 권장", "${it.monthValue}/${it.dayOfMonth}까지") }
@@ -111,11 +128,17 @@ fun NextExamScreen(onOpenSettings: () -> Unit) {
                     }) { Text("접수 알림 예약") }
                     if (advice.verdict != RetestAdvisor.Verdict.WAIT_FIRST_EXAM) OutlinedButton(onClick = {
                         scope.launch {
-                            if (examRow == null) c.dao.insertExam(ExamEntity(epochDay = last.toEpochDay(), type = if (exams.isEmpty()) "FIRST" else "RETAKE"))
-                            c.settings.update { it.copy(examDate = rec) }
-                            message = "다음 시험을 $rec 로 설정했습니다. 홈의 D-day와 훈련 계획이 이 날짜 기준으로 바뀝니다."
+                            // A recommendation becomes a PLANNED (not registered) OPIc entry. It never overwrites a booking.
+                            c.exams.save(
+                                ExamRegistrationEntity(
+                                    examType = ExamType.OPIC.name, dateLocal = rec.toString(), status = RegistrationStatus.PLANNED.name,
+                                    memo = "학습 추천일을 계획으로 추가함. 실제 접수 가능 회차는 확인 전입니다.", sourceType = RegistrationSource.USER.name,
+                                ),
+                                "추천일을 계획으로 추가",
+                            )
+                            message = "$rec OPIc을 '접수 예정 (미확정)'으로 추가했습니다. 실제로 접수하면 시험 일정에서 '접수 완료'로 바꾸세요. 접수 완료 전에는 홈 D-day가 바뀌지 않습니다."
                         }
-                    }) { Text("이 날짜로 계획") }
+                    }) { Text("계획으로 추가") }
                 }
             }
         }
@@ -144,7 +167,7 @@ fun NextExamScreen(onOpenSettings: () -> Unit) {
             Bullet(if (s.examSlots.isEmpty()) "회차 제한 없음 (원하는 날짜 응시 가능으로 계산)" else "사내 회차: ${s.slotDates().joinToString()}")
         }
 
-        DebriefCard(last, today, examRow, s)
+        DebriefCard(debriefDate, today, examRow, s)
         Spacer(Modifier.height(24.dp))
     }
 }

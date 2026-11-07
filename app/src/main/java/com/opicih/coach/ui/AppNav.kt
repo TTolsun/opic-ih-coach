@@ -35,6 +35,7 @@ import androidx.navigation.navArgument
 import com.opicih.coach.AppContainer
 import com.opicih.coach.data.db.PracticeMode
 import com.opicih.coach.ui.screens.CoachScreen
+import com.opicih.coach.ui.screens.ExamsScreen
 import com.opicih.coach.ui.screens.HomeScreen
 import com.opicih.coach.ui.screens.ImportScreen
 import com.opicih.coach.ui.screens.MockScreen
@@ -61,7 +62,7 @@ private val tabs = listOf(
 
 private val titles = mapOf(
     "script/{id}" to "스크립트", "scriptEdit/{id}" to "스크립트 편집", "import" to "스크립트 가져오기",
-    "settings" to "설정", "nextExam" to "다음 시험", "morning" to "아침 표현 루틴", "coach" to "AI 코치",
+    "settings" to "설정", "nextExam" to "다음 OPIc 추천", "exams" to "시험 일정", "morning" to "아침 표현 루틴", "coach" to "AI 코치",
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -115,6 +116,8 @@ fun AppNav(startRoute: String?, onRouteConsumed: () -> Unit) {
                     onCoach = { nav.navigate("coach") },
                     onSettings = { nav.navigate("settings") },
                     onNextExam = { nav.navigate("nextExam") },
+                    onExams = { nav.navigate("exams") },
+                    onSpeakMode = { m -> if (m == null) nav.goTab("speaking") else nav.navigate("speaking?mode=$m") },
                 )
             }
             composable("scripts") {
@@ -148,7 +151,8 @@ fun AppNav(startRoute: String?, onRouteConsumed: () -> Unit) {
                 }
             }
             composable("import") { ImportScreen(onDone = { nav.popBackStack() }) }
-            composable("settings") { SettingsScreen() }
+            composable("settings") { SettingsScreen(onExams = { nav.navigate("exams") }) }
+            composable("exams") { ExamsScreen() }
             composable("coach") { CoachScreen() }
             composable("nextExam") { NextExamScreen(onOpenSettings = { nav.navigate("settings") }) }
             composable("morning") {

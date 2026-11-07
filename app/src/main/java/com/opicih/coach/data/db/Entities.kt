@@ -169,6 +169,8 @@ data class PracticeAttemptEntity(
     val feedbackSource: String = "LOCAL",
     val mockId: Long? = null,
     val createdAt: Long = System.currentTimeMillis(),
+    /** v3: groups the turns of one exam training session (e.g. a SAIL conversation). */
+    val trainingSessionId: Long? = null,
 )
 
 @Entity(tableName = "error_patterns", indices = [Index(value = ["key"], unique = true)])
