@@ -88,7 +88,8 @@ interface AiCoach {
 
 | 구현 | 조건 | 비고 |
 |---|---|---|
-| `ClaudeAiCoach` | 키 + AI 사용 + 텍스트 동의 | 공식 `com.anthropic:anthropic-java`. effort: 개선/평가 MEDIUM, 채팅 LOW. JSON은 프롬프트로 지정하고 첫 `{...}`를 추출해 kotlinx.serialization으로 파싱. 401/403/429/5xx/네트워크/refusal/파싱 실패를 한국어 메시지로 변환 |
+| `GeminiAiCoach` (기본) | 제공자 Gemini + 키 + AI 사용 + 텍스트 동의 | REST v1beta `generateContent`, systemInstruction + JSON 응답 모드(responseMimeType). 차단(blockReason/finishReason), 400/403/404/429를 한국어 메시지로 변환. `listModels`로 키에서 쓸 수 있는 모델 조회 |
+| `ClaudeAiCoach` | 제공자 Claude + 키 + AI 사용 + 텍스트 동의 | 공식 `com.anthropic:anthropic-java`. effort: 개선/평가 MEDIUM, 채팅 LOW. JSON은 프롬프트로 지정하고 첫 `{...}`를 추출해 kotlinx.serialization으로 파싱. 401/403/429/5xx/네트워크/refusal/파싱 실패를 한국어 메시지로 변환 |
 | `LocalCoach` | 그 외 | 규칙 기반. Short/Keywords만 생성, 채팅은 오프라인 질문·오류·취약 주제 응답 |
 
 `Transcriber` 인터페이스: `OpenAiTranscriber`(whisper-1, 필러를 남기도록 프롬프트 지정). 서버 중계 구현으로 교체할 수 있습니다.

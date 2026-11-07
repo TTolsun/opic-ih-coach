@@ -35,6 +35,14 @@ enum class CaptureMode(val label: String, val description: String) {
     }
 }
 
+enum class AiProvider(val label: String) {
+    GEMINI("Gemini (Google)"), CLAUDE("Claude (Anthropic)");
+
+    companion object {
+        fun of(name: String?) = entries.firstOrNull { it.name == name } ?: GEMINI
+    }
+}
+
 data class Settings(
     val examDate: LocalDate = DEFAULT_EXAM,
     val studyLevel: StudyLevel = StudyLevel.STANDARD,
@@ -51,6 +59,8 @@ data class Settings(
     val ttsRate: Float = 0.9f,
     val aiEnabled: Boolean = false,
     val aiModel: String = DEFAULT_MODEL,
+    val aiProvider: AiProvider = AiProvider.GEMINI,
+    val geminiModel: String = "gemini-2.5-flash",
     val aiTextConsent: Boolean = false,
     val cloudSttEnabled: Boolean = false,
     val audioUploadConsent: Boolean = false,
@@ -68,7 +78,7 @@ data class Settings(
     fun slotDates(): List<LocalDate> = examSlots.mapNotNull { runCatching { LocalDate.parse(it) }.getOrNull() }.sorted()
 
     companion object {
-        val DEFAULT_EXAM: LocalDate = LocalDate.of(2026, 11, 14)
+        val DEFAULT_EXAM: LocalDate = LocalDate.of(2026, 11, 11)
         const val DEFAULT_MODEL = "claude-sonnet-5-5"
         val DEFAULT_SURVEY = setOf("Overseas Travel", "Domestic Travel", "Movies", "Vacation", "Home & Furniture", "Park & Music")
         val MODEL_CHOICES = listOf(
@@ -96,6 +106,8 @@ class SettingsRepository(private val context: Context) {
         val ttsRate = floatPreferencesKey("tts_rate")
         val aiOn = booleanPreferencesKey("ai_on")
         val aiModel = stringPreferencesKey("ai_model")
+        val aiProvider = stringPreferencesKey("ai_provider")
+        val geminiModel = stringPreferencesKey("gemini_model")
         val aiText = booleanPreferencesKey("ai_text_consent")
         val cloudStt = booleanPreferencesKey("cloud_stt")
         val audioConsent = booleanPreferencesKey("audio_consent")
@@ -132,6 +144,8 @@ class SettingsRepository(private val context: Context) {
             p[K.ttsRate] = s.ttsRate
             p[K.aiOn] = s.aiEnabled
             p[K.aiModel] = s.aiModel
+            p[K.aiProvider] = s.aiProvider.name
+            p[K.geminiModel] = s.geminiModel
             p[K.aiText] = s.aiTextConsent
             p[K.cloudStt] = s.cloudSttEnabled
             p[K.audioConsent] = s.audioUploadConsent
@@ -165,6 +179,8 @@ class SettingsRepository(private val context: Context) {
             ttsRate = this[K.ttsRate] ?: d.ttsRate,
             aiEnabled = this[K.aiOn] ?: d.aiEnabled,
             aiModel = this[K.aiModel] ?: d.aiModel,
+            aiProvider = AiProvider.of(this[K.aiProvider]),
+            geminiModel = this[K.geminiModel] ?: d.geminiModel,
             aiTextConsent = this[K.aiText] ?: d.aiTextConsent,
             cloudSttEnabled = this[K.cloudStt] ?: d.cloudSttEnabled,
             audioUploadConsent = this[K.audioConsent] ?: d.audioUploadConsent,

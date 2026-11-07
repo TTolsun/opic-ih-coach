@@ -62,7 +62,7 @@ internal fun ResultPanel(r: AnalyzedAttempt, ui: SpeakingUi, vm: SpeakingViewMod
 
     SectionCard(
         title = "결과",
-        trailing = { SourceTag(if (isAi) "AI 분석 (Claude)" else "로컬 분석 (AI 아님)", if (isAi) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant) },
+        trailing = { SourceTag(if (isAi) "AI 분석 (${fb.engine.ifBlank { "AI" }})" else "로컬 분석 (AI 아님)", if (isAi) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant) },
     ) {
         if (a.transcript.isNotBlank() || fb.score > 0) {
             Row(verticalAlignment = Alignment.Bottom) {

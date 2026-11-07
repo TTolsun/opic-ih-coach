@@ -51,9 +51,11 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import com.opicih.coach.alarm.AlarmScheduler
 import com.opicih.coach.alarm.ReminderWorker
+import com.opicih.coach.data.prefs.AiProvider
 import com.opicih.coach.data.prefs.CaptureMode
 import com.opicih.coach.data.prefs.Settings
 import com.opicih.coach.data.prefs.StudyLevel
+import com.opicih.coach.ai.GeminiAiCoach
 import com.opicih.coach.data.secure.ApiKeyStore
 import com.opicih.coach.speech.SpeechCapabilities
 import com.opicih.coach.ui.LocalContainer
@@ -192,13 +194,43 @@ fun SettingsScreen() {
 
         SectionCard(title = "AI (선택, 비용 발생)") {
             Text("키는 이 기기에만 암호화해 저장합니다.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            KeyField(c.keys, ApiKeyStore.Provider.ANTHROPIC) { message = it }
+            Text("제공자", style = MaterialTheme.typography.labelLarge)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                AiProvider.entries.forEach { p -> Pill(p.label, s.aiProvider == p) { save { it.copy(aiProvider = p) } } }
+            }
             ToggleRow("AI 사용 (스크립트 개선, 답변 평가, 코치)", s.aiEnabled) { v -> save { it.copy(aiEnabled = v) } }
-            ToggleRow("답변 텍스트를 Anthropic에 전송하는 것에 동의", s.aiTextConsent) { v -> save { it.copy(aiTextConsent = v) } }
-            Text("모델", style = MaterialTheme.typography.labelLarge)
-            Settings.MODEL_CHOICES.forEach { (id, label) ->
-                Row(Modifier.fillMaxWidth().clickable { save { it.copy(aiModel = id) } }.padding(vertical = 4.dp)) {
-                    Pill(label, s.aiModel == id) { save { it.copy(aiModel = id) } }
+            ToggleRow("답변 텍스트를 선택한 AI 제공자에 전송하는 것에 동의", s.aiTextConsent) { v -> save { it.copy(aiTextConsent = v) } }
+            when (s.aiProvider) {
+                AiProvider.GEMINI -> {
+                    Text("무료 등급은 입력 내용이 Google 제품 개선에 쓰일 수 있습니다.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    KeyField(c.keys, ApiKeyStore.Provider.GEMINI) { message = it }
+                    var model by remember(s.geminiModel) { mutableStateOf(s.geminiModel) }
+                    var models by remember { mutableStateOf<List<String>>(emptyList()) }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        OutlinedTextField(model, { model = it }, label = { Text("Gemini 모델 ID") }, singleLine = true, modifier = Modifier.weight(1f))
+                        TextButton(enabled = model.isNotBlank() && model != s.geminiModel, onClick = { save { it.copy(geminiModel = model.trim()) } }) { Text("저장") }
+                    }
+                    OutlinedButton(onClick = {
+                        val key = c.keys.get(ApiKeyStore.Provider.GEMINI)
+                        if (key == null) { message = "먼저 Gemini 키를 저장하세요." } else scope.launch {
+                            GeminiAiCoach.listModels(key)
+                                .onSuccess { models = it; message = "사용 가능한 모델 ${it.size}개를 불러왔습니다." }
+                                .onFailure { message = it.message }
+                        }
+                    }) { Text("모델 목록 불러오기") }
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        models.take(16).forEach { m -> Pill(m, m == s.geminiModel) { save { it.copy(geminiModel = m) } } }
+                    }
+                    Text("flash: 빠르고 저렴 · pro: 평가 품질 높음", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                AiProvider.CLAUDE -> {
+                    KeyField(c.keys, ApiKeyStore.Provider.ANTHROPIC) { message = it }
+                    Text("모델", style = MaterialTheme.typography.labelLarge)
+                    Settings.MODEL_CHOICES.forEach { (id, label) ->
+                        Row(Modifier.fillMaxWidth().clickable { save { it.copy(aiModel = id) } }.padding(vertical = 4.dp)) {
+                            Pill(label, s.aiModel == id) { save { it.copy(aiModel = id) } }
+                        }
+                    }
                 }
             }
             Spacer(Modifier.height(10.dp))
