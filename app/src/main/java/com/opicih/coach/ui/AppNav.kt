@@ -51,11 +51,11 @@ val LocalContainer = staticCompositionLocalOf<AppContainer> { error("AppContaine
 private data class Tab(val route: String, val label: String, val icon: ImageVector)
 
 private val tabs = listOf(
-    Tab("home", "Home", Icons.Filled.Home),
-    Tab("scripts", "Scripts", Icons.AutoMirrored.Filled.MenuBook),
-    Tab("speaking", "Speaking", Icons.Filled.Mic),
-    Tab("mock", "Mock Test", Icons.Filled.Assignment),
-    Tab("progress", "Progress", Icons.Filled.Insights),
+    Tab("home", "홈", Icons.Filled.Home),
+    Tab("scripts", "스크립트", Icons.AutoMirrored.Filled.MenuBook),
+    Tab("speaking", "말하기", Icons.Filled.Mic),
+    Tab("mock", "모의시험", Icons.Filled.Assignment),
+    Tab("progress", "기록", Icons.Filled.Insights),
 )
 
 private val titles = mapOf(
