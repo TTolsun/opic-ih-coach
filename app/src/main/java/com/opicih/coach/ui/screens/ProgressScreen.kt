@@ -146,7 +146,7 @@ fun ProgressScreen(onNextExam: () -> Unit = {}) {
             exams.forEach { e -> Bullet("${LocalDate.ofEpochDay(e.epochDay)} · ${e.resultGrade ?: "결과 대기"} ${e.note}") }
             val last = lastExamDate(s, exams, LocalDate.now(), regs)
             Spacer(Modifier.height(6.dp))
-            Text("OPIc 다음 응시 가능: ${last.plusDays(s.retakeDays.toLong())}${if (s.retakeVerified) "" else " (미검증)"}", style = MaterialTheme.typography.bodyMedium)
+            Text("OPIc 다음 응시 가능: ${last.plusDays(s.retakeDays + 1L)} (응시일 제외 ${s.retakeDays}일 제한, 공식 시험관리규정 기준)", style = MaterialTheme.typography.bodyMedium)
             Spacer(Modifier.height(6.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Button(onClick = onNextExam) { Text("다음 시험 추천") }

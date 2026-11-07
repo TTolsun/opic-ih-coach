@@ -81,5 +81,11 @@ class App : Application() {
             ReminderWorker.ensure(this@App, s.eveningReminder)
             runCatching { container.backup.purgeAudio(s.audioRetentionDays) }
         }
+        // Exam reminders follow the schedule: any registration change re-plans them.
+        appScope.launch {
+            container.exams.flow.collect { regs ->
+                runCatching { com.opicih.coach.alarm.ExamReminders.sync(this@App, regs, com.opicih.coach.data.repo.ExamRepository.nowKst()) }
+            }
+        }
     }
 }

@@ -23,11 +23,12 @@ class RetestAdvisorTest {
     @Test fun beforeFirstExamGivesProvisionalWindow() {
         val a = RetestAdvisor.advise(LocalDate.of(2026, 11, 7), exam, rules, notReady)
         assertEquals(Verdict.WAIT_FIRST_EXAM, a.verdict)
-        assertEquals(LocalDate.of(2026, 12, 6), a.earliest)
+        // Official counting: 11/11 = D+0, 11/12..12/6 = D+1..D+25 blocked, 12/7 = D+26 first allowed day.
+        assertEquals(LocalDate.of(2026, 12, 7), a.earliest)
         assertEquals(LocalDate.of(2026, 12, 21), a.latestUseful)
-        assertEquals(LocalDate.of(2026, 12, 6), a.recommended)
-        assertEquals(LocalDate.of(2026, 11, 29), a.registerBy)
-        // 12/6 + 25 = 12/31 > 12/21: only one retake fits before the deadline.
+        assertEquals(LocalDate.of(2026, 12, 7), a.recommended)
+        assertEquals(LocalDate.of(2026, 11, 30), a.registerBy)
+        // 12/7 + 26 = 1/2 > 12/21: only one retake fits before the deadline.
         assertFalse(a.secondChance)
         assertTrue(a.cautions.any { it.contains("확인되지 않은") })
     }
@@ -35,7 +36,7 @@ class RetestAdvisorTest {
     @Test fun readyLearnerGoesAtEarliestDate() {
         val a = RetestAdvisor.advise(LocalDate.of(2026, 11, 25), exam, rules.copy(verified = true), ready)
         assertEquals(Verdict.REGISTER_EARLIEST, a.verdict)
-        assertEquals(LocalDate.of(2026, 12, 6), a.recommended)
+        assertEquals(LocalDate.of(2026, 12, 7), a.recommended)
         assertTrue(a.cautions.none { it.contains("확인되지 않은") })
     }
 
@@ -47,6 +48,15 @@ class RetestAdvisorTest {
         val late = RetestAdvisor.advise(LocalDate.of(2026, 12, 15), exam, rules, notReady)
         assertEquals(Verdict.REGISTER_ANYWAY, late.verdict)
         assertEquals(LocalDate.of(2026, 12, 16), late.recommended)
+    }
+
+    @Test fun waiverMovesTheEarliestDateToTheNextDay() {
+        val a = RetestAdvisor.advise(LocalDate.of(2026, 11, 12), exam, rules.copy(verified = true, useWaiver = true), ready)
+        assertEquals(LocalDate.of(2026, 11, 12), a.earliest)
+        assertEquals(Verdict.REGISTER_EARLIEST, a.verdict)
+        assertEquals(LocalDate.of(2026, 11, 13), a.recommended) // tomorrow at the earliest
+        assertTrue(a.secondChance) // 11/13 + 26 = 12/9 <= 12/21
+        assertTrue(a.cautions.any { it.contains("Waiver") })
     }
 
     @Test fun noWindowWhenEarliestIsAfterDeadline() {

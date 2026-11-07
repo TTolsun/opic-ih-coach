@@ -43,7 +43,11 @@ import com.opicih.coach.data.db.ExamRegistrationEntity
 import com.opicih.coach.data.db.ExamType
 import com.opicih.coach.data.db.RegistrationSource
 import com.opicih.coach.data.db.RegistrationStatus
+import com.opicih.coach.learning.ExamPolicy
 import com.opicih.coach.learning.ExamSchedule
+import com.opicih.coach.learning.RetakeSummaries
+import com.opicih.coach.learning.RetakeSummary
+import androidx.compose.material3.Switch
 import com.opicih.coach.data.prefs.Settings
 import com.opicih.coach.learning.ProgressCalculator
 import com.opicih.coach.learning.RetestAdvisor
@@ -74,8 +78,9 @@ fun lastSatDate(regs: List<ExamRegistrationEntity>, today: LocalDate): LocalDate
     regs.filter { it.state == RegistrationStatus.REGISTERED || it.state == RegistrationStatus.COMPLETED }
         .mapNotNull { it.date }.filter { !it.isAfter(today) }.maxOrNull()
 
-fun rulesOf(s: Settings) = RetestAdvisor.Rules(
-    retakeDays = s.retakeDays, verified = s.retakeVerified, resultLagDays = s.resultLagDays,
+/** OPIc advice: official retake rule (25 blocked days, exam day excluded); waiver only when one is available and the user plans to use it. */
+fun rulesOf(s: Settings, waiverAvailable: Boolean = false) = RetestAdvisor.Rules(
+    retakeDays = ExamPolicy.opic().blockedDays, verified = true, resultLagDays = s.resultLagDays, useWaiver = s.planWithWaiver && waiverAvailable,
     deadline = s.gradeDeadline, slots = s.slotDates(), registerLeadDays = s.registerLeadDays,
 )
 
@@ -96,7 +101,8 @@ fun NextExamScreen(onOpenSettings: () -> Unit) {
     val last = lastExamDate(s, exams, today, regs)
     val sinceMs = last.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
     val readiness = ProgressCalculator.readiness(attempts, logs, last.toEpochDay(), sinceMs)
-    val advice = RetestAdvisor.advise(today, last, rulesOf(s), readiness)
+    val retake = RetakeSummaries.of(s, regs, today)
+    val advice = RetestAdvisor.advise(today, last, rulesOf(s, retake.waiverAvailable), readiness)
     val debriefDate = lastSatDate(regs, today) ?: last
     val examRow = exams.firstOrNull { it.epochDay == debriefDate.toEpochDay() }
 
@@ -108,7 +114,7 @@ fun NextExamScreen(onOpenSettings: () -> Unit) {
             Spacer(Modifier.height(8.dp))
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 MetricTile("기준 OPIc 응시", "${last.monthValue}/${last.dayOfMonth}", hint = ExamSchedule.lastCompleted(regs, ExamType.OPIC)?.let { if (it.exact) null else "월말로 가정" })
-                MetricTile("재응시 가능", "${advice.earliest.monthValue}/${advice.earliest.dayOfMonth}", hint = if (s.retakeVerified) "확인됨" else "미검증")
+                MetricTile("재응시 가능", "${advice.earliest.monthValue}/${advice.earliest.dayOfMonth}", hint = if (rulesOf(s, retake.waiverAvailable).useWaiver) "Waiver 사용" else "공식 규정")
                 advice.recommended?.let { MetricTile("추천 응시일", "${it.monthValue}/${it.dayOfMonth}") }
                 advice.registerBy?.let { MetricTile("접수 권장", "${it.monthValue}/${it.dayOfMonth}까지") }
                 advice.latestUseful?.let { MetricTile("마감 전 마지막", "${it.monthValue}/${it.dayOfMonth}", hint = "결과 ${s.resultLagDays}일 가정") }
@@ -142,6 +148,8 @@ fun NextExamScreen(onOpenSettings: () -> Unit) {
             }
         }
 
+        RetakePathsCard(retake, s) { v -> scope.launch { c.settings.update { it.copy(planWithWaiver = v) } } }
+
         SectionCard(title = "준비도 조건 (${advice.gates.count { it.passed }}/${advice.gates.size})") {
             Text("4개 이상 통과하면 가장 빠른 날짜를 권합니다.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(Modifier.height(6.dp))
@@ -159,7 +167,8 @@ fun NextExamScreen(onOpenSettings: () -> Unit) {
         }
 
         SectionCard(title = "적용 중인 규칙", trailing = { OutlinedButton(onClick = onOpenSettings) { Text("수정") } }) {
-            Bullet("재응시 간격 ${s.retakeDays}일 · ${if (s.retakeVerified) "확인함" else "미검증 (공개 OPIc 기준 2차 자료)"}")
+            Bullet("OPIc: 응시일 다음 날부터 25일 제한, D+26부터 응시 가능 (${ExamPolicy.OPIC_RULE_SOURCE})")
+            Bullet("SAIL: 응시일 다음 날부터 ${s.retakeDays}일 제한으로 가정 · ${if (s.retakeVerified) "사용자 확인" else "사내 규정 미검증"} · OPIc과 ${if (s.sailSharesOpicLimit) "제한 공유" else "독립 계산"}")
             Bullet("결과 발표까지 ${s.resultLagDays}일 가정 · 접수는 응시 ${s.registerLeadDays}일 전까지로 가정")
             Bullet("등급 마감일 ${s.gradeDeadline ?: "없음"}")
             Bullet(if (s.examSlots.isEmpty()) "회차 제한 없음 (원하는 날짜 응시 가능으로 계산)" else "사내 회차: ${s.slotDates().joinToString()}")
@@ -284,5 +293,42 @@ private fun SailDebriefCard(reg: ExamRegistrationEntity, today: LocalDate, row: 
             }
         }) { Text("복기 저장") }
         saved?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary) }
+    }
+}
+
+/** Without-waiver vs with-waiver paths. Dates are rule-eligible days, not confirmed sessions. */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun RetakePathsCard(r: RetakeSummary, s: Settings, onPlanWithWaiver: (Boolean) -> Unit) {
+    SectionCard(title = "OPIc 재응시 경로", trailing = { SourceTag("규정상 가능일") }) {
+        val w = r.opicWaiver
+        Text(
+            "Waiver: " + when (w.available) { null -> "입력 안 됨"; 0 -> "사용 가능 0회"; else -> "사용 가능 ${w.available}회" } +
+                (w.regrantOn?.let { " · 다시 생기는 날 $it" } ?: ""),
+            style = MaterialTheme.typography.bodyMedium,
+        )
+        Text("기준 응시: ${r.opicLast ?: "기록 없음"}" + (r.latestUseful?.let { " · 결과가 마감 전에 나오는 마지막 응시일 $it (결과 ${s.resultLagDays}일 가정)" } ?: ""),
+            style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Spacer(Modifier.height(8.dp))
+        r.opicPaths.forEach { p ->
+            Text(if (p.useWaiver) "Waiver 사용" else "Waiver 없이", style = MaterialTheme.typography.labelLarge)
+            Text(
+                if (p.earliest == null) "마감 전에 응시할 수 있는 날이 없습니다."
+                else "가장 빠른 날 ${p.earliest} · 마감 전 기회 ${p.opportunities}회 (${p.eligibleDates.joinToString { "${it.monthValue}/${it.dayOfMonth}" }})",
+                style = MaterialTheme.typography.bodyMedium,
+            )
+            Spacer(Modifier.height(4.dp))
+        }
+        if (r.opicPaths.none { it.useWaiver } && r.waiverAvailable) {
+            Text("재응시 제한이 이미 지나서 지금은 Waiver를 쓸 필요가 없습니다. 다음 응시 직후에 의미가 생깁니다.", style = MaterialTheme.typography.bodySmall)
+        }
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("다음 OPIc 추천에 Waiver 사용", modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
+            Switch(checked = s.planWithWaiver, onCheckedChange = onPlanWithWaiver, enabled = r.waiverAvailable)
+        }
+        Spacer(Modifier.height(4.dp))
+        (r.opicPaths.lastOrNull()?.assumptions.orEmpty() + r.opicWaiver.notes).distinct().forEach {
+            Bullet(it, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
     }
 }

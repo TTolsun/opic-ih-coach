@@ -110,8 +110,14 @@ fun SettingsScreen(onExams: () -> Unit = {}) {
         }
 
         SectionCard(title = "재응시 규칙 (다음 시험 추천에 사용)") {
-            NumberRow("재응시 간격(일)", s.retakeDays) { v -> save { it.copy(retakeDays = v.coerceIn(0, 120)) } }
-            ToggleRow("위 간격을 공지/접수 사이트에서 확인함", s.retakeVerified) { v -> save { it.copy(retakeVerified = v) } }
+            Text("OPIc은 공식 시험관리규정 제5조를 씁니다: 응시일 다음 날부터 25일 제한, D+26부터 응시 가능, Waiver 150일마다 1회.",
+                style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            NumberRow("OPIc Waiver 보유 수 (${s.opicWaiverDeclaredOn} 기준)", s.opicWaivers.coerceAtLeast(0)) { v ->
+                save { it.copy(opicWaivers = v.coerceIn(0, 5), opicWaiverDeclaredOn = LocalDate.now()) }
+            }
+            NumberRow("SAIL 재응시 제한(일, 응시일 제외)", s.retakeDays) { v -> save { it.copy(retakeDays = v.coerceIn(0, 120)) } }
+            ToggleRow("SAIL 제한을 사내 공지에서 확인함", s.retakeVerified) { v -> save { it.copy(retakeVerified = v) } }
+            ToggleRow("SAIL과 OPIc이 재응시 제한을 공유함 (기본: 독립)", s.sailSharesOpicLimit) { v -> save { it.copy(sailSharesOpicLimit = v) } }
             NumberRow("결과 발표까지(일)", s.resultLagDays) { v -> save { it.copy(resultLagDays = v.coerceIn(0, 60)) } }
             NumberRow("접수 마감: 응시 며칠 전", s.registerLeadDays) { v -> save { it.copy(registerLeadDays = v.coerceIn(0, 60)) } }
             var deadline by remember(s.gradeDeadline) { mutableStateOf(s.gradeDeadline?.toString().orEmpty()) }
