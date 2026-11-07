@@ -22,6 +22,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Chat
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.Assignment
 import androidx.compose.material.icons.filled.CheckCircle
@@ -55,7 +56,8 @@ import com.opicih.coach.learning.TaskType
 import com.opicih.coach.ui.components.Banner
 import com.opicih.coach.ui.components.Pill
 import com.opicih.coach.ui.components.ProgressRow
-import com.opicih.coach.ui.components.ReferenceNote
+import com.opicih.coach.ui.components.InfoButton
+import com.opicih.coach.ui.components.InfoTopics
 import com.opicih.coach.ui.components.SectionCard
 import java.time.Instant
 import java.time.ZoneId
@@ -107,8 +109,6 @@ fun HomeScreen(
             title = "오늘의 훈련 · ${plan.focus.titleKo}",
             trailing = { Text("${(st.completion * 100).toInt()}%", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.titleMedium) },
         ) {
-            Text(plan.focus.detailKo, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Spacer(Modifier.height(6.dp))
             st.tasks.forEach { ts ->
                 Row(
                     Modifier.fillMaxWidth().heightIn(min = 48.dp).clickable { open(ts.task.type) },
@@ -129,19 +129,17 @@ fun HomeScreen(
         }
 
         if (st.pendingRevisions > 0) {
-            Banner("승인 대기 중인 개선안 ${st.pendingRevisions}개가 있습니다. 원본은 승인 전까지 그대로 유지됩니다.", "검토", tone = MaterialTheme.colorScheme.primary, onAction = onScripts)
+            Banner("승인 대기 개선안 ${st.pendingRevisions}개", "검토", tone = MaterialTheme.colorScheme.primary, onAction = onScripts)
         }
 
         // 3) Status: one card, one caveat.
-        SectionCard(title = "내 상태") {
+        SectionCard(title = "내 상태", trailing = { InfoButton(InfoTopics.MEASUREMENT) }) {
             Row {
                 Stat("연속 학습", "${st.streak}일", Modifier.weight(1f))
                 Stat("누적 발화", "${st.totalSpeakingMin}분", Modifier.weight(1f))
             }
             Spacer(Modifier.height(10.dp))
             ProgressRow("IH 준비도", st.readiness / 100f, "${st.readiness} / 100")
-            Spacer(Modifier.height(6.dp))
-            ReferenceNote("스크립트 숙련 + 최근 자유 발화 + 주제 범위로 계산한 학습용 참고 지표입니다. OPIc 공식 등급 예측이 아닙니다.")
         }
 
         // 4) Concrete shortcuts: each opens a specific script.
@@ -158,15 +156,12 @@ fun HomeScreen(
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 st.weak.forEach { w -> Pill(w.topic, false) { w.scriptId?.let(onScript) ?: onSpeak() } }
             }
-            Spacer(Modifier.height(6.dp))
-            ReferenceNote("주제를 누르면 그 주제에서 가장 약한 스크립트를 엽니다.")
         }
 
         st.lastMock?.let { m ->
-            SectionCard(Modifier.clickable(onClick = onMock), title = "최근 모의시험") {
+            SectionCard(Modifier.clickable(onClick = onMock), title = "최근 모의시험", trailing = { Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, "결과 보기") }) {
                 val date = Instant.ofEpochMilli(m.startedAt).atZone(ZoneId.systemDefault()).toLocalDate()
                 Text("$date · ${m.questionCount}문항 · ${if (m.finishedAt != null) "완료" else "중단"}", style = MaterialTheme.typography.bodyMedium)
-                Text("눌러서 결과 보기", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
             }
         }
         Spacer(Modifier.height(16.dp))
@@ -176,14 +171,14 @@ fun HomeScreen(
 @Composable
 private fun NextActionButton(next: PlanTask?, onClick: () -> Unit) {
     val (icon, label) = when (next?.type) {
-        null -> Icons.Filled.Mic to "오늘 목표 완료 · 자유 발화 더 하기"
+        null -> Icons.Filled.Mic to "자유 발화 더 하기"
         TaskType.MORNING -> Icons.Filled.WbSunny to "${next.title} 시작 · ${next.minutes}분"
         TaskType.MOCK -> Icons.Filled.Assignment to "${next.title} 시작"
         TaskType.IMPROVE -> Icons.AutoMirrored.Filled.MenuBook to "${next.title} · ${next.minutes}분"
         else -> Icons.Filled.Mic to "${next.title} · ${next.minutes}분"
     }
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Text(if (next == null) "오늘 할 일을 모두 끝냈습니다" else "지금 할 일", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(if (next == null) "오늘 완료" else "지금 할 일", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
         BigButton(icon, label, onClick)
     }
 }
@@ -211,12 +206,12 @@ private fun PermissionBanners(alarmNeedsExact: Boolean, onSettings: () -> Unit) 
     // key(permTick) re-runs the permission checks after the system dialog closes.
     key(permTick) {
     if (Build.VERSION.SDK_INT >= 33 && ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
-        Banner("알림 권한이 없어 아침 알람이 표시되지 않습니다.", "허용") { notifLauncher.launch(Manifest.permission.POST_NOTIFICATIONS) }
+        Banner("아침 알람을 받으려면 알림을 허용하세요.", "허용") { notifLauncher.launch(Manifest.permission.POST_NOTIFICATIONS) }
     } else if (!Notifications.canPost(context)) {
-        Banner("시스템 설정에서 이 앱의 알림이 꺼져 있습니다.", "설정", onAction = onSettings)
+        Banner("알림이 꺼져 있습니다.", "설정", onAction = onSettings)
     }
     if (alarmNeedsExact && !AlarmScheduler.canExact(context)) {
-        Banner("정확한 알람 권한이 없어 알람이 몇 분 늦게 울릴 수 있습니다.", "설정", onAction = onSettings)
+        Banner("알람이 몇 분 늦을 수 있습니다.", "설정", onAction = onSettings)
     }
     }
 }

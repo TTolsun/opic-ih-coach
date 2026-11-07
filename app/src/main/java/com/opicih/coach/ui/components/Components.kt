@@ -171,14 +171,6 @@ fun Banner(text: String, action: String? = null, tone: Color = MaterialTheme.col
     }
 }
 
-/** One shared wording for "this number is for study only", so every score shows the same caveat once. */
-const val REFERENCE_NOTE = "학습용 참고 지표이며 OPIc 공식 등급 예측이 아닙니다."
-
-@Composable
-fun ReferenceNote(text: String = REFERENCE_NOTE) {
-    Text(text, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-}
-
 fun formatMs(ms: Long): String {
     val s = ms / 1000
     return "%d:%02d".format(s / 60, s % 60)

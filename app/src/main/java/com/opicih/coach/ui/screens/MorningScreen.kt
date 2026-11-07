@@ -20,6 +20,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Stop
+import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material3.Button
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
@@ -101,15 +102,11 @@ fun MorningScreen(onReviewScript: (Long) -> Unit, onDone: () -> Unit) {
         SectionCard {
             when (item.step) {
                 MorningStep.COMPLETE -> {
-                    Text("빈칸에 들어갈 표현을 소리 내어 말해 보세요.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Spacer(Modifier.height(6.dp))
                     Text(item.cloze ?: ch.example, style = EnglishReading)
                     Text("힌트: ${ch.meaningKo}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     if (revealed) { Spacer(Modifier.height(6.dp)); Text(ch.phrase, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary) }
                 }
                 MorningStep.PRONOUNCE -> {
-                    Text("원어민 발음을 듣고 같은 리듬으로 2번 따라 말하세요.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Spacer(Modifier.height(6.dp))
                     Text(ch.example, style = EnglishReading)
                 }
                 else -> {
@@ -117,7 +114,7 @@ fun MorningScreen(onReviewScript: (Long) -> Unit, onDone: () -> Unit) {
                     Text(ch.meaningKo, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Spacer(Modifier.height(8.dp))
                     if (revealed || item.step == MorningStep.NEW) Text(ch.example, style = EnglishReading)
-                    else Text("예문을 떠올려 말한 뒤 탭해서 확인", modifier = Modifier.clickable { revealed = true }, color = MaterialTheme.colorScheme.primary)
+                    else OutlinedButton(onClick = { revealed = true }) { Icon(Icons.Filled.Visibility, null); Spacer(Modifier.width(6.dp)); Text("예문 보기") }
                 }
             }
             Spacer(Modifier.height(10.dp))
@@ -137,7 +134,7 @@ fun MorningScreen(onReviewScript: (Long) -> Unit, onDone: () -> Unit) {
                 val ok = target.isEmpty() || target.count { it in got } * 2 >= target.size
                 Spacer(Modifier.height(6.dp))
                 Text("인식: $said", style = MaterialTheme.typography.bodySmall)
-                Text(if (ok) "핵심 표현이 들렸습니다." else "핵심 표현이 인식되지 않았습니다. 다시 말해 보세요.", style = MaterialTheme.typography.labelMedium,
+                Text(if (ok) "핵심 표현 인식됨" else "핵심 표현이 안 들렸습니다. 다시 말해 보세요.", style = MaterialTheme.typography.labelMedium,
                     color = if (ok) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.tertiary)
             }
             live.error?.let { if (!live.active) Text(it, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.error) }
@@ -155,7 +152,6 @@ fun MorningScreen(onReviewScript: (Long) -> Unit, onDone: () -> Unit) {
                 if (listening) { recognizer.stop(cancelOnly = true); listening = false }
             }, modifier = Modifier.weight(1f)) { Text("헷갈려요") }
         }
-        Banner("'헷갈려요'로 표시한 표현은 내일 아침 '어제 틀린 표현'으로 다시 나옵니다.", tone = MaterialTheme.colorScheme.primary)
     }
 }
 

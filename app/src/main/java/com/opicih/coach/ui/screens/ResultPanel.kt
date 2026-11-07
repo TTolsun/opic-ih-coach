@@ -41,7 +41,8 @@ import com.opicih.coach.data.repo.AnalyzedAttempt
 import com.opicih.coach.ui.components.Banner
 import com.opicih.coach.ui.components.Bullet
 import com.opicih.coach.ui.components.MetricTile
-import com.opicih.coach.ui.components.ReferenceNote
+import com.opicih.coach.ui.components.InfoButton
+import com.opicih.coach.ui.components.InfoTopics
 import com.opicih.coach.ui.components.SectionCard
 import com.opicih.coach.ui.components.SourceTag
 import com.opicih.coach.ui.components.formatMs
@@ -67,13 +68,14 @@ internal fun ResultPanel(r: AnalyzedAttempt, ui: SpeakingUi, vm: SpeakingViewMod
             Row(verticalAlignment = Alignment.Bottom) {
                 Text("${fb.score}", style = MaterialTheme.typography.displaySmall, color = MaterialTheme.colorScheme.primary)
                 Spacer(Modifier.width(8.dp))
-                Text("학습용 참고 점수", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(bottom = 8.dp))
+                Text("참고 점수", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(bottom = 8.dp))
+                InfoButton(InfoTopics.MEASUREMENT)
             }
         }
         r.previous?.let { p ->
             val dScore = a.score - p.score
             Banner(
-                "이전 시도 대비 점수 ${signed(dScore)}, 단어 ${signed(a.wordCount - p.wordCount)}, 긴 무음 ${signed(a.longPauseCount - p.longPauseCount)}회",
+                "지난번보다 점수 ${signed(dScore)} · 단어 ${signed(a.wordCount - p.wordCount)} · 긴 무음 ${signed(a.longPauseCount - p.longPauseCount)}",
                 tone = if (dScore >= 0) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.tertiary,
             )
             Spacer(Modifier.height(10.dp))
@@ -90,12 +92,12 @@ internal fun ResultPanel(r: AnalyzedAttempt, ui: SpeakingUi, vm: SpeakingViewMod
         val missing = r.metrics.compare?.sentences?.filter { !it.covered }.orEmpty()
         if (missing.isNotEmpty()) {
             Spacer(Modifier.height(8.dp))
-            Text("다시 말할 때 넣을 내용", style = MaterialTheme.typography.titleSmall)
+            Text("빠진 내용", style = MaterialTheme.typography.titleSmall)
             missing.take(2).forEach { Bullet(it.sentence, color = MaterialTheme.colorScheme.onSurfaceVariant) }
         }
         if (fb.retryMission.isNotBlank()) {
             Spacer(Modifier.height(8.dp))
-            Banner("다시 말하기 미션: ${fb.retryMission}", tone = MaterialTheme.colorScheme.primary)
+            Text(fb.retryMission, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary)
         }
 
         Spacer(Modifier.height(12.dp))
@@ -117,7 +119,7 @@ internal fun ResultPanel(r: AnalyzedAttempt, ui: SpeakingUi, vm: SpeakingViewMod
             Modifier.fillMaxWidth().heightIn(min = 48.dp).clickable { details = !details },
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(if (details) "자세히 접기" else "자세히 보기 · 지표, 다른 고칠 점, 학습본", style = MaterialTheme.typography.labelLarge, modifier = Modifier.weight(1f))
+            Text(if (details) "자세히 접기" else "자세히 보기", style = MaterialTheme.typography.labelLarge, modifier = Modifier.weight(1f))
             Icon(if (details) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore, null)
         }
         if (details) Details(r, ui, vm)
@@ -126,7 +128,7 @@ internal fun ResultPanel(r: AnalyzedAttempt, ui: SpeakingUi, vm: SpeakingViewMod
 
 @Composable
 private fun FocusFix(f: FixItem) {
-    Text("이번에 하나만 고치세요", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.tertiary)
+    Text("고칠 점", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.tertiary)
     Spacer(Modifier.height(4.dp))
     Text(f.issue, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyLarge)
     if (f.why.isNotBlank()) Text(f.why, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -170,7 +172,7 @@ private fun Details(r: AnalyzedAttempt, ui: SpeakingUi, vm: SpeakingViewModel) {
             // The first two are already shown above the retry button.
             val missing = cmp.sentences.filter { !it.covered }.drop(2)
             if (missing.isNotEmpty()) {
-                Text("그 밖에 빠진 내용", style = MaterialTheme.typography.titleSmall)
+                Text("빠진 내용 (더)", style = MaterialTheme.typography.titleSmall)
                 missing.take(4).forEach { Bullet(it.sentence, color = MaterialTheme.colorScheme.onSurfaceVariant) }
             }
         }
@@ -192,7 +194,6 @@ private fun Details(r: AnalyzedAttempt, ui: SpeakingUi, vm: SpeakingViewModel) {
             Text("측정 한계", style = MaterialTheme.typography.titleSmall)
             fb.limits.forEach { Bullet(it, color = MaterialTheme.colorScheme.onSurfaceVariant) }
         }
-        ReferenceNote()
     }
 }
 

@@ -58,6 +58,8 @@ import com.opicih.coach.ui.LocalContainer
 import com.opicih.coach.ui.components.Banner
 import com.opicih.coach.ui.components.Bullet
 import com.opicih.coach.ui.components.MetricTile
+import com.opicih.coach.ui.components.InfoButton
+import com.opicih.coach.ui.components.InfoTopics
 import com.opicih.coach.ui.components.MicButton
 import com.opicih.coach.ui.components.Pill
 import com.opicih.coach.ui.components.SectionCard
@@ -250,15 +252,14 @@ fun MockScreen() {
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
         when (ui.phase) {
             MockPhase.SETUP -> {
-                Text("실전 모의시험", style = MaterialTheme.typography.headlineMedium)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("실전 모의시험", style = MaterialTheme.typography.headlineMedium, modifier = Modifier.weight(1f))
+                    InfoButton(InfoTopics.MOCK)
+                }
                 SectionCard {
-                    Text("공개된 시험 구조(자기소개 → 주제 콤보 → 돌발 → 롤플레이 → 비교/이슈)를 참고한 연습 문제입니다. 실제 기출 문제를 복제한 것이 아닙니다.", style = MaterialTheme.typography.bodySmall)
-                    Spacer(Modifier.height(8.dp))
                     Text("Survey: ${settings.surveyTopics.joinToString()} · Self Assessment ${settings.selfLevel}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Spacer(Modifier.height(8.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { listOf(12, 15).forEach { n -> Pill("${n}문항", ui.count == n) { vm.setCount(n) } } }
-                    Spacer(Modifier.height(8.dp))
-                    Text("전체 목표 시간 40분 · 문항당 권장 약 2분 (학습용 권장, 공식 문항 제한 아님) · 질문 재청취 1회", style = MaterialTheme.typography.labelSmall)
                 }
                 Button(onClick = { vm.start() }, modifier = Modifier.fillMaxWidth().height(56.dp)) { Text("시작") }
                 val mocks by c.dao.mocksFlow().collectAsState(initial = emptyList())
@@ -277,9 +278,8 @@ fun MockScreen() {
                 if (q != null) SectionCard {
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) { SourceTag(q.stage); SourceTag(q.source) }
                     Spacer(Modifier.height(8.dp))
-                    Text("질문을 듣고 답하세요. 텍스트는 연습 편의를 위해 접어 둡니다.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     var show by androidx.compose.runtime.remember(q.no) { androidx.compose.runtime.mutableStateOf(false) }
-                    TextButton(onClick = { show = !show }) { Text(if (show) "질문 숨기기" else "질문 텍스트 보기") }
+                    TextButton(onClick = { show = !show }) { Text(if (show) "질문 숨기기" else "질문 보기") }
                     if (show) Text(q.text, style = EnglishReading)
                     Row {
                         OutlinedButton(enabled = ui.replaysLeft > 0 && ui.phase == MockPhase.QUESTION, onClick = { vm.playQuestion() }) { Text("다시 듣기 (${ui.replaysLeft})") }
@@ -294,14 +294,13 @@ fun MockScreen() {
                     }
                     Spacer(Modifier.height(8.dp))
                     Text(if (ui.phase == MockPhase.RECORDING) "${formatMs(ui.answerElapsedMs)} · 누르면 다음 문항" else "답변 시작", style = MaterialTheme.typography.labelLarge)
-                    if (ui.phase == MockPhase.RECORDING && ui.answerElapsedMs > 150_000) Text("권장 시간(약 2분)을 넘었습니다.", color = MaterialTheme.colorScheme.tertiary, style = MaterialTheme.typography.labelSmall)
+                    if (ui.phase == MockPhase.RECORDING && ui.answerElapsedMs > 150_000) Text("2분 넘음", color = MaterialTheme.colorScheme.tertiary, style = MaterialTheme.typography.labelSmall)
                 }
                 ui.error?.let { Banner(it, tone = MaterialTheme.colorScheme.error) }
-                TextButton(onClick = { vm.finish() }) { Text("여기서 종료하고 리포트 보기") }
+                TextButton(onClick = { vm.finish() }) { Text("종료하고 리포트 보기") }
             }
             MockPhase.ADJUST -> {
                 Text("난이도 재조정", style = MaterialTheme.typography.headlineSmall)
-                Text("실제 시험처럼 중간에 남은 문항의 난이도를 다시 고릅니다.", style = MaterialTheme.typography.bodyMedium)
                 Button(onClick = { vm.adjust(MockTestBuilder.Adjust.EASIER) }, modifier = Modifier.fillMaxWidth()) { Text("쉬운 질문") }
                 Button(onClick = { vm.adjust(MockTestBuilder.Adjust.SAME) }, modifier = Modifier.fillMaxWidth()) { Text("비슷한 질문") }
                 Button(onClick = { vm.adjust(MockTestBuilder.Adjust.HARDER) }, modifier = Modifier.fillMaxWidth()) { Text("어려운 질문") }
@@ -317,7 +316,7 @@ fun MockScreen() {
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun ReportView(r: MockReport, past: Boolean) {
-    SectionCard(title = if (past) "지난 모의시험 리포트" else "모의시험 리포트", trailing = { SourceTag("로컬 분석 · 학습용") }) {
+    SectionCard(title = if (past) "지난 모의시험 리포트" else "모의시험 리포트", trailing = { InfoButton(InfoTopics.MOCK) }) {
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             MetricTile("답변", "${r.answered}문항")
             MetricTile("전체 발화", formatMs(r.totalSpeechMs))
@@ -339,6 +338,5 @@ private fun ReportView(r: MockReport, past: Boolean) {
         Text("다음 3일 계획", style = MaterialTheme.typography.titleSmall)
         r.next3Days.forEach { Bullet(it) }
         Spacer(Modifier.height(6.dp))
-        Text("발음은 측정하지 않았습니다. 관련성·구체성은 AI 분석이 켜진 일반 연습에서 확인하세요. 이 리포트는 공식 등급 예측이 아닙니다.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
