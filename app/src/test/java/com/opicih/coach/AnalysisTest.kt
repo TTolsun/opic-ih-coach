@@ -42,6 +42,41 @@ class ScriptComparatorTest {
         assertTrue(r.coverage < 0.8f)
     }
 
+    private val gangwon = "To be honest, I'm a huge fan of traveling, and my favorite spot is Ganwon-do.\n" +
+        "You know, since Korea is a peninsula, there are many beautiful coasts, but Gangwon-do is special because of its stunning mountains.\n" +
+        "Last fall, I went there for apple farming. The scenery was absolutely breathtaking, especially when I was up on the ladder. " +
+        "It felt like I was on top of the world!"
+
+    @Test fun paraphrasedBlindAnswerIsAccepted() {
+        val spoken = "Honestly, I really love traveling, and my favorite place is Gangwon-do. " +
+            "Korea is a peninsula so it has lots of lovely beaches, but Gangwon-do is unique because the mountains are gorgeous. " +
+            "Last autumn I went to an apple farm there. The view was amazing and beautiful when I was on the ladder. " +
+            "I felt like I was on top of the world."
+        val r = ScriptComparator.compare(gangwon, spoken)
+        assertTrue("coverage=${r.coverage} ${r.sentences.map { it.coverage }}", r.coverage >= 0.7f)
+        assertTrue(r.sentences.count { it.covered } >= r.sentences.size - 1)
+    }
+
+    @Test fun differentStoryStaysLow() {
+        // Same topic area (a trip) but different season, place and events: content is not the script's content.
+        val spoken = "Last summer I went to Gangneung with my friends. We ate seafood and walked on the beach."
+        val r = ScriptComparator.compare(gangwon, spoken)
+        assertTrue("coverage=${r.coverage}", r.coverage < 0.3f)
+    }
+
+    @Test fun unrelatedTopicStaysLow() {
+        val spoken = "I usually go to the gym after work. I lift weights for an hour and then I take a shower and cook dinner."
+        val r = ScriptComparator.compare(gangwon, spoken)
+        assertTrue("coverage=${r.coverage}", r.coverage < 0.15f)
+        assertTrue(r.sentences.none { it.covered })
+    }
+
+    @Test fun toleratesRecognitionSpelling() {
+        assertTrue(ScriptComparator.similar("ganwon", "gangwon"))
+        assertFalse(ScriptComparator.similar("sea", "see"))
+        assertFalse(ScriptComparator.similar("coast", "toast"))
+    }
+
     @Test fun keywordUsage() {
         val r = ScriptComparator.compare(target, "I have a gray sofa.", listOf("sixth floor", "gray sofa"))
         assertEquals(listOf("gray sofa"), r.usedKeywords)
