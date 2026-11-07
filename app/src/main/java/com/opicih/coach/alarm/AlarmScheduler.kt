@@ -18,6 +18,9 @@ object AlarmScheduler {
     const val ACTION_FIRE = "com.opicih.coach.ALARM_FIRE"
     const val ACTION_SNOOZE = "com.opicih.coach.ALARM_SNOOZE"
     const val ACTION_DISMISS = "com.opicih.coach.ALARM_DISMISS"
+    const val ACTION_REMIND = "com.opicih.coach.REMIND"
+    const val EXTRA_TITLE = "title"
+    const val EXTRA_TEXT = "text"
     private const val REQ_MAIN = 100
     private const val REQ_SNOOZE = 101
 
@@ -44,6 +47,19 @@ object AlarmScheduler {
     fun snooze(context: Context, minutes: Int = 10): Mode {
         val at = System.currentTimeMillis() + minutes * 60_000L
         return scheduleAt(context, at, true, REQ_SNOOZE)
+    }
+
+    /** One-off reminder (e.g. "register for the next exam") at 09:00 on [date]. Inexact is fine here. */
+    fun scheduleReminder(context: Context, date: java.time.LocalDate, title: String, text: String, requestCode: Int = 400): Boolean {
+        val at = date.atTime(9, 0).atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
+        if (at <= System.currentTimeMillis()) return false
+        val pi = PendingIntent.getBroadcast(
+            context, requestCode,
+            Intent(context, AlarmReceiver::class.java).setAction(ACTION_REMIND).putExtra(EXTRA_TITLE, title).putExtra(EXTRA_TEXT, text),
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+        )
+        context.getSystemService(AlarmManager::class.java).setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, pi)
+        return true
     }
 
     fun cancel(context: Context) {

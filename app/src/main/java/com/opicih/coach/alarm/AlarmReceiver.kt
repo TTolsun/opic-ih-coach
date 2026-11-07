@@ -19,6 +19,10 @@ class AlarmReceiver : BroadcastReceiver() {
             try {
                 val s = app.container.settings.current()
                 when (intent.action) {
+                    AlarmScheduler.ACTION_REMIND -> Notifications.showReminder(
+                        context, intent.getStringExtra(AlarmScheduler.EXTRA_TEXT).orEmpty(),
+                        intent.getStringExtra(AlarmScheduler.EXTRA_TITLE) ?: "OPIc IH Coach", route = "nextExam",
+                    )
                     AlarmScheduler.ACTION_SNOOZE -> {
                         Notifications.cancelMorning(context)
                         AlarmScheduler.snooze(context, 10)
@@ -43,12 +47,16 @@ class AlarmReceiver : BroadcastReceiver() {
 /** Restores the alarm after reboot, app update, time change, or exact-alarm permission change. */
 class BootReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
+        android.util.Log.i("OpicAlarm", "BootReceiver ${intent.action}")
         val pending = goAsync()
         val app = context.applicationContext as App
         CoroutineScope(SupervisorJob() + Dispatchers.Default).launch {
             try {
                 val s = app.container.settings.current()
-                if (s.alarmEnabled) AlarmScheduler.schedule(context, s.alarmHour, s.alarmMinute, s.useExactAlarm)
+                if (s.alarmEnabled) {
+                    val mode = AlarmScheduler.schedule(context, s.alarmHour, s.alarmMinute, s.useExactAlarm)
+                    android.util.Log.i("OpicAlarm", "rescheduled morning alarm: $mode")
+                }
                 ReminderWorker.ensure(context, s.eveningReminder)
             } finally {
                 pending.finish()

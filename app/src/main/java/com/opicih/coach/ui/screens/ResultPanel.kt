@@ -148,10 +148,15 @@ private fun Details(r: AnalyzedAttempt, ui: SpeakingUi, vm: SpeakingViewModel) {
                 MetricTile("발화 시간", formatMs(it.speechMs))
                 MetricTile("2초+ 무음", "${it.longPauseCount}회")
             }
-            MetricTile("단어 수", "${m.discourse.wordCount}")
-            if (a.wpm > 0) MetricTile("속도", "${a.wpm} wpm")
-            MetricTile("시제", "과${m.discourse.pastCount}·현${m.discourse.presentCount}·미${m.discourse.futureCount}")
-            MetricTile("연결 표현", "${m.discourse.connectorCount}회")
+            // Without a transcript (record-only mode, no STT) the text metrics would all be zero.
+            if (a.transcript.isNotBlank()) {
+                MetricTile("단어 수", "${m.discourse.wordCount}")
+                if (a.wpm > 0) MetricTile("속도", "${a.wpm} wpm")
+                MetricTile("시제", "과${m.discourse.pastCount}·현${m.discourse.presentCount}·미${m.discourse.futureCount}")
+                MetricTile("연결 표현", "${m.discourse.connectorCount}회")
+            } else {
+                MetricTile("텍스트", "전사 없음")
+            }
             m.compare?.let { MetricTile("내용 일치", "${(it.coverage * 100).toInt()}%") }
         }
         if (fb.strengths.size > 1) {

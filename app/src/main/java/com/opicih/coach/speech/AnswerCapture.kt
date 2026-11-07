@@ -74,7 +74,7 @@ class AnswerCapture(private val context: Context, private val audioDir: File) {
             CaptureMode.RECORD_ONLY -> {
                 val r = recorder.stop()
                 if (r == null) return CaptureResult("", null, duration, null, CaptureMode.RECORD_ONLY.name, false, "녹음 파일이 비어 있습니다.")
-                val pauses = PauseAnalyzer.analyze(r.rms, PcmRecorder.FRAME_MS, PcmRecorder.SPEECH_RMS)
+                val pauses = PauseAnalyzer.analyze(r.rms, PcmRecorder.FRAME_MS, PauseAnalyzer.adaptiveThreshold(r.rms))
                 var warning: String? = null
                 val text = if (transcriber != null) {
                     transcriber.transcribe(r.file).getOrElse { warning = it.message; "" }

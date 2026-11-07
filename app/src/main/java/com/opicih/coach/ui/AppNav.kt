@@ -39,6 +39,7 @@ import com.opicih.coach.ui.screens.HomeScreen
 import com.opicih.coach.ui.screens.ImportScreen
 import com.opicih.coach.ui.screens.MockScreen
 import com.opicih.coach.ui.screens.MorningScreen
+import com.opicih.coach.ui.screens.NextExamScreen
 import com.opicih.coach.ui.screens.ProgressScreen
 import com.opicih.coach.ui.screens.ScriptDetailScreen
 import com.opicih.coach.ui.screens.ScriptEditScreen
@@ -60,7 +61,7 @@ private val tabs = listOf(
 
 private val titles = mapOf(
     "script/{id}" to "스크립트", "scriptEdit/{id}" to "스크립트 편집", "import" to "스크립트 가져오기",
-    "settings" to "설정", "morning" to "아침 표현 루틴", "coach" to "AI 코치",
+    "settings" to "설정", "nextExam" to "다음 시험", "morning" to "아침 표현 루틴", "coach" to "AI 코치",
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -76,6 +77,7 @@ fun AppNav(startRoute: String?, onRouteConsumed: () -> Unit) {
             when (startRoute) {
                 "morning" -> nav.navigate("morning")
                 "speaking" -> nav.goTab("speaking")
+                "nextExam" -> nav.navigate("nextExam")
             }
             onRouteConsumed()
         }
@@ -112,6 +114,7 @@ fun AppNav(startRoute: String?, onRouteConsumed: () -> Unit) {
                     onScripts = { nav.goTab("scripts") },
                     onCoach = { nav.navigate("coach") },
                     onSettings = { nav.navigate("settings") },
+                    onNextExam = { nav.navigate("nextExam") },
                 )
             }
             composable("scripts") {
@@ -129,7 +132,7 @@ fun AppNav(startRoute: String?, onRouteConsumed: () -> Unit) {
                 SpeakingScreen(id, mode, onOpenSettings = { nav.navigate("settings") })
             }
             composable("mock") { MockScreen() }
-            composable("progress") { ProgressScreen() }
+            composable("progress") { ProgressScreen(onNextExam = { nav.navigate("nextExam") }) }
             composable("script/{id}", arguments = listOf(navArgument("id") { type = NavType.LongType })) { e ->
                 ScriptDetailScreen(
                     id = e.arguments!!.getLong("id"),
@@ -147,6 +150,7 @@ fun AppNav(startRoute: String?, onRouteConsumed: () -> Unit) {
             composable("import") { ImportScreen(onDone = { nav.popBackStack() }) }
             composable("settings") { SettingsScreen() }
             composable("coach") { CoachScreen() }
+            composable("nextExam") { NextExamScreen(onOpenSettings = { nav.navigate("settings") }) }
             composable("morning") {
                 MorningScreen(onReviewScript = { nav.navigate("speaking?scriptId=$it&mode=${PracticeMode.BLIND.name}") }, onDone = { nav.popBackStack() })
             }

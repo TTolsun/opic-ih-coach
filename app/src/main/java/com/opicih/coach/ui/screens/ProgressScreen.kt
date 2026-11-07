@@ -49,7 +49,7 @@ import java.time.LocalDate
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun ProgressScreen() {
+fun ProgressScreen(onNextExam: () -> Unit = {}) {
     val c = LocalContainer.current
     val scope = rememberCoroutineScope()
     val s by c.settings.flow.collectAsState(initial = Settings())
@@ -124,10 +124,13 @@ fun ProgressScreen() {
             exams.forEach { e -> Bullet("${LocalDate.ofEpochDay(e.epochDay)} · ${e.resultGrade ?: "결과 대기"} ${e.note}") }
             val last = exams.maxByOrNull { it.epochDay }?.epochDay?.let { LocalDate.ofEpochDay(it) } ?: s.examDate
             Spacer(Modifier.height(6.dp))
-            Text("다음 응시 가능 예상일: ${RetestCalculator.nextEligible(last)} (마지막 응시 $last + 25일)", style = MaterialTheme.typography.bodyMedium)
+            Text("다음 응시 가능 예상일: ${last.plusDays(s.retakeDays.toLong())} (마지막 응시 $last + ${s.retakeDays}일${if (s.retakeVerified) "" else ", 미검증"})", style = MaterialTheme.typography.bodyMedium)
             Banner(RetestCalculator.NOTICE)
             Spacer(Modifier.height(6.dp))
-            Button(onClick = { showExam = true }) { Text("시험 결과 입력") }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button(onClick = onNextExam) { Text("다음 시험 추천") }
+                androidx.compose.material3.OutlinedButton(onClick = { showExam = true }) { Text("결과 입력") }
+            }
         }
         Spacer(Modifier.height(16.dp))
     }
@@ -153,7 +156,7 @@ fun ProgressScreen() {
                     scope.launch {
                         c.dao.insertExam(ExamEntity(epochDay = d.toEpochDay(), type = if (exams.isEmpty()) "FIRST" else "RETAKE", resultGrade = grade.ifBlank { null }, note = note))
                         // After a result, move the plan to the next possible exam date (user can change it in Settings).
-                        if (d >= s.examDate) c.settings.update { it.copy(examDate = RetestCalculator.nextEligible(d)) }
+                        if (d >= s.examDate) c.settings.update { it.copy(examDate = d.plusDays(it.retakeDays.toLong())) }
                     }
                 }) { Text("저장") }
             },

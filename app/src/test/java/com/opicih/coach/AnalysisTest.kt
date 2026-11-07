@@ -137,3 +137,20 @@ class FeedbackComposerTest {
         assertEquals(0, FeedbackComposer.wpm(10, 0, 0))
     }
 }
+
+class AdaptiveThresholdTest {
+    @Test fun followsNoiseFloorWithinBounds() {
+        val quietRoom = List(80) { 100f } + List(20) { 900f }
+        assertEquals(250f, PauseAnalyzer.adaptiveThreshold(quietRoom), 0.01f)
+        val noisyRoom = List(80) { 400f } + List(20) { 3000f }
+        assertEquals(1000f, PauseAnalyzer.adaptiveThreshold(noisyRoom), 0.01f)
+        val p = PauseAnalyzer.analyze(noisyRoom, 20, PauseAnalyzer.adaptiveThreshold(noisyRoom))
+        assertEquals(20 * 20L, p.speechMs)
+    }
+
+    @Test fun nearSilentRecordingGetsHonestFeedback() {
+        val fb = FeedbackComposer.acousticOnly(PauseAnalyzer.analyze(List(800) { 120f }, 20, 250f))
+        assertTrue(fb.fixes.single().issue.contains("감지되지"))
+        assertEquals(2, fb.strengths.size)
+    }
+}

@@ -78,6 +78,8 @@ interface AppDao {
     @Query("SELECT * FROM exams ORDER BY epochDay DESC") fun examsFlow(): Flow<List<ExamEntity>>
     @Query("SELECT * FROM exams ORDER BY epochDay DESC") suspend fun exams(): List<ExamEntity>
     @Insert suspend fun insertExam(e: ExamEntity): Long
+    @Update suspend fun updateExam(e: ExamEntity)
+    @Query("SELECT * FROM exams WHERE epochDay = :day LIMIT 1") suspend fun examOn(day: Long): ExamEntity?
 
     // ---- Stories / questions
     @Query("SELECT * FROM stories ORDER BY id") suspend fun stories(): List<StoryEntity>

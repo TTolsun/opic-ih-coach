@@ -59,6 +59,7 @@ import com.opicih.coach.ui.components.ProgressRow
 import com.opicih.coach.ui.components.InfoButton
 import com.opicih.coach.ui.components.InfoTopics
 import com.opicih.coach.ui.components.SectionCard
+import com.opicih.coach.ui.components.SourceTag
 import java.time.Instant
 import java.time.ZoneId
 
@@ -76,6 +77,7 @@ fun HomeScreen(
     onScripts: () -> Unit,
     onCoach: () -> Unit,
     onSettings: () -> Unit,
+    onNextExam: () -> Unit,
 ) {
     val vm: HomeViewModel = viewModel()
     val st by vm.state.collectAsStateWithLifecycle()
@@ -128,6 +130,10 @@ fun HomeScreen(
             }
         }
 
+        st.debriefDue?.let { d ->
+            Banner("${d.monthValue}/${d.dayOfMonth} 시험 복기 (5분)", "복기", tone = MaterialTheme.colorScheme.secondary, onAction = onNextExam)
+        }
+
         if (st.pendingRevisions > 0) {
             Banner("승인 대기 개선안 ${st.pendingRevisions}개", "검토", tone = MaterialTheme.colorScheme.primary, onAction = onScripts)
         }
@@ -140,6 +146,17 @@ fun HomeScreen(
             }
             Spacer(Modifier.height(10.dp))
             ProgressRow("IH 준비도", st.readiness / 100f, "${st.readiness} / 100")
+        }
+
+        st.nextExam?.let { n ->
+            SectionCard(Modifier.clickable(onClick = onNextExam), title = "다음 시험", trailing = { SourceTag(n.verdict) }) {
+                val rec = n.recommended
+                Text(
+                    if (rec != null) "추천 ${rec.monthValue}/${rec.dayOfMonth} · 접수 ${n.registerBy?.let { "${it.monthValue}/${it.dayOfMonth}" } ?: "-"}까지 · 준비도 ${n.gatesPassed}/${n.gatesTotal}"
+                    else "응시 가능한 날짜가 없습니다",
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+            }
         }
 
         // 4) Concrete shortcuts: each opens a specific script.

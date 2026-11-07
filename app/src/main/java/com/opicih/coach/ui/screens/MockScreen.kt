@@ -209,8 +209,12 @@ class MockViewModel(app: Application) : AndroidViewModel(app) {
         val past = metrics.sumOf { it.discourse.pastCount }; val present = metrics.sumOf { it.discourse.presentCount }; val future = metrics.sumOf { it.discourse.futureCount }
         val avgConn = if (metrics.isEmpty()) 0f else metrics.map { it.discourse.connectorCount }.average().toFloat()
         val strengths = mutableListOf<String>(); val weak = mutableListOf<String>()
-        byType.entries.sortedByDescending { it.value }.take(2).forEach { strengths += "${it.key} 유형 평균 ${it.value}점" }
-        byType.entries.sortedBy { it.value }.take(2).forEach { weak += "${it.key} 유형 평균 ${it.value}점" }
+        // A type is either a strength (>= 60) or a weakness, never both.
+        byType.entries.filter { it.value >= 60 }.sortedByDescending { it.value }.take(2).forEach { strengths += "${it.key} 유형 평균 ${it.value}점" }
+        byType.entries.filter { it.value < 60 }.sortedBy { it.value }.take(2).forEach { weak += "${it.key} 유형 평균 ${it.value}점" }
+        if (strengths.isEmpty() && a.isNotEmpty()) strengths += "${a.size}문항을 시간 안에 끝까지 답했습니다."
+        if (a.size < 5) weak.add(0, "답한 문항이 ${a.size}개뿐이라 리포트 신뢰도가 낮습니다. 다음에는 끝까지 진행하세요.")
+        if (a.isNotEmpty() && a.all { it.wordCount == 0 }) weak.add(0, "텍스트 전사가 없어 내용·시제·연결 분석은 0으로 표시됩니다 (녹음 우선 모드).")
         if (future == 0) weak += "미래 시제 사용 0회"
         if (avgConn < 3) weak += "답변당 연결 표현 평균 ${"%.1f".format(avgConn)}회 (문장 나열 경향)"
         val short = a.count { it.wordCount in 1..59 }

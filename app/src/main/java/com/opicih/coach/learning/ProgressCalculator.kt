@@ -66,4 +66,24 @@ object ProgressCalculator {
     }
 
     fun chunkDueCount(chunks: List<ChunkEntity>, today: Long) = chunks.count { it.dueEpochDay <= today }
+
+    /** Readiness signals since [sinceEpochMs] (normally the last exam), for RetestAdvisor. */
+    fun readiness(attempts: List<PracticeAttemptEntity>, logs: List<DailyLogEntity>, sinceEpochDay: Long, sinceEpochMs: Long): RetestAdvisor.Readiness {
+        val after = attempts.filter { it.createdAt >= sinceEpochMs }
+        val noScript = after.filter { it.mode in setOf("FREE", "BLIND", "RANDOM", "VARIATION", "MOCK") && it.wordCount > 0 }.take(15)
+        val withPauses = noScript.filter { it.captureMode != "TYPED" }
+        val mocks = after.filter { it.mockId != null }.groupBy { it.mockId }
+            .filter { (_, l) -> l.size >= 5 }.mapValues { (_, l) -> l.map { it.score }.average().toInt() }
+        val recentLogs = logs.filter { it.epochDay >= sinceEpochDay }
+        return RetestAdvisor.Readiness(
+            practiceDays = recentLogs.count { it.speakingMs >= 10 * 60_000 },
+            speakingMinutes = (recentLogs.sumOf { it.speakingMs } / 60_000).toInt(),
+            avgWords = if (noScript.isEmpty()) 0 else noScript.map { it.wordCount }.average().toInt(),
+            avgLongPauses = if (withPauses.isEmpty()) null else withPauses.map { it.longPauseCount }.average().toFloat(),
+            avgScore = if (noScript.isEmpty()) 0 else noScript.map { it.score }.average().toInt(),
+            mocksSinceExam = mocks.size,
+            bestMockScore = mocks.values.maxOrNull() ?: 0,
+            recentAnswers = noScript.size,
+        )
+    }
 }

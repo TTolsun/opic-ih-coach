@@ -1,0 +1,149 @@
+package com.opicih.coach.learning
+
+import java.time.LocalDate
+import java.time.temporal.ChronoUnit
+
+/**
+ * Recommends when to sit the next exam and when to register for it.
+ *
+ * Two independent inputs:
+ *  1. Calendar constraints (retake interval, result lag, grade deadline, optional fixed in-house slots).
+ *     These come from the user and are shown as "검증됨/미검증" because the app cannot look them up.
+ *  2. Readiness gates computed from real practice records since the last exam.
+ *
+ * The output is advice with reasons, never a grade prediction.
+ */
+object RetestAdvisor {
+
+    data class Rules(
+        val retakeDays: Int = 25,
+        val verified: Boolean = false,
+        /** Days from the exam until the result is visible. */
+        val resultLagDays: Int = 10,
+        /** The date the grade is needed by (result must be out by then). */
+        val deadline: LocalDate? = null,
+        /** Fixed exam sessions (e.g. in-house schedule). Empty = any day allowed. */
+        val slots: List<LocalDate> = emptyList(),
+        /** How many days before the exam registration should be done (heuristic, editable). */
+        val registerLeadDays: Int = 7,
+    )
+
+    data class Readiness(
+        /** Days since the last exam with >= 10 minutes of real speaking. */
+        val practiceDays: Int,
+        val speakingMinutes: Int,
+        /** Average words of recent no-script answers (free / blind / mock). */
+        val avgWords: Int,
+        /** Average long (2 s+) pauses per recent answer; null when not measured. */
+        val avgLongPauses: Float?,
+        /** Average learning score of recent no-script answers. */
+        val avgScore: Int,
+        /** Number of mock tests finished since the last exam, and the best average score among them. */
+        val mocksSinceExam: Int,
+        val bestMockScore: Int,
+        val recentAnswers: Int,
+    )
+
+    data class Gate(val id: String, val label: String, val passed: Boolean, val value: String, val target: String, val daysToFix: Int)
+
+    enum class Verdict(val label: String) {
+        REGISTER_EARLIEST("가장 빠른 날짜로 신청"),
+        REGISTER_LATER("준비 후 추천 날짜로 신청"),
+        REGISTER_ANYWAY("준비가 덜 되었지만 마감 때문에 신청"),
+        NO_WINDOW("마감 전 응시 가능한 날짜 없음"),
+        WAIT_FIRST_EXAM("첫 시험 전: 잠정 계획"),
+    }
+
+    data class Advice(
+        val verdict: Verdict,
+        val lastExam: LocalDate,
+        val earliest: LocalDate,
+        /** Last exam date whose result is still out before the deadline. */
+        val latestUseful: LocalDate?,
+        val recommended: LocalDate?,
+        val registerBy: LocalDate?,
+        /** True when another retake would still fit before the deadline after the recommended one. */
+        val secondChance: Boolean,
+        val gates: List<Gate>,
+        val reasons: List<String>,
+        val cautions: List<String>,
+    )
+
+    fun gates(r: Readiness): List<Gate> = listOf(
+        Gate("volume", "연습량", r.practiceDays >= 10 || r.speakingMinutes >= 150,
+            "${r.practiceDays}일 · ${r.speakingMinutes}분", "10일 이상 또는 150분", ((10 - r.practiceDays).coerceAtLeast(0)).coerceAtMost(10)),
+        Gate("length", "자유 발화 길이", r.recentAnswers >= 3 && r.avgWords >= 90,
+            if (r.recentAnswers == 0) "기록 없음" else "평균 ${r.avgWords}단어", "평균 90단어 이상", if (r.avgWords >= 90) 0 else 7),
+        Gate("fluency", "긴 무음", r.avgLongPauses != null && r.avgLongPauses <= 1f,
+            r.avgLongPauses?.let { "답변당 %.1f회".format(it) } ?: "측정 기록 없음", "답변당 1회 이하", 5),
+        Gate("score", "학습용 점수", r.recentAnswers >= 3 && r.avgScore >= 65,
+            if (r.recentAnswers == 0) "기록 없음" else "평균 ${r.avgScore}점", "평균 65점 이상", if (r.avgScore >= 65) 0 else 7),
+        Gate("mock", "모의시험", r.mocksSinceExam >= 1 && r.bestMockScore >= 60,
+            if (r.mocksSinceExam == 0) "없음" else "${r.mocksSinceExam}회 · 최고 ${r.bestMockScore}점", "1회 이상, 60점 이상", 3),
+    )
+
+    fun advise(today: LocalDate, lastExam: LocalDate, rules: Rules, readiness: Readiness): Advice {
+        val earliest = lastExam.plusDays(rules.retakeDays.toLong())
+        val latestUseful = rules.deadline?.minusDays(rules.resultLagDays.toLong())
+        val gates = gates(readiness)
+        val cautions = mutableListOf<String>()
+        if (!rules.verified) cautions += "재응시 간격 ${rules.retakeDays}일은 확인되지 않은 값입니다. 사내 공지나 접수 사이트에서 확인한 뒤 설정에서 '확인함'으로 바꾸세요."
+        cautions += "접수 마감은 응시일 ${rules.registerLeadDays}일 전으로 가정했습니다. 실제 접수 기간을 확인하세요."
+
+        fun slotOnOrAfter(d: LocalDate): LocalDate? =
+            if (rules.slots.isEmpty()) d else rules.slots.filter { !it.isBefore(d) }.minOrNull()
+
+        val firstPossible = slotOnOrAfter(maxOf(earliest, today.plusDays(1)))
+        if (firstPossible == null || (latestUseful != null && firstPossible.isAfter(latestUseful))) {
+            return Advice(
+                Verdict.NO_WINDOW, lastExam, earliest, latestUseful, null, null, false, gates,
+                listOf("재응시 가능일(${earliest})이 결과가 마감 전에 나오는 마지막 응시일(${latestUseful ?: "-"})보다 늦습니다."),
+                cautions + "웨이버(재응시 제한 예외)가 있는지 확인하세요.",
+            )
+        }
+
+        val missing = gates.filter { !it.passed }
+        val daysNeeded = missing.maxOfOrNull { it.daysToFix } ?: 0
+        val ready = missing.size <= 1
+        val reasons = mutableListOf<String>()
+
+        val preExam = !today.isAfter(lastExam)
+        val verdict: Verdict
+        val target: LocalDate
+        when {
+            preExam -> {
+                verdict = Verdict.WAIT_FIRST_EXAM
+                target = firstPossible
+                reasons += "${lastExam} 시험 결과는 약 ${lastExam.plusDays(rules.resultLagDays.toLong())}에 나옵니다. 재응시는 ${earliest}부터 가능합니다."
+                reasons += "IH가 나오지 않을 경우를 대비해 ${firstPossible} 회차를 잠정 목표로 잡고, 시험 직후 복기를 기록하세요."
+            }
+            ready -> {
+                verdict = Verdict.REGISTER_EARLIEST
+                target = firstPossible
+                reasons += "준비도 조건 ${gates.size - missing.size}/${gates.size}개를 통과했습니다. 가장 빠른 날짜에 응시해도 됩니다."
+            }
+            else -> {
+                val wanted = slotOnOrAfter(maxOf(firstPossible, today.plusDays(daysNeeded.toLong()))) ?: firstPossible
+                if (latestUseful != null && wanted.isAfter(latestUseful)) {
+                    verdict = Verdict.REGISTER_ANYWAY
+                    target = slotOnOrAfter(firstPossible) ?: firstPossible
+                    reasons += "미통과 조건(${missing.joinToString { it.label }})을 채우려면 약 ${daysNeeded}일이 더 필요하지만, 그러면 마감 전에 결과가 나오지 않습니다."
+                    reasons += "마감 전 기회를 놓치지 않도록 ${target}에 신청하고, 남은 기간은 미통과 조건에 집중하세요."
+                } else {
+                    verdict = Verdict.REGISTER_LATER
+                    target = wanted
+                    reasons += "미통과 조건: ${missing.joinToString { it.label }}. 약 ${daysNeeded}일 집중 연습 후 응시하는 편이 안전합니다."
+                }
+            }
+        }
+        val secondChance = latestUseful != null && !target.plusDays(rules.retakeDays.toLong()).isAfter(latestUseful)
+        if (latestUseful != null) {
+            reasons += if (secondChance) "이 날짜 뒤에도 마감 전에 한 번 더 응시할 수 있습니다."
+            else "이 날짜가 마감 전 사실상 마지막 기회입니다. 실패에 대비한 추가 회차가 없습니다."
+        }
+        val registerBy = target.minusDays(rules.registerLeadDays.toLong()).let { if (it.isBefore(today)) today else it }
+        return Advice(verdict, lastExam, earliest, latestUseful, target, registerBy, secondChance, gates, reasons, cautions)
+    }
+
+    fun daysBetween(a: LocalDate, b: LocalDate) = ChronoUnit.DAYS.between(a, b)
+}
