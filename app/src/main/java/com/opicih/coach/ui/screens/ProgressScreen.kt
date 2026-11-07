@@ -63,7 +63,6 @@ fun ProgressScreen(onNextExam: () -> Unit = {}) {
 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
         Text("Progress", style = MaterialTheme.typography.headlineMedium)
-        Text("모든 수치는 실제 발화·복습 기록 기준입니다. 점수는 학습용 참고값이며 OPIc 공식 등급이 아닙니다.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
 
         val totalSpeak = attempts.sumOf { if (it.speechMs > 0) it.speechMs else it.durationMs }
         val withText = attempts.filter { it.wordCount > 0 }
@@ -117,7 +116,6 @@ fun ProgressScreen(onNextExam: () -> Unit = {}) {
                     Text("→ ${e.correction}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
                 }
             }
-            Text("앱 시작 시 원본 스크립트 분석에서 나온 오류 후보 6개가 1회로 등록되어 있습니다.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
 
         SectionCard(title = "시험 결과와 재응시") {
