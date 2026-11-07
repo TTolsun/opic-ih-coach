@@ -239,7 +239,7 @@ class SpeakingViewModel(app: Application) : AndroidViewModel(app) {
                 PracticeRepository.Request(
                     script = q.script, topic = q.topic, question = q.text, questionType = q.type, mode = u.mode,
                     transcript = transcript, captureMode = captureMode, audioPath = audio, durationMs = duration,
-                    pauses = pauses, transcriptFromDeviceStt = fromStt, requiredTense = q.requiredTense, target = target,
+                    pauses = pauses, transcriptFromDeviceStt = fromStt, requiredTense = q.requiredTense, mission = q.mission, target = target,
                 ),
                 ai = c.realAi(st), examEpochDay = c.exams.focusEpochDay(),
             )
