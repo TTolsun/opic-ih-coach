@@ -201,3 +201,17 @@ class PracticeModeScoringTest {
         assertFalse(PracticeMode.MOCK.comparesToScript)
     }
 }
+
+class ResultMissionTest {
+    private val fix = com.opicih.coach.analysis.FixItem("답변이 짧습니다.", "", "5~7문장을 목표로 하세요.")
+
+    @Test fun hidesMissionThatRepeatsTheShownFix() {
+        val fb = com.opicih.coach.analysis.Feedback(fixes = listOf(fix), retryMission = "다시 말하기: 5~7문장을 목표로 하세요.")
+        assertEquals(null, com.opicih.coach.ui.screens.visibleMission(fb))
+    }
+
+    @Test fun keepsADifferentMission() {
+        val fb = com.opicih.coach.analysis.Feedback(fixes = listOf(fix), retryMission = "빠진 문장 2개를 포함해서 같은 질문에 다시 답하세요.")
+        assertEquals("빠진 문장 2개를 포함해서 같은 질문에 다시 답하세요.", com.opicih.coach.ui.screens.visibleMission(fb))
+    }
+}

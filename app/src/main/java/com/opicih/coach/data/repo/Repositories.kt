@@ -159,7 +159,7 @@ class PracticeRepository(private val dao: AppDao) {
         val metrics = AttemptMetrics(discourse, req.pauses, compare)
         val speechMs = req.pauses?.speechMs ?: 0L
         val wpm = FeedbackComposer.wpm(discourse.wordCount, speechMs, req.durationMs)
-        val previous = dao.recentForQuestion(req.question).firstOrNull()
+        val previous = dao.recentForQuestion(req.question, req.mode.name).firstOrNull()
 
         val attempt = PracticeAttemptEntity(
             scriptId = req.script?.id, topic = req.topic, questionText = req.question, questionType = req.questionType,

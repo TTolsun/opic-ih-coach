@@ -30,6 +30,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
@@ -64,10 +65,13 @@ fun SectionCard(
 /** Small label that always shows where content came from (내 스크립트 / AI 생성 / 로컬 분석 ...). */
 @Composable
 fun SourceTag(text: String, color: Color = MaterialTheme.colorScheme.onSurfaceVariant) {
+    // One line: with a large system font a squeezed tag otherwise wraps inside its pill and becomes a circle.
     Text(
         text,
         style = MaterialTheme.typography.labelSmall,
         color = color,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
         modifier = Modifier
             .border(1.dp, color.copy(alpha = 0.4f), RoundedCornerShape(50))
             .padding(horizontal = 8.dp, vertical = 2.dp),

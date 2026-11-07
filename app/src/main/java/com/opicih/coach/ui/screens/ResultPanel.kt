@@ -96,9 +96,9 @@ internal fun ResultPanel(r: AnalyzedAttempt, ui: SpeakingUi, vm: SpeakingViewMod
             Text("빠진 내용", style = MaterialTheme.typography.titleSmall)
             missing.take(2).forEach { Bullet(it.sentence, color = MaterialTheme.colorScheme.onSurfaceVariant) }
         }
-        if (fb.retryMission.isNotBlank()) {
+        visibleMission(fb)?.let {
             Spacer(Modifier.height(8.dp))
-            Text(fb.retryMission, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary)
+            Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary)
         }
 
         Spacer(Modifier.height(12.dp))
@@ -218,3 +218,14 @@ private fun TextLink(label: String, onClick: () -> Unit) {
 }
 
 private fun signed(v: Int) = if (v > 0) "+$v" else "$v"
+
+/**
+ * The retry mission, unless it only repeats the first fix's suggestion that is already shown right above it.
+ * Local feedback builds the mission as "다시 말하기: " + that suggestion, and saved records keep that text,
+ * so the check is done here rather than only when the feedback is composed.
+ */
+internal fun visibleMission(fb: com.opicih.coach.analysis.Feedback): String? {
+    val mission = fb.retryMission.trim().ifBlank { return null }
+    val shownBetter = fb.fixes.firstOrNull()?.better?.trim().orEmpty()
+    return if (shownBetter.isNotEmpty() && mission.contains(shownBetter)) null else mission
+}

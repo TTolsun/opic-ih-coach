@@ -131,7 +131,12 @@ fun SpeakingScreen(scriptId: Long?, mode: PracticeMode?, onOpenSettings: () -> U
 
         // Question card
         SectionCard {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            // FlowRow so a tag that does not fit moves to the next line instead of being squeezed.
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+                itemVerticalAlignment = Alignment.CenterVertically,
+            ) {
                 Text(q.topic, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
                 SourceTag(QuestionType.of(q.type).label)
                 SourceTag(q.sourceLabel)
