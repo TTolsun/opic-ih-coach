@@ -128,7 +128,7 @@ fun SpeakingScreen(scriptId: Long?, mode: PracticeMode?, onOpenSettings: () -> U
 
         val q = ui.question
         if (q == null) {
-            SectionCard { Text("질문을 불러오는 중입니다. 스크립트가 없으면 Scripts 탭에서 추가하세요.") }
+            SectionCard { Text("질문을 불러오는 중입니다. 스크립트가 없으면 스크립트 탭에서 추가하세요.") }
             return@Column
         }
 
@@ -195,7 +195,7 @@ fun SpeakingScreen(scriptId: Long?, mode: PracticeMode?, onOpenSettings: () -> U
 
         ui.error?.let { Banner(it, "닫기", tone = MaterialTheme.colorScheme.error) { vm.dismissError() } }
 
-        ui.result?.let { ResultPanel(it, ui, vm) }
+        ui.result?.let { ResultPanel(it, ui, vm, onRetry = { onMic() }) }
 
         if (ui.captureMode == CaptureMode.LIVE_STT && ui.phase == Phase.IDLE && ui.result == null) {
             Text("실시간 인식은 녹음 파일을 남기지 않습니다. 녹음을 다시 들으려면 설정에서 '녹음 우선'을 선택하세요.",
@@ -287,7 +287,7 @@ private fun ModePanel(ui: SpeakingUi, vm: SpeakingViewModel) {
         PracticeMode.KEYWORD -> SectionCard(title = "키워드만 보고 말하기") {
             val kws = s.keywordList().ifEmpty { com.opicih.coach.analysis.ScriptComparator.pickKeywords(text, 5) }
             kws.forEachIndexed { i, k -> Bullet(k, mark = "${i + 1}") }
-            if (s.keywords == null) Text("승인된 Keywords 버전이 없어 자동 추출했습니다. Scripts에서 Keywords 개선안을 승인하세요.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            if (s.keywords == null) Text("승인된 Keywords 버전이 없어 자동 추출했습니다. 스크립트 탭에서 Keywords 개선안을 승인하세요.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         PracticeMode.BLIND, PracticeMode.RANDOM -> SectionCard {
             Text("스크립트 없이 답하세요. 순서가 달라도, 표현이 달라도 같은 내용이면 인정합니다.", style = MaterialTheme.typography.bodyMedium)
@@ -306,97 +306,3 @@ private fun ModelButtons(vm: SpeakingViewModel, text: String) {
         TextButton(onClick = { vm.speakText(text, 0.75f) }) { Text("0.75x") }
     }
 }
-
-@OptIn(ExperimentalLayoutApi::class)
-@Composable
-private fun ResultPanel(r: AnalyzedAttempt, ui: SpeakingUi, vm: SpeakingViewModel) {
-    val fb = r.feedback
-    val a = r.attempt
-    val m = r.metrics
-    SectionCard(
-        title = "결과",
-        trailing = { SourceTag(if (fb.source == "AI") "AI 분석 (Claude)" else "로컬 분석 (AI 아님)", if (fb.source == "AI") MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant) },
-    ) {
-        if (a.transcript.isNotBlank() || fb.score > 0) {
-            Row(verticalAlignment = Alignment.Bottom) {
-                Text("${fb.score}", style = MaterialTheme.typography.displaySmall, color = MaterialTheme.colorScheme.primary)
-                Spacer(Modifier.width(8.dp))
-                Text("학습용 참고 점수 · OPIc 공식 등급과 무관", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(bottom = 8.dp))
-            }
-        }
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            MetricTile("발화 시간", m.pauses?.let { formatMs(it.speechMs) } ?: "측정 안 됨")
-            MetricTile("2초+ 무음", m.pauses?.longPauseCount?.let { "${it}회" } ?: "-")
-            MetricTile("단어 수", "${m.discourse.wordCount}")
-            if (a.wpm > 0) MetricTile("속도", "${a.wpm} wpm")
-            MetricTile("시제", "과${m.discourse.pastCount}·현${m.discourse.presentCount}·미${m.discourse.futureCount}")
-            MetricTile("연결 표현", "${m.discourse.connectorCount}회")
-            m.compare?.let { MetricTile("내용 일치", "${(it.coverage * 100).toInt()}%") }
-        }
-        r.previous?.let { p ->
-            Spacer(Modifier.height(10.dp))
-            val dScore = a.score - p.score
-            val dWords = a.wordCount - p.wordCount
-            val dPause = a.longPauseCount - p.longPauseCount
-            Banner(
-                "이전 시도 대비: 점수 ${signed(dScore)}, 단어 ${signed(dWords)}, 긴 무음 ${signed(dPause)}회" +
-                    when { dScore > 0 && dWords >= 0 -> " · 좋아졌습니다."; dScore < 0 -> " · 이번엔 조금 떨어졌습니다."; else -> "" },
-                tone = if (dScore >= 0) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.tertiary,
-            )
-        }
-        Spacer(Modifier.height(12.dp))
-        Text("잘한 점", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.secondary)
-        fb.strengths.forEach { Bullet(it) }
-        if (fb.fixes.isNotEmpty()) {
-            Spacer(Modifier.height(8.dp))
-            Text("우선 고칠 점", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.tertiary)
-            fb.fixes.forEachIndexed { i, f ->
-                Column(Modifier.padding(vertical = 4.dp)) {
-                    Text("${i + 1}. ${f.issue}", fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium)
-                    if (f.why.isNotBlank()) Text(f.why, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    if (f.better.isNotBlank()) Text("→ ${f.better}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
-                }
-            }
-        }
-        m.compare?.let { cmp ->
-            val missing = cmp.sentences.filter { !it.covered }
-            if (missing.isNotEmpty()) {
-                Spacer(Modifier.height(8.dp))
-                Text("빠진 내용", style = MaterialTheme.typography.titleSmall)
-                missing.take(4).forEach { Bullet(it.sentence, color = MaterialTheme.colorScheme.onSurfaceVariant) }
-            }
-        }
-        val better = fb.betterAnswer.ifBlank { ui.question?.script?.studyText.orEmpty() }
-        if (better.isNotBlank()) {
-            Spacer(Modifier.height(8.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(if (fb.betterAnswer.isNotBlank()) "더 자연스러운 답변 예시 (AI)" else "학습본 다시 보기", style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
-                IconButton(onClick = { vm.speakText(better, 0.9f) }) { Icon(Icons.AutoMirrored.Filled.VolumeUp, "듣기") }
-            }
-            Text(better, style = MaterialTheme.typography.bodyMedium)
-        }
-        Spacer(Modifier.height(10.dp))
-        Banner("다시 말하기 미션: ${fb.retryMission}", tone = MaterialTheme.colorScheme.primary)
-        if (a.transcript.isNotBlank()) {
-            Spacer(Modifier.height(10.dp))
-            Text("인식된 내 답변", style = MaterialTheme.typography.titleSmall)
-            Text(a.transcript, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-        Spacer(Modifier.height(8.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            if (a.audioPath != null) {
-                FilledTonalButton(onClick = { vm.playRecording(1.0f) }) { Icon(Icons.Filled.PlayArrow, null); Text("내 녹음") }
-                OutlinedButton(onClick = { vm.playRecording(0.75f) }) { Text("0.75x") }
-            }
-            OutlinedButton(onClick = { vm.next() }) { Icon(Icons.Filled.Refresh, null); Text("다음 질문") }
-        }
-        if (fb.limits.isNotEmpty()) {
-            var open by remember { mutableStateOf(false) }
-            Spacer(Modifier.height(8.dp))
-            Text(if (open) "측정 한계 접기" else "측정 한계 보기", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.clickable { open = !open })
-            if (open) fb.limits.forEach { Bullet(it, color = MaterialTheme.colorScheme.onSurfaceVariant) }
-        }
-    }
-}
-
-private fun signed(v: Int) = if (v > 0) "+$v" else "$v"
