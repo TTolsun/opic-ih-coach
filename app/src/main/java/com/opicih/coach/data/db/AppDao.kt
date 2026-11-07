@@ -42,8 +42,9 @@ interface AppDao {
     @Update suspend fun updateAttempt(a: PracticeAttemptEntity)
     @Query("SELECT * FROM attempts ORDER BY createdAt DESC") fun attemptsFlow(): Flow<List<PracticeAttemptEntity>>
     @Query("SELECT * FROM attempts ORDER BY createdAt DESC") suspend fun attempts(): List<PracticeAttemptEntity>
-    @Query("SELECT * FROM attempts WHERE questionText = :q ORDER BY createdAt DESC LIMIT 5")
-    suspend fun recentForQuestion(q: String): List<PracticeAttemptEntity>
+    /** Same question in the same mode only: a memorize-stage read-aloud score is not comparable to a blind answer. */
+    @Query("SELECT * FROM attempts WHERE questionText = :q AND mode = :mode ORDER BY createdAt DESC LIMIT 5")
+    suspend fun recentForQuestion(q: String, mode: String): List<PracticeAttemptEntity>
     @Query("SELECT * FROM attempts WHERE mockId = :mockId ORDER BY createdAt") suspend fun attemptsForMock(mockId: Long): List<PracticeAttemptEntity>
     @Query("SELECT * FROM attempts WHERE audioPath IS NOT NULL AND createdAt < :before")
     suspend fun attemptsWithAudioBefore(before: Long): List<PracticeAttemptEntity>

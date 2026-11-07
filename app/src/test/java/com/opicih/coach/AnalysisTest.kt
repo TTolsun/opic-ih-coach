@@ -6,6 +6,7 @@ import com.opicih.coach.analysis.FeedbackComposer
 import com.opicih.coach.analysis.PauseAnalyzer
 import com.opicih.coach.analysis.ScriptComparator
 import com.opicih.coach.analysis.TextNormalizer
+import com.opicih.coach.data.db.PracticeMode
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -187,5 +188,30 @@ class AdaptiveThresholdTest {
         val fb = FeedbackComposer.acousticOnly(PauseAnalyzer.analyze(List(800) { 120f }, 20, 250f))
         assertTrue(fb.fixes.single().issue.contains("감지되지"))
         assertEquals(2, fb.strengths.size)
+    }
+}
+
+class PracticeModeScoringTest {
+    @Test fun variationIsNotScoredAgainstScriptWording() {
+        assertTrue(PracticeMode.BLIND.comparesToScript)
+        assertTrue(PracticeMode.RANDOM.comparesToScript)
+        assertTrue(PracticeMode.SHADOWING.comparesToScript)
+        assertFalse(PracticeMode.VARIATION.comparesToScript)
+        assertFalse(PracticeMode.FREE.comparesToScript)
+        assertFalse(PracticeMode.MOCK.comparesToScript)
+    }
+}
+
+class ResultMissionTest {
+    private val fix = com.opicih.coach.analysis.FixItem("답변이 짧습니다.", "", "5~7문장을 목표로 하세요.")
+
+    @Test fun hidesMissionThatRepeatsTheShownFix() {
+        val fb = com.opicih.coach.analysis.Feedback(fixes = listOf(fix), retryMission = "다시 말하기: 5~7문장을 목표로 하세요.")
+        assertEquals(null, com.opicih.coach.ui.screens.visibleMission(fb))
+    }
+
+    @Test fun keepsADifferentMission() {
+        val fb = com.opicih.coach.analysis.Feedback(fixes = listOf(fix), retryMission = "빠진 문장 2개를 포함해서 같은 질문에 다시 답하세요.")
+        assertEquals("빠진 문장 2개를 포함해서 같은 질문에 다시 답하세요.", com.opicih.coach.ui.screens.visibleMission(fb))
     }
 }
