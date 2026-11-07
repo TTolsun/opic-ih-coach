@@ -45,8 +45,12 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 | 단위 테스트 | **검증함: 43개 전부 통과** | `testDebugUnitTest` (파서, DOCX, 비교, 담화, 무음, 피드백, SRS, 계획, 알람 시간, 진행률, 아침 루틴, 모의시험 구성, seed JSON) |
 | 사용자 실제 스크립트 파싱 | **검증함** | Drive TXT 내보내기 원본으로 23문항·7주제 파싱 테스트 |
 | 큰 파일 처리 | **검증함 (파서)** | 23문항 × 40배(920문항) 파싱 5초 이내 테스트 |
-| 실기기 실행 (설치, 화면, 녹음, STT, TTS, 알람, 재부팅) | **미검증** | 이 PC에 연결된 기기·에뮬레이터가 없었습니다 |
-| anthropic-java SDK의 Android 런타임 동작 | **미검증** | 컴파일은 됨. OkHttp+Jackson 조합이 실기기에서 동작하는지 확인 필요 |
+| 실기기 실행 | **검증함 (일부)** | 2026-11-07 Galaxy S25+ (SM-S936N, Android 17): 설치, 첫 실행 seed, Home·Speaking·설정 화면, 크래시 없음 |
+| 실시간 음성 인식 → 분석 → 결과 카드 | **검증함** | Google 온디바이스 인식기, Android 13+ 분할 세션(onSegmentResults)으로 문장 누적 확인 |
+| 아침 알람 | **검증함** | `setAlarmClock` 정확 알람 예약(07:00, USE_EXACT_ALARM 허용), 1분 뒤 테스트 알람 → 알림 표시 |
+| 실제 사람 목소리의 인식 정확도 | **미검증** | PC 스피커 음성이 휴대폰까지 전달되지 않아 주변 소리로만 확인 |
+| anthropic-java SDK의 Android 런타임 동작 | **미검증** | 키가 아직 입력되지 않음 |
+| 녹음 우선 모드, 재부팅 후 알람, 알림 액션 버튼, 모의시험, 아침 루틴 | **미검증** | 다음 확인 대상 |
 | OpenAI 전사(whisper-1) 호출 | **미검증** | 키가 없어 실제 호출하지 않음 |
 | 권한 거부, 녹음 중 앱 종료, 네트워크 오류 복구 | 코드 구현 / **실기기 미검증** | 아래 4장 참고 |
 
@@ -100,7 +104,7 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 - 키는 APK·소스에 없습니다. 설정에서 입력한 키를 Android Keystore AES-GCM으로 암호화해 저장합니다.
 - 요청서는 "서버 중계 우선"이지만, 1인 사이드로드 앱이라 기기 직접 호출을 택했습니다. `AiCoach`/`Transcriber` 인터페이스 뒤에 서버 중계 구현을 추가할 수 있습니다.
 - 원본 음성은 Claude로 보내지 않습니다. 녹음 전사(OpenAI whisper-1)는 별도 키와 **음성 외부 전송 동의**가 있어야 동작합니다.
-- 기본 모델은 `claude-opus-5-5`이며 설정에서 Sonnet 5.5 / Haiku 5.5로 바꿀 수 있습니다. Opus/Sonnet 요청에는 서버 측 refusal fallback(`fallbacks: "default"`)을 켰습니다.
+- 기본 모델은 사용자 선택에 따라 `claude-sonnet-5-5`이며 설정에서 Opus 5.5 / Haiku 5.5로 바꿀 수 있습니다. Opus/Sonnet 요청에는 서버 측 refusal fallback(`fallbacks: "default"`)을 켰습니다.
 
 ### 4.4 콘텐츠 출처 구분
 

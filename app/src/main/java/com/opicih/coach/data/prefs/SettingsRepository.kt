@@ -60,11 +60,11 @@ data class Settings(
 ) {
     companion object {
         val DEFAULT_EXAM: LocalDate = LocalDate.of(2026, 11, 14)
-        const val DEFAULT_MODEL = "claude-opus-5-5"
+        const val DEFAULT_MODEL = "claude-sonnet-5-5"
         val DEFAULT_SURVEY = setOf("Overseas Travel", "Domestic Travel", "Movies", "Vacation", "Home & Furniture", "Park & Music")
         val MODEL_CHOICES = listOf(
-            "claude-opus-5-5" to "Claude Opus 5.5 (기본, 품질 우선)",
-            "claude-sonnet-5-5" to "Claude Sonnet 5.5 (균형)",
+            "claude-opus-5-5" to "Claude Opus 5.5 (품질 우선)",
+            "claude-sonnet-5-5" to "Claude Sonnet 5.5 (기본, 균형)",
             "claude-haiku-5-5" to "Claude Haiku 5.5 (저비용)",
         )
     }

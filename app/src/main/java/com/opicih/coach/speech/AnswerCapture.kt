@@ -61,7 +61,7 @@ class AnswerCapture(private val context: Context, private val audioDir: File) {
         return when (mode) {
             CaptureMode.LIVE_STT -> {
                 val warning = live.state.value.error
-                val text = live.stop()
+                val text = live.finish()
                 val levels = live.levels.toList()
                 val pauses = if (levels.size >= 10) {
                     // onRmsChanged samples arrive ~every 50 ms; resample to a fixed 50 ms grid.

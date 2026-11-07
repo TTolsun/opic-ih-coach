@@ -7,10 +7,13 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
+import android.util.Log
 import android.speech.RecognitionListener
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.flow.StateFlow
 
 /**
@@ -60,7 +63,26 @@ class LiveRecognizer(private val context: Context) {
         listenOnce()
     }
 
-    /** Ends the session and returns the accumulated text. */
+    private var finishing: CompletableDeferred<Unit>? = null
+
+    /**
+     * Ends the session gracefully: asks the engine to stop, then waits (max 2.5 s) for the last
+     * onResults / onSegmentResults before destroying it. Destroying immediately drops the final text.
+     */
+    suspend fun finish(): String {
+        val r = recognizer
+        if (r != null && sessionActive) {
+            sessionActive = false
+            val wait = CompletableDeferred<Unit>()
+            finishing = wait
+            runCatching { r.stopListening() }
+            withTimeoutOrNull(2500) { wait.await() }
+            finishing = null
+        }
+        return stop()
+    }
+
+    /** Ends the session immediately and returns the text received so far. */
     fun stop(cancelOnly: Boolean = false): String {
         sessionActive = false
         recognizer?.let { r -> runCatching { if (cancelOnly) r.cancel() else r.stopListening() }; runCatching { r.destroy() } }
@@ -86,8 +108,12 @@ class LiveRecognizer(private val context: Context) {
             // Ask for longer silence tolerance. Many engines ignore these, which is why we also auto-restart.
             putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, 4000)
             putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS, 3000)
-            putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_MINIMUM_LENGTH_MILLIS, 120_000)
-            if (Build.VERSION.SDK_INT >= 33) putExtra(RecognizerIntent.EXTRA_ENABLE_FORMATTING, RecognizerIntent.FORMATTING_OPTIMIZE_QUALITY)
+            if (Build.VERSION.SDK_INT >= 33) {
+                // Android 13+: one continuous session that delivers each sentence via onSegmentResults.
+                putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_MINIMUM_LENGTH_MILLIS, 120_000) // Google engine rejects longer values
+                putExtra(RecognizerIntent.EXTRA_SEGMENTED_SESSION, RecognizerIntent.EXTRA_SPEECH_INPUT_MINIMUM_LENGTH_MILLIS)
+                putExtra(RecognizerIntent.EXTRA_ENABLE_FORMATTING, RecognizerIntent.FORMATTING_OPTIMIZE_QUALITY)
+            }
         }
         runCatching { r.startListening(intent) }.onFailure {
             _state.value = _state.value.copy(error = "음성 인식을 시작하지 못했습니다: ${it.message}")
@@ -112,8 +138,11 @@ class LiveRecognizer(private val context: Context) {
         override fun onEndOfSpeech() {}
 
         override fun onError(error: Int) {
+            Log.d(TAG, "onError $error finishing=${finishing != null}")
+            finishing?.let { it.complete(Unit); return }
             val recoverable = error == SpeechRecognizer.ERROR_NO_MATCH || error == SpeechRecognizer.ERROR_SPEECH_TIMEOUT ||
-                error == SpeechRecognizer.ERROR_RECOGNIZER_BUSY || error == SpeechRecognizer.ERROR_CLIENT
+                error == SpeechRecognizer.ERROR_RECOGNIZER_BUSY || error == SpeechRecognizer.ERROR_CLIENT ||
+                error == 11 /* ERROR_SERVER_DISCONNECTED */
             if (sessionActive && recoverable && consecutiveErrors < 20) {
                 consecutiveErrors++
                 restartSoon(); return
@@ -128,13 +157,30 @@ class LiveRecognizer(private val context: Context) {
         override fun onResults(results: Bundle?) {
             consecutiveErrors = 0
             val text = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)?.firstOrNull().orEmpty()
+            Log.d(TAG, "onResults '$text'")
             if (text.isNotBlank()) segments += text.trim()
             _state.value = _state.value.copy(finalText = segments.joinToString(" "), partial = "")
+            finishing?.let { it.complete(Unit); return }
+            restartSoon()
+        }
+
+        override fun onSegmentResults(segmentResults: Bundle) {
+            consecutiveErrors = 0
+            val text = segmentResults.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)?.firstOrNull().orEmpty()
+            Log.d(TAG, "onSegmentResults '$text'")
+            if (text.isNotBlank()) segments += text.trim()
+            _state.value = _state.value.copy(finalText = segments.joinToString(" "), partial = "")
+        }
+
+        override fun onEndOfSegmentedSession() {
+            Log.d(TAG, "onEndOfSegmentedSession")
+            finishing?.let { it.complete(Unit); return }
             restartSoon()
         }
 
         override fun onPartialResults(partialResults: Bundle?) {
             val text = partialResults?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)?.firstOrNull().orEmpty()
+            Log.d(TAG, "onPartial '$text'")
             _state.value = _state.value.copy(partial = text)
         }
 
@@ -142,6 +188,7 @@ class LiveRecognizer(private val context: Context) {
     }
 
     companion object {
+        private const val TAG = "OpicSTT"
         fun errorMessage(code: Int): String = when (code) {
             SpeechRecognizer.ERROR_AUDIO -> "오디오 입력 오류입니다. 다른 앱이 마이크를 사용 중인지 확인하세요."
             SpeechRecognizer.ERROR_CLIENT -> "음성 인식 클라이언트 오류입니다. 다시 시도하세요."
@@ -151,6 +198,8 @@ class LiveRecognizer(private val context: Context) {
             SpeechRecognizer.ERROR_RECOGNIZER_BUSY -> "인식기가 사용 중입니다. 잠시 후 다시 시도하세요."
             SpeechRecognizer.ERROR_SERVER -> "인식 서버 오류입니다."
             SpeechRecognizer.ERROR_SPEECH_TIMEOUT -> "말소리가 감지되지 않았습니다."
+            11 -> "음성 인식 서비스 연결이 끊겼습니다. 다시 시도하세요."
+            12, 13 -> "이 기기 인식기가 영어(en-US)를 지원하지 않습니다. Google 음성 인식 언어 팩을 설치하세요."
             else -> "음성 인식 오류 (코드 $code)"
         }
     }

@@ -99,7 +99,6 @@ fun SettingsScreen() {
     }
 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-        Text("설정", style = MaterialTheme.typography.headlineMedium)
         message?.let { Banner(it, "닫기") { message = null } }
 
         SectionCard(title = "시험과 학습량") {
@@ -107,7 +106,7 @@ fun SettingsScreen() {
                 Text("첫 시험일", modifier = Modifier.weight(1f)); Text(s.examDate.toString(), color = MaterialTheme.colorScheme.primary)
             }
             Text("매일 최소 훈련 시간", style = MaterialTheme.typography.labelLarge)
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { StudyLevel.entries.forEach { l -> Pill(l.label, s.studyLevel == l) { save { it.copy(studyLevel = l) } } } }
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) { StudyLevel.entries.forEach { l -> Pill(l.label, s.studyLevel == l) { save { it.copy(studyLevel = l) } } } }
         }
 
         SectionCard(title = "Background Survey 주제") {

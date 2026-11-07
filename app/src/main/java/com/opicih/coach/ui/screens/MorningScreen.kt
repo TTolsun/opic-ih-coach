@@ -125,7 +125,7 @@ fun MorningScreen(onReviewScript: (Long) -> Unit, onDone: () -> Unit) {
                 FilledTonalButton(onClick = { c.tts.speak(if (item.step == MorningStep.COMPLETE && !revealed) ch.phrase else ch.example, 0.9f) }) { Icon(Icons.AutoMirrored.Filled.VolumeUp, null); Text("듣기") }
                 OutlinedButton(onClick = { c.tts.speak(ch.example, 0.7f) }) { Text("느리게") }
                 OutlinedButton(onClick = {
-                    if (listening) { recognizer.stop(); listening = false; revealed = true }
+                    if (listening) { scope.launch { recognizer.finish() }; listening = false; revealed = true }
                     else if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) { recognizer.start(); listening = true }
                     else perm.launch(Manifest.permission.RECORD_AUDIO)
                 }) { Icon(if (listening) Icons.Filled.Stop else Icons.Filled.Mic, null); Text(if (listening) "멈춤" else "말하기") }
