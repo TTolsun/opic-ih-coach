@@ -315,7 +315,7 @@ private fun ResultPanel(r: AnalyzedAttempt, ui: SpeakingUi, vm: SpeakingViewMode
     val m = r.metrics
     SectionCard(
         title = "결과",
-        trailing = { SourceTag(if (fb.source == "AI") "AI 분석 (Claude)" else "로컬 분석 (AI 아님)", if (fb.source == "AI") MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant) },
+        trailing = { SourceTag(if (fb.source == "AI") "AI 분석 (${fb.engine.ifBlank { "AI" }})" else "로컬 분석 (AI 아님)", if (fb.source == "AI") MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant) },
     ) {
         if (a.transcript.isNotBlank() || fb.score > 0) {
             Row(verticalAlignment = Alignment.Bottom) {

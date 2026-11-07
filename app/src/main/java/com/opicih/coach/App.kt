@@ -4,6 +4,8 @@ import android.app.Application
 import android.content.Context
 import com.opicih.coach.ai.AiCoach
 import com.opicih.coach.ai.ClaudeAiCoach
+import com.opicih.coach.ai.GeminiAiCoach
+import com.opicih.coach.data.prefs.AiProvider
 import com.opicih.coach.ai.LocalCoach
 import com.opicih.coach.ai.OpenAiTranscriber
 import com.opicih.coach.ai.Transcriber
@@ -42,15 +44,23 @@ class AppContainer(context: Context) {
     val seed = SeedLoader(ctx, dao, settings)
     val localCoach = LocalCoach()
 
-    private var cachedAi: Pair<String, ClaudeAiCoach>? = null
+    private var cachedAi: Pair<String, AiCoach>? = null
 
-    /** Real AI only when the user enabled it, consented to sending text, and stored a key. Otherwise null. */
+    /** Real AI only when the user enabled it, consented to sending text, and stored a key for the chosen provider. */
     fun realAi(s: Settings): AiCoach? {
         if (!s.aiEnabled || !s.aiTextConsent) return null
-        val key = keys.get(ApiKeyStore.Provider.ANTHROPIC) ?: return null
-        val cacheKey = key.takeLast(6) + s.aiModel
+        val (provider, model) = when (s.aiProvider) {
+            AiProvider.GEMINI -> ApiKeyStore.Provider.GEMINI to s.geminiModel
+            AiProvider.CLAUDE -> ApiKeyStore.Provider.ANTHROPIC to s.aiModel
+        }
+        val key = keys.get(provider) ?: return null
+        val cacheKey = s.aiProvider.name + key.takeLast(6) + model
         cachedAi?.let { if (it.first == cacheKey) return it.second }
-        return ClaudeAiCoach(key, s.aiModel).also { cachedAi = cacheKey to it }
+        val coach: AiCoach = when (s.aiProvider) {
+            AiProvider.GEMINI -> GeminiAiCoach(key, model)
+            AiProvider.CLAUDE -> ClaudeAiCoach(key, model)
+        }
+        return coach.also { cachedAi = cacheKey to it }
     }
 
     fun coach(s: Settings): AiCoach = realAi(s) ?: localCoach

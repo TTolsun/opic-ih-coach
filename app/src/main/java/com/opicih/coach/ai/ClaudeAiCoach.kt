@@ -21,6 +21,7 @@ import java.time.Duration
  */
 class ClaudeAiCoach(private val apiKey: String, private val model: String) : AiCoach {
     override val isRealAi = true
+    override val engineName: String get() = "Claude"
 
     private val client: AnthropicClient by lazy {
         AnthropicOkHttpClient.builder()
@@ -38,7 +39,7 @@ class ClaudeAiCoach(private val apiKey: String, private val model: String) : AiC
     override suspend fun evaluate(input: EvalInput): Result<Feedback> = call {
         val text = send(Prompts.EVAL_SYSTEM, listOf(ChatTurn(true, Prompts.evalUser(input))), OutputConfig.Effort.MEDIUM)
         val fb = AiJson.json.decodeFromString(Feedback.serializer(), AiJson.extractObject(text))
-        fb.copy(source = "AI", strengths = fb.strengths.take(2), fixes = fb.fixes.take(3), score = fb.score.coerceIn(0, 100))
+        fb.copy(source = "AI", engine = engineName, strengths = fb.strengths.take(2), fixes = fb.fixes.take(3), score = fb.score.coerceIn(0, 100))
     }
 
     override suspend fun chat(history: List<ChatTurn>, context: CoachContext): Result<String> = call {

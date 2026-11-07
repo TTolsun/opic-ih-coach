@@ -222,7 +222,7 @@ fun ScriptDetailScreen(id: Long, onPractice: (Long, PracticeMode) -> Unit, onEdi
         SectionCard(title = "AI 개선") {
             val ai = c.realAi(settings)
             Text(
-                if (ai != null) "Claude(${settings.aiModel})가 Natural / IH Target / Short / Keywords와 변경 이유를 만듭니다. 결과는 승인 대기로 저장됩니다. (API 비용 발생)"
+                if (ai != null) "${ai.engineName}가 Natural / IH Target / Short / Keywords와 변경 이유를 만듭니다. 결과는 승인 대기로 저장됩니다. (API 비용 발생)"
                 else "AI가 꺼져 있습니다. 지금은 로컬 규칙으로 Short/Keywords만 만들 수 있습니다. 설정 > AI에서 키를 입력하고 동의하면 전체 개선을 쓸 수 있습니다.",
                 style = MaterialTheme.typography.bodySmall,
             )

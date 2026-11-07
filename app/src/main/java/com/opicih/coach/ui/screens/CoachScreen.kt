@@ -88,7 +88,7 @@ fun CoachScreen() {
     Column(Modifier.fillMaxSize().imePadding()) {
         Row(Modifier.padding(horizontal = 16.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
             Text("AI 코치", style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
-            SourceTag(if (isAi) "Claude ${settings.aiModel}" else "오프라인 (AI 꺼짐)", if (isAi) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
+            SourceTag(if (isAi) (if (settings.aiProvider == com.opicih.coach.data.prefs.AiProvider.GEMINI) "Gemini ${settings.geminiModel}" else "Claude ${settings.aiModel}") else "오프라인 (AI 꺼짐)", if (isAi) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
         }
         LazyColumn(Modifier.weight(1f).padding(horizontal = 16.dp), state = listState, verticalArrangement = Arrangement.spacedBy(8.dp)) {
             if (turns.isEmpty()) item {

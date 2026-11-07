@@ -42,6 +42,8 @@ data class EvalInput(
 /** AI features behind one interface. ClaudeAiCoach is the real AI; LocalCoach is the offline rule-based fallback. */
 interface AiCoach {
     val isRealAi: Boolean
+    /** Shown in the UI next to AI results ("Gemini", "Claude"). */
+    val engineName: String get() = if (isRealAi) "AI" else "로컬"
     suspend fun improveScript(input: ScriptInput): Result<ScriptVersions>
     suspend fun evaluate(input: EvalInput): Result<Feedback>
     suspend fun chat(history: List<ChatTurn>, context: CoachContext): Result<String>
