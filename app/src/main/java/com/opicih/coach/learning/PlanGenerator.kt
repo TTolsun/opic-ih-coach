@@ -37,6 +37,8 @@ data class DayPlan(
     val tasks: List<PlanTask>,
     /** Exam this plan is built for; null = no registered exam (long-term cycle). */
     val examType: ExamType? = null,
+    /** Measured weakness this plan targets (shown with its evidence); null = none applied. */
+    val weakness: Weakness? = null,
 ) {
     val totalMinutes: Int get() = tasks.sumOf { it.minutes }
 }
@@ -106,17 +108,21 @@ object PlanGenerator {
         minutes: Int,
         dueScripts: Int,
         mockDoneThisSprint: Boolean,
+        /** Measured weaknesses, most severe first (WeaknessAnalyzer). Empty = plan by schedule only. */
+        weaknesses: List<Weakness> = emptyList(),
     ): DayPlan {
-        if (examDate == null || examType == null) {
-            val focus = longCycle[today.toEpochDay().mod(longCycle.size)]
-            return DayPlan(today, "시험 미정", focus, tasksFor(focus, minutes, dueScripts), null)
+        val base = if (examDate == null || examType == null) {
+            // No exam registered: the weakest competency picks the focus; without data, rotate as before.
+            val focus = WeaknessPlanner.longCycleFocus(weaknesses) ?: longCycle[today.toEpochDay().mod(longCycle.size)]
+            DayPlan(today, "시험 미정", focus, tasksFor(focus, minutes, dueScripts), null)
+        } else if (examType != ExamType.SAIL) {
+            today(today, examDate, minutes, dueScripts, mockDoneThisSprint).copy(examType = examType)
+        } else {
+            val daysLeft = ChronoUnit.DAYS.between(today, examDate).toInt()
+            val focus = sailFocus(daysLeft)
+            DayPlan(today, dLabel(today, examDate), focus, tasksFor(focus, minutes, dueScripts), ExamType.SAIL)
         }
-        if (examType != ExamType.SAIL) {
-            return today(today, examDate, minutes, dueScripts, mockDoneThisSprint).copy(examType = examType)
-        }
-        val daysLeft = ChronoUnit.DAYS.between(today, examDate).toInt()
-        val focus = sailFocus(daysLeft)
-        return DayPlan(today, dLabel(today, examDate), focus, tasksFor(focus, minutes, dueScripts), ExamType.SAIL)
+        return WeaknessPlanner.apply(base, weaknesses)
     }
 
     fun sailFocus(daysLeft: Int): Focus = when {

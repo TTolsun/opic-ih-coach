@@ -68,6 +68,8 @@ data class HomeState(
     val examsToReview: Int = 0,
     /** A registered exam that has ended but is not confirmed as taken yet. */
     val awaitingConfirm: ExamRegistrationEntity? = null,
+    /** Weakest measured competencies (max 3) with evidence. */
+    val weaknesses: List<com.opicih.coach.learning.Weakness> = emptyList(),
 )
 
 /** Pure: everything the home screen shows, derived from stored data. No Android types, so it is unit-tested. */
@@ -83,14 +85,17 @@ fun buildHomeState(
     /** Exam registrations (v3). Null = legacy single exam date from settings. */
     regs: List<ExamRegistrationEntity>? = null,
     now: ZonedDateTime = today.atTime(12, 0).atZone(ExamRepository.KST),
+    errors: List<com.opicih.coach.data.db.ErrorPatternEntity> = emptyList(),
+    conversations: List<com.opicih.coach.learning.ConversationReport> = emptyList(),
 ): HomeState {
+    val weaknesses = com.opicih.coach.learning.WeaknessAnalyzer.analyze(attempts, errors, conversations, now.toInstant().toEpochMilli())
     val day = today.toEpochDay()
     val due = scripts.filter { it.dueEpochDay <= day }.sortedBy { it.masteryScore }
     val mockDone = logs.any { it.mockDone && it.epochDay >= day - 7 }
     val reg = regs.orEmpty()
     val focusExam = ExamSchedule.focus(reg, now)
     val plan = if (regs == null) PlanGenerator.today(today, s.examDate, s.studyLevel.minutes, due.size, mockDone)
-    else PlanGenerator.forExam(today, focusExam?.type, focusExam?.date, s.studyLevel.minutes, due.size, mockDone)
+    else PlanGenerator.forExam(today, focusExam?.type, focusExam?.date, s.studyLevel.minutes, due.size, mockDone, weaknesses)
     val log = logs.firstOrNull { it.epochDay == day }
     val tasks = TodayProgress.statuses(plan, log)
     val weak = ProgressCalculator.weakTopics(attempts, s.surveyTopics).map { t ->
@@ -133,6 +138,7 @@ fun buildHomeState(
         settings = s,
         examsToReview = ExamSchedule.needsReview(reg).size,
         awaitingConfirm = ExamSchedule.awaitingConfirmation(reg, now).firstOrNull(),
+        weaknesses = weaknesses.take(3),
     )
 }
 
@@ -141,9 +147,16 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
 
     private val stored = combine(c.dao.scriptsFlow(), c.dao.attemptsFlow(), c.dao.dailyLogsFlow()) { s, a, l -> Triple(s, a, l) }
     private val extra = combine(c.dao.mocksFlow(), c.dao.pendingRevisionsFlow(), c.dao.examsFlow()) { m, p, e -> Triple(m, p.size, e) }
+    private val evidence = combine(c.dao.errorsFlow(), c.dao.trainingSessionsFlow()) { e, t -> e to conversationReports(t) }
 
-    val state: StateFlow<HomeState> = combine(c.settings.flow, stored, extra, c.exams.flow) { s, (scripts, attempts, logs), (mocks, pending, exams), regs ->
+    val state: StateFlow<HomeState> = combine(c.settings.flow, stored, extra, c.exams.flow, evidence) { s, (scripts, attempts, logs), (mocks, pending, exams), regs, (errors, convs) ->
         val now = ExamRepository.nowKst()
-        buildHomeState(now.toLocalDate(), s, scripts, attempts, logs, mocks, pending, exams, regs, now)
+        buildHomeState(now.toLocalDate(), s, scripts, attempts, logs, mocks, pending, exams, regs, now, errors, convs)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HomeState())
 }
+
+/** Finished SAIL conversation reports stored in exam_training_sessions.summaryJson. */
+fun conversationReports(sessions: List<com.opicih.coach.data.db.ExamTrainingSessionEntity>): List<com.opicih.coach.learning.ConversationReport> =
+    sessions.filter { it.finishedAt != null }.mapNotNull { s ->
+        s.summaryJson?.let { runCatching { com.opicih.coach.data.repo.appJson.decodeFromString(com.opicih.coach.learning.ConversationReport.serializer(), it) }.getOrNull() }
+    }.take(10)
