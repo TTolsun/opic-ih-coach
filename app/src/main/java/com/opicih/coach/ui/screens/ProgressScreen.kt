@@ -62,7 +62,7 @@ fun ProgressScreen(onNextExam: () -> Unit = {}) {
     val today = LocalDate.now().toEpochDay()
 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-        Text("Progress", style = MaterialTheme.typography.headlineMedium)
+        Text("기록", style = MaterialTheme.typography.headlineMedium)
 
         val totalSpeak = attempts.sumOf { if (it.speechMs > 0) it.speechMs else it.durationMs }
         val withText = attempts.filter { it.wordCount > 0 }
@@ -122,8 +122,7 @@ fun ProgressScreen(onNextExam: () -> Unit = {}) {
             exams.forEach { e -> Bullet("${LocalDate.ofEpochDay(e.epochDay)} · ${e.resultGrade ?: "결과 대기"} ${e.note}") }
             val last = exams.maxByOrNull { it.epochDay }?.epochDay?.let { LocalDate.ofEpochDay(it) } ?: s.examDate
             Spacer(Modifier.height(6.dp))
-            Text("다음 응시 가능 예상일: ${last.plusDays(s.retakeDays.toLong())} (마지막 응시 $last + ${s.retakeDays}일${if (s.retakeVerified) "" else ", 미검증"})", style = MaterialTheme.typography.bodyMedium)
-            Banner(RetestCalculator.NOTICE)
+            Text("다음 응시 가능: ${last.plusDays(s.retakeDays.toLong())}${if (s.retakeVerified) "" else " (미검증)"}", style = MaterialTheme.typography.bodyMedium)
             Spacer(Modifier.height(6.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Button(onClick = onNextExam) { Text("다음 시험 추천") }
