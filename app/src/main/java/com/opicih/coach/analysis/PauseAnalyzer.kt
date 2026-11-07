@@ -63,6 +63,17 @@ object PauseAnalyzer {
         return PauseMetrics(total, speechMs, longPauses, maxPause, firstSpeech * frameMs)
     }
 
+    /**
+     * Speech threshold adapted to this recording: a multiple of the background noise floor (20th percentile),
+     * clamped so a silent room does not turn noise into "speech" and a loud room does not hide quiet speech.
+     */
+    fun adaptiveThreshold(levels: List<Float>, factor: Float = 2.5f, min: Float = 250f, max: Float = 1500f): Float {
+        if (levels.isEmpty()) return min
+        val sorted = levels.sorted()
+        val noise = sorted[(sorted.size * 0.2f).toInt().coerceIn(0, sorted.lastIndex)]
+        return (noise * factor).coerceIn(min, max)
+    }
+
     /** RMS of 16-bit PCM samples, in the 0..32768 range. */
     fun rms(samples: ShortArray, length: Int = samples.size): Float {
         if (length == 0) return 0f

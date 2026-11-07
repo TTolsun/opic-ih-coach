@@ -109,6 +109,31 @@ fun SettingsScreen() {
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) { StudyLevel.entries.forEach { l -> Pill(l.label, s.studyLevel == l) { save { it.copy(studyLevel = l) } } } }
         }
 
+        SectionCard(title = "재응시 규칙 (다음 시험 추천에 사용)") {
+            Text("앱이 직접 조회할 수 없는 값입니다. 사내 공지나 접수 사이트에서 확인한 값으로 고치세요.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            NumberRow("재응시 간격(일)", s.retakeDays) { v -> save { it.copy(retakeDays = v.coerceIn(0, 120)) } }
+            ToggleRow("위 간격을 공지/접수 사이트에서 확인함", s.retakeVerified) { v -> save { it.copy(retakeVerified = v) } }
+            NumberRow("결과 발표까지(일)", s.resultLagDays) { v -> save { it.copy(resultLagDays = v.coerceIn(0, 60)) } }
+            NumberRow("접수 마감: 응시 며칠 전", s.registerLeadDays) { v -> save { it.copy(registerLeadDays = v.coerceIn(0, 60)) } }
+            var deadline by remember(s.gradeDeadline) { mutableStateOf(s.gradeDeadline?.toString().orEmpty()) }
+            OutlinedTextField(
+                deadline,
+                { v ->
+                    deadline = v
+                    if (v.isBlank()) save { st -> st.copy(gradeDeadline = null) }
+                    else runCatching { LocalDate.parse(v.trim()) }.getOrNull()?.let { d -> save { st -> st.copy(gradeDeadline = d) } }
+                },
+                label = { Text("등급 필요 마감일 (YYYY-MM-DD, 비우면 없음)") }, singleLine = true, modifier = Modifier.fillMaxWidth(),
+            )
+            var slots by remember(s.examSlots) { mutableStateOf(s.slotDates().joinToString(", ")) }
+            OutlinedTextField(slots, { slots = it }, label = { Text("사내 시험 회차 (쉼표로 구분, 비우면 제한 없음)") }, modifier = Modifier.fillMaxWidth())
+            TextButton(onClick = {
+                val parsed = slots.split(',', ' ', '\n').mapNotNull { runCatching { LocalDate.parse(it.trim()) }.getOrNull() }
+                save { it.copy(examSlots = parsed.map { d -> d.toString() }.toSet()) }
+                message = "회차 ${parsed.size}개를 저장했습니다."
+            }) { Text("회차 저장") }
+        }
+
         SectionCard(title = "Background Survey 주제") {
             Text("선택한 주제를 자유 발화와 모의시험에서 우선 출제합니다. 주제를 겹치게 고르면 준비 범위가 줄어듭니다 (응시 후기 기반 비공식 전략).", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(Modifier.height(6.dp))
@@ -240,6 +265,16 @@ fun SettingsScreen() {
         }) { Text("영구 삭제", color = MaterialTheme.colorScheme.error) } },
         dismissButton = { TextButton(onClick = { confirmWipe = false }) { Text("취소") } },
     )
+}
+
+@Composable
+private fun NumberRow(label: String, value: Int, onChange: (Int) -> Unit) {
+    Row(Modifier.fillMaxWidth().padding(vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
+        Text(label, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+        TextButton(onClick = { onChange(value - 1) }) { Text("−") }
+        Text("$value", style = MaterialTheme.typography.titleMedium)
+        TextButton(onClick = { onChange(value + 1) }) { Text("+") }
+    }
 }
 
 @Composable

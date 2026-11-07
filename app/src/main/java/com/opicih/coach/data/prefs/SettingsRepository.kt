@@ -57,7 +57,16 @@ data class Settings(
     val audioRetentionDays: Int = 14,
     val seedVersion: Int = 0,
     val focusTopics: Set<String> = emptySet(),
+    // Retake planning (values the app cannot look up; the user confirms them).
+    val retakeDays: Int = 25,
+    val retakeVerified: Boolean = false,
+    val resultLagDays: Int = 10,
+    val gradeDeadline: LocalDate? = LocalDate.of(2026, 12, 31),
+    val examSlots: Set<String> = emptySet(),
+    val registerLeadDays: Int = 7,
 ) {
+    fun slotDates(): List<LocalDate> = examSlots.mapNotNull { runCatching { LocalDate.parse(it) }.getOrNull() }.sorted()
+
     companion object {
         val DEFAULT_EXAM: LocalDate = LocalDate.of(2026, 11, 14)
         const val DEFAULT_MODEL = "claude-sonnet-5-5"
@@ -93,6 +102,12 @@ class SettingsRepository(private val context: Context) {
         val retention = intPreferencesKey("audio_retention")
         val seed = intPreferencesKey("seed_version")
         val focus = stringSetPreferencesKey("focus_topics")
+        val retakeDays = intPreferencesKey("retake_days")
+        val retakeVerified = booleanPreferencesKey("retake_verified")
+        val resultLag = intPreferencesKey("result_lag_days")
+        val deadline = longPreferencesKey("grade_deadline")
+        val slots = stringSetPreferencesKey("exam_slots")
+        val lead = intPreferencesKey("register_lead_days")
     }
 
     val flow: Flow<Settings> = context.dataStore.data.map { it.toSettings() }
@@ -123,6 +138,12 @@ class SettingsRepository(private val context: Context) {
             p[K.retention] = s.audioRetentionDays
             p[K.seed] = s.seedVersion
             p[K.focus] = s.focusTopics
+            p[K.retakeDays] = s.retakeDays
+            p[K.retakeVerified] = s.retakeVerified
+            p[K.resultLag] = s.resultLagDays
+            p[K.deadline] = s.gradeDeadline?.toEpochDay() ?: -1L
+            p[K.slots] = s.examSlots
+            p[K.lead] = s.registerLeadDays
         }
     }
 
@@ -150,6 +171,12 @@ class SettingsRepository(private val context: Context) {
             audioRetentionDays = this[K.retention] ?: d.audioRetentionDays,
             seedVersion = this[K.seed] ?: d.seedVersion,
             focusTopics = this[K.focus] ?: d.focusTopics,
+            retakeDays = this[K.retakeDays] ?: d.retakeDays,
+            retakeVerified = this[K.retakeVerified] ?: d.retakeVerified,
+            resultLagDays = this[K.resultLag] ?: d.resultLagDays,
+            gradeDeadline = this[K.deadline]?.let { if (it < 0) null else LocalDate.ofEpochDay(it) } ?: d.gradeDeadline,
+            examSlots = this[K.slots] ?: d.examSlots,
+            registerLeadDays = this[K.lead] ?: d.registerLeadDays,
         )
     }
 }

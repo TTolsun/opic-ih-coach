@@ -57,7 +57,7 @@ PracticeRepository.analyzeAndSave()
 결과 카드 인라인 표시 (화면 전환 없음) → 다시 말하기
 ```
 
-## 3. 데이터베이스 (Room v1, 스키마: `app/schemas/`)
+## 3. 데이터베이스 (Room v2, 스키마: `app/schemas/`, v1→v2 마이그레이션 포함)
 
 | 테이블 | 주요 필드 | 용도 |
 |---|---|---|
@@ -69,7 +69,7 @@ PracticeRepository.analyzeAndSave()
 | `chunks` | phrase, meaningKo, example, category, srsStep, dueEpochDay, lastResult, failCount | 아침 표현 |
 | `daily_logs` | epochDay, speakingMs, attempts, scriptsReviewed, chunksReviewed, mockDone, morningDone | 완료율·연속일 |
 | `mock_tests` | startedAt, finishedAt, questionCount, selfLevel, reportJson | 모의시험 |
-| `exams` | epochDay, type, resultGrade, note | 시험 결과, 재응시 계산 |
+| `exams` | epochDay, type, resultGrade, note, topicsSeen, stuckPoints, feeling, selfLevelUsed, debriefAt | 시험 결과, 복기, 재응시 계산 (v2에서 복기 컬럼 추가) |
 | `stories` | id(S1~S7), titleKo, summary, reusableFor | 개인 경험 스토리 뱅크 |
 | `questions` | topic, text, type, source(USER_LIST/AI_GENERATED) | 질문 은행 |
 
@@ -110,3 +110,7 @@ interface AiCoach {
 - **마스터리**: NEW → LEARNING → NO_SCRIPT_OK(Blind/다른 표현 70%+) → VARIATION_OK(응용 60점+) / 하락 시 NEEDS_REVIEW.
 - **계획**: 매일 "남은 일수"로 다시 계산. 7일 이상이면 템플릿, 그보다 적으면 D-1 가벼운 복습과 D-2 모의시험을 고정하고 나머지는 우선순위(자유 발화 > 과거·비교 > 롤플레이 > 핵심 > 진단)로 채움. 시험 후에는 12월까지 7일 주기 장기 훈련.
 - **완료율**: 발화 시간 60% + 아침 루틴 20% + 복습 20%. 앱을 켜 둔 시간은 세지 않음.
+- **다음 시험 추천 (`RetestAdvisor`)**: 입력은 두 가지입니다.
+  1. 달력 제약: 재응시 간격(기본 25일, 미검증 표시), 결과 발표까지 일수(기본 10일), 등급 마감일(기본 12/31), 사내 회차(선택), 접수 마감 리드타임(기본 7일)
+  2. 준비도 조건 5개: 연습량(10일 또는 150분), 자유 발화 평균 90단어, 긴 무음 답변당 1회 이하, 학습 점수 65점, 시험 후 모의시험 1회 60점
+  판정: 첫 시험 전에는 잠정 계획, 조건 4개 이상 통과 시 가장 빠른 날짜, 부족하면 필요한 일수만큼 늦추되 마감 전 결과가 나올 수 없으면 가장 빠른 날짜로 신청을 권합니다. 시험 직후 복기에서 고른 "막힌 주제"는 자유 발화·모의시험 우선 주제로 들어갑니다.

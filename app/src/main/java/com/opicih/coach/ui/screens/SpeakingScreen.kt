@@ -327,10 +327,14 @@ private fun ResultPanel(r: AnalyzedAttempt, ui: SpeakingUi, vm: SpeakingViewMode
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             MetricTile("발화 시간", m.pauses?.let { formatMs(it.speechMs) } ?: "측정 안 됨")
             MetricTile("2초+ 무음", m.pauses?.longPauseCount?.let { "${it}회" } ?: "-")
-            MetricTile("단어 수", "${m.discourse.wordCount}")
-            if (a.wpm > 0) MetricTile("속도", "${a.wpm} wpm")
-            MetricTile("시제", "과${m.discourse.pastCount}·현${m.discourse.presentCount}·미${m.discourse.futureCount}")
-            MetricTile("연결 표현", "${m.discourse.connectorCount}회")
+            if (a.transcript.isNotBlank()) {
+                MetricTile("단어 수", "${m.discourse.wordCount}")
+                if (a.wpm > 0) MetricTile("속도", "${a.wpm} wpm")
+                MetricTile("시제", "과${m.discourse.pastCount}·현${m.discourse.presentCount}·미${m.discourse.futureCount}")
+                MetricTile("연결 표현", "${m.discourse.connectorCount}회")
+            } else {
+                MetricTile("텍스트", "전사 없음", hint = "음향 지표만")
+            }
             m.compare?.let { MetricTile("내용 일치", "${(it.coverage * 100).toInt()}%") }
         }
         r.previous?.let { p ->

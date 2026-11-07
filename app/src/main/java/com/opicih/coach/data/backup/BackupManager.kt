@@ -34,7 +34,7 @@ class BackupManager(private val context: Context, private val db: AppDatabase) {
     @Serializable data class BError(val key: String, val category: String, val example: String, val correction: String, val count: Int, val lastSeen: Long)
     @Serializable data class BChunk(val phrase: String, val meaningKo: String, val example: String, val category: String, val srsStep: Int, val dueEpochDay: Long, val lastResult: String, val failCount: Int)
     @Serializable data class BLog(val epochDay: Long, val speakingMs: Long, val attempts: Int, val scriptsReviewed: Int, val chunksReviewed: Int, val mockDone: Boolean, val morningDone: Boolean)
-    @Serializable data class BExam(val epochDay: Long, val type: String, val resultGrade: String?, val note: String)
+    @Serializable data class BExam(val epochDay: Long, val type: String, val resultGrade: String?, val note: String, val topicsSeen: String = "", val stuckPoints: String = "", val feeling: Int = 0, val selfLevelUsed: Int = 0, val debriefAt: Long? = null)
 
     suspend fun export(uri: Uri) = withContext(Dispatchers.IO) {
         val d = db.dao()
@@ -45,7 +45,7 @@ class BackupManager(private val context: Context, private val db: AppDatabase) {
             errors = d.errors().map { BError(it.key, it.category, it.example, it.correction, it.count, it.lastSeen) },
             chunks = d.chunks().map { BChunk(it.phrase, it.meaningKo, it.example, it.category, it.srsStep, it.dueEpochDay, it.lastResult, it.failCount) },
             logs = d.dailyLogs().map { BLog(it.epochDay, it.speakingMs, it.attempts, it.scriptsReviewed, it.chunksReviewed, it.mockDone, it.morningDone) },
-            exams = d.exams().map { BExam(it.epochDay, it.type, it.resultGrade, it.note) },
+            exams = d.exams().map { BExam(it.epochDay, it.type, it.resultGrade, it.note, it.topicsSeen, it.stuckPoints, it.feeling, it.selfLevelUsed, it.debriefAt) },
         )
         context.contentResolver.openOutputStream(uri, "wt")?.use { it.write(json.encodeToString(Snapshot.serializer(), snap).toByteArray()) }
             ?: error("백업 파일을 만들 수 없습니다.")
@@ -67,7 +67,7 @@ class BackupManager(private val context: Context, private val db: AppDatabase) {
             d.insertErrors(snap.errors.map { com.opicih.coach.data.db.ErrorPatternEntity(key = it.key, category = it.category, example = it.example, correction = it.correction, count = it.count, lastSeen = it.lastSeen) })
             d.insertChunks(snap.chunks.map { com.opicih.coach.data.db.ChunkEntity(phrase = it.phrase, meaningKo = it.meaningKo, example = it.example, category = it.category, srsStep = it.srsStep, dueEpochDay = it.dueEpochDay, lastResult = it.lastResult, failCount = it.failCount) })
             d.insertDailyLogs(snap.logs.map { com.opicih.coach.data.db.DailyLogEntity(it.epochDay, it.speakingMs, it.attempts, it.scriptsReviewed, it.chunksReviewed, it.mockDone, it.morningDone) })
-            d.insertExams(snap.exams.map { com.opicih.coach.data.db.ExamEntity(epochDay = it.epochDay, type = it.type, resultGrade = it.resultGrade, note = it.note) })
+            d.insertExams(snap.exams.map { com.opicih.coach.data.db.ExamEntity(epochDay = it.epochDay, type = it.type, resultGrade = it.resultGrade, note = it.note, topicsSeen = it.topicsSeen, stuckPoints = it.stuckPoints, feeling = it.feeling, selfLevelUsed = it.selfLevelUsed, debriefAt = it.debriefAt) })
         }
         snap.scripts.size
     }

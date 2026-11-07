@@ -228,6 +228,13 @@ data class ExamEntity(
     val type: String = "FIRST",
     val resultGrade: String? = null,
     val note: String = "",
+    // Post-exam debrief (written right after the exam, before the result).
+    val topicsSeen: String = "",
+    val stuckPoints: String = "",
+    /** 1 (very hard) .. 5 (easy), 0 = not recorded */
+    val feeling: Int = 0,
+    val selfLevelUsed: Int = 0,
+    val debriefAt: Long? = null,
 )
 
 @Entity(tableName = "stories")

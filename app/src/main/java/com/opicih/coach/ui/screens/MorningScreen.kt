@@ -57,6 +57,7 @@ import kotlinx.coroutines.launch
 import java.time.LocalDate
 
 /** 5–10 minute chunk routine linked to the morning alarm. */
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 fun MorningScreen(onReviewScript: (Long) -> Unit, onDone: () -> Unit) {
     val c = LocalContainer.current
@@ -121,7 +122,7 @@ fun MorningScreen(onReviewScript: (Long) -> Unit, onDone: () -> Unit) {
                 }
             }
             Spacer(Modifier.height(10.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 FilledTonalButton(onClick = { c.tts.speak(if (item.step == MorningStep.COMPLETE && !revealed) ch.phrase else ch.example, 0.9f) }) { Icon(Icons.AutoMirrored.Filled.VolumeUp, null); Text("듣기") }
                 OutlinedButton(onClick = { c.tts.speak(ch.example, 0.7f) }) { Text("느리게") }
                 OutlinedButton(onClick = {

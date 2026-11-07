@@ -83,20 +83,21 @@ object Notifications {
         runCatching { NotificationManagerCompat.from(context).notify(ID_MORNING, b.build()) }
     }
 
-    fun showReminder(context: Context, text: String) {
+    fun showReminder(context: Context, text: String, title: String = "오늘 말하기 목표가 남았습니다", route: String = "speaking") {
         if (!canPost(context)) return
         val open = PendingIntent.getActivity(
-            context, 310, Intent(context, MainActivity::class.java).putExtra(MainActivity.EXTRA_ROUTE, "speaking"),
+            context, if (route == "speaking") 310 else 311, Intent(context, MainActivity::class.java).putExtra(MainActivity.EXTRA_ROUTE, route),
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
         val n = NotificationCompat.Builder(context, CH_REMINDER)
             .setSmallIcon(R.drawable.ic_stat_mic)
-            .setContentTitle("오늘 말하기 목표가 남았습니다")
+            .setContentTitle(title)
             .setContentText(text)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(text))
             .setContentIntent(open)
             .setAutoCancel(true)
             .build()
-        runCatching { NotificationManagerCompat.from(context).notify(ID_REMINDER, n) }
+        runCatching { NotificationManagerCompat.from(context).notify(if (route == "speaking") ID_REMINDER else ID_REMINDER + 1, n) }
     }
 
     fun cancelMorning(context: Context) = NotificationManagerCompat.from(context).cancel(ID_MORNING)

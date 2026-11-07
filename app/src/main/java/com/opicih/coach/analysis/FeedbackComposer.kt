@@ -77,6 +77,15 @@ object FeedbackComposer {
 
     /** Recording without any transcript: only acoustic facts can be reported. */
     fun acousticOnly(p: PauseMetrics): Feedback {
+        if (p.speechMs < 1500) {
+            return Feedback(
+                strengths = listOf("녹음은 정상으로 저장되었습니다. 다시 들어 보며 목소리가 들리는지 확인하세요.", "질문을 듣고 바로 시도했습니다."),
+                fixes = listOf(FixItem("말소리가 거의 감지되지 않았습니다.", "마이크가 가려졌거나 목소리가 주변 소음보다 작았을 수 있습니다.", "휴대폰 아래쪽 마이크를 입에서 20cm 정도에 두고 평소보다 조금 크게 말해 보세요.")),
+                retryMission = "같은 질문에 다시 답하세요. 첫 문장은 \"Let me tell you about...\"으로 시작합니다.",
+                score = 0, source = "LOCAL",
+                limits = listOf("텍스트 전사가 없어 내용·문법·시제 분석은 하지 않았습니다."),
+            )
+        }
         val strengths = mutableListOf<String>()
         val fixes = mutableListOf<FixItem>()
         if (p.speechMs >= 60_000) strengths += "실제 발화 시간이 ${p.speechMs / 1000}초로 충분합니다."

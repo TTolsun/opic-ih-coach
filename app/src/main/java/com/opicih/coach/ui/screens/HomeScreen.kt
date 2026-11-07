@@ -68,6 +68,7 @@ fun HomeScreen(
     onScripts: () -> Unit,
     onCoach: () -> Unit,
     onSettings: () -> Unit,
+    onNextExam: () -> Unit,
 ) {
     val c = LocalContainer.current
     val context = LocalContext.current
@@ -76,6 +77,7 @@ fun HomeScreen(
     val attempts by c.dao.attemptsFlow().collectAsState(initial = emptyList())
     val logs by c.dao.dailyLogsFlow().collectAsState(initial = emptyList())
     val mocks by c.dao.mocksFlow().collectAsState(initial = emptyList())
+    val exams by c.dao.examsFlow().collectAsState(initial = emptyList())
     val pending by c.dao.pendingRevisionsFlow().collectAsState(initial = emptyList())
     var permTick by remember { mutableIntStateOf(0) }
     val notifLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { permTick++ }
@@ -159,6 +161,24 @@ fun HomeScreen(
                 Text("총 발화 ${attempts.sumOf { if (it.speechMs > 0) it.speechMs else it.durationMs } / 60000}분", style = MaterialTheme.typography.bodyMedium)
             }
             Text("이 수치는 공식 OPIc 등급 예측이 아닙니다.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+
+        run {
+            val last = lastExamDate(s, exams, today)
+            val examRow = exams.firstOrNull { it.epochDay == last.toEpochDay() }
+            val needsDebrief = !today.isBefore(last) && examRow?.debriefAt == null && today.toEpochDay() - last.toEpochDay() <= 7
+            if (needsDebrief) Banner("${last.monthValue}/${last.dayOfMonth} 시험 복기를 남기세요 (5분). 다음 시험 계획에 바로 반영됩니다.", "복기", tone = MaterialTheme.colorScheme.secondary, onAction = onNextExam)
+            val sinceMs = last.atStartOfDay(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli()
+            val advice = com.opicih.coach.learning.RetestAdvisor.advise(today, last, rulesOf(s), ProgressCalculator.readiness(attempts, logs, last.toEpochDay(), sinceMs))
+            SectionCard(Modifier.clickable(onClick = onNextExam), title = "다음 시험", trailing = { SourceTag(advice.verdict.label) }) {
+                val rec = advice.recommended
+                val reg = advice.registerBy
+                Text(
+                    if (rec != null) "추천 ${rec.monthValue}/${rec.dayOfMonth} · 접수 ${reg?.let { "${it.monthValue}/${it.dayOfMonth}" } ?: "-"}까지 · 준비도 ${advice.gates.count { it.passed }}/${advice.gates.size}"
+                    else "마감 전 응시 가능한 날짜가 없습니다. 규칙을 확인하세요.",
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+            }
         }
 
         if (pending.isNotEmpty()) {
