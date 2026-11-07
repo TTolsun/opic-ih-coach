@@ -9,3 +9,6 @@ captures/
 .cxx/
 *.keystore
 dist/
+
+CLAUDE.md
+.claude/
