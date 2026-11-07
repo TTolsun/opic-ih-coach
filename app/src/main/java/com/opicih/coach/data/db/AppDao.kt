@@ -48,6 +48,7 @@ interface AppDao {
     @Query("SELECT * FROM attempts WHERE audioPath IS NOT NULL AND createdAt < :before")
     suspend fun attemptsWithAudioBefore(before: Long): List<PracticeAttemptEntity>
     @Query("UPDATE attempts SET audioPath = NULL WHERE id = :id") suspend fun clearAudioPath(id: Long)
+    @Delete suspend fun deleteAttempt(a: PracticeAttemptEntity)
 
     // ---- Error patterns
     @Query("SELECT * FROM error_patterns ORDER BY count DESC, lastSeen DESC") fun errorsFlow(): Flow<List<ErrorPatternEntity>>

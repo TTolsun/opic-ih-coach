@@ -211,6 +211,17 @@ class PracticeRepository(private val dao: AppDao) {
         dao.upsertDailyLog(log.copy(chunksReviewed = log.chunksReviewed + 1))
     }
 
+    /**
+     * Deletes one practice record (e.g. a test recording) with its audio file and takes its speaking time out of
+     * that day's log. Script mastery / review dates already changed by it are left as they are.
+     */
+    suspend fun deleteAttempt(a: PracticeAttemptEntity) {
+        a.audioPath?.let { runCatching { java.io.File(it).delete() } }
+        dao.deleteAttempt(a)
+        val day = java.time.Instant.ofEpochMilli(a.createdAt).atZone(java.time.ZoneId.systemDefault()).toLocalDate().toEpochDay()
+        dao.dailyLog(day)?.let { dao.upsertDailyLog(com.opicih.coach.learning.ProgressCalculator.withoutAttempt(it, a)) }
+    }
+
     suspend fun markMorningDone() {
         val today = LocalDate.now().toEpochDay()
         val log = dao.dailyLog(today) ?: DailyLogEntity(today)

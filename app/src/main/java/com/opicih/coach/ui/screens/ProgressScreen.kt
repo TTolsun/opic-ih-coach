@@ -34,6 +34,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.opicih.coach.data.db.ExamEntity
 import com.opicih.coach.data.db.MasteryState
+import com.opicih.coach.data.db.PracticeMode
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.ui.Alignment
 import com.opicih.coach.data.prefs.Settings
 import com.opicih.coach.learning.ProgressCalculator
 import com.opicih.coach.learning.RetestCalculator
@@ -52,6 +58,7 @@ import java.time.LocalDate
 fun ProgressScreen(onNextExam: () -> Unit = {}) {
     val c = LocalContainer.current
     val scope = rememberCoroutineScope()
+    var toDelete by remember { mutableStateOf<com.opicih.coach.data.db.PracticeAttemptEntity?>(null) }
     val s by c.settings.flow.collectAsState(initial = Settings())
     val attempts by c.dao.attemptsFlow().collectAsState(initial = emptyList())
     val scripts by c.dao.scriptsFlow().collectAsState(initial = emptyList())
@@ -118,6 +125,22 @@ fun ProgressScreen(onNextExam: () -> Unit = {}) {
             }
         }
 
+        SectionCard(title = "최근 연습 기록") {
+            if (attempts.isEmpty()) Text("아직 기록이 없습니다.", style = MaterialTheme.typography.bodyMedium)
+            attempts.take(15).forEach { a ->
+                Row(Modifier.fillMaxWidth().padding(vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        val t = java.time.Instant.ofEpochMilli(a.createdAt).atZone(java.time.ZoneId.systemDefault())
+                        Text("%d/%d %02d:%02d · %s · %s".format(t.monthValue, t.dayOfMonth, t.hour, t.minute, PracticeMode.of(a.mode).label, a.topic),
+                            style = MaterialTheme.typography.bodySmall)
+                        Text(if (a.transcript.isBlank()) "전사 없음 · ${a.speechMs / 1000}초" else "${a.wordCount}단어 · ${a.score}점 · ${a.transcript.take(40)}",
+                            style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+                    }
+                    IconButton(onClick = { toDelete = a }) { Icon(Icons.Filled.Delete, "기록 삭제") }
+                }
+            }
+        }
+
         SectionCard(title = "시험 결과와 재응시") {
             exams.forEach { e -> Bullet("${LocalDate.ofEpochDay(e.epochDay)} · ${e.resultGrade ?: "결과 대기"} ${e.note}") }
             val last = exams.maxByOrNull { it.epochDay }?.epochDay?.let { LocalDate.ofEpochDay(it) } ?: s.examDate
@@ -130,6 +153,16 @@ fun ProgressScreen(onNextExam: () -> Unit = {}) {
             }
         }
         Spacer(Modifier.height(16.dp))
+    }
+
+    toDelete?.let { a ->
+        AlertDialog(
+            onDismissRequest = { toDelete = null },
+            title = { Text("연습 기록 삭제") },
+            text = { Text("이 기록과 녹음 파일을 삭제하고, 그날 발화 시간에서 뺍니다. 스크립트 숙련도와 복습 일정은 그대로입니다. 되돌릴 수 없습니다.") },
+            confirmButton = { TextButton(onClick = { toDelete = null; scope.launch { c.practice.deleteAttempt(a) } }) { Text("삭제") } },
+            dismissButton = { TextButton(onClick = { toDelete = null }) { Text("취소") } },
+        )
     }
 
     if (showExam) {

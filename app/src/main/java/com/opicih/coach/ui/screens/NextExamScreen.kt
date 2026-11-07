@@ -98,8 +98,7 @@ fun NextExamScreen(onOpenSettings: () -> Unit) {
             }
             Spacer(Modifier.height(10.dp))
             advice.reasons.forEach { Bullet(it) }
-            Spacer(Modifier.height(6.dp))
-            advice.cautions.forEach { Bullet(it, color = MaterialTheme.colorScheme.tertiary, mark = "!") }
+            // Rule assumptions (unverified retake interval, register lead time) are shown once, in the rules card below.
             Spacer(Modifier.height(10.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 val rec = advice.recommended

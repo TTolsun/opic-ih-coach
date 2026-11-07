@@ -7,7 +7,6 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
-import android.util.Log
 import android.speech.RecognitionListener
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
@@ -138,7 +137,6 @@ class LiveRecognizer(private val context: Context) {
         override fun onEndOfSpeech() {}
 
         override fun onError(error: Int) {
-            Log.d(TAG, "onError $error finishing=${finishing != null}")
             finishing?.let { it.complete(Unit); return }
             val recoverable = error == SpeechRecognizer.ERROR_NO_MATCH || error == SpeechRecognizer.ERROR_SPEECH_TIMEOUT ||
                 error == SpeechRecognizer.ERROR_RECOGNIZER_BUSY || error == SpeechRecognizer.ERROR_CLIENT ||
@@ -157,7 +155,6 @@ class LiveRecognizer(private val context: Context) {
         override fun onResults(results: Bundle?) {
             consecutiveErrors = 0
             val text = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)?.firstOrNull().orEmpty()
-            Log.d(TAG, "onResults '$text'")
             if (text.isNotBlank()) segments += text.trim()
             _state.value = _state.value.copy(finalText = segments.joinToString(" "), partial = "")
             finishing?.let { it.complete(Unit); return }
@@ -167,20 +164,17 @@ class LiveRecognizer(private val context: Context) {
         override fun onSegmentResults(segmentResults: Bundle) {
             consecutiveErrors = 0
             val text = segmentResults.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)?.firstOrNull().orEmpty()
-            Log.d(TAG, "onSegmentResults '$text'")
             if (text.isNotBlank()) segments += text.trim()
             _state.value = _state.value.copy(finalText = segments.joinToString(" "), partial = "")
         }
 
         override fun onEndOfSegmentedSession() {
-            Log.d(TAG, "onEndOfSegmentedSession")
             finishing?.let { it.complete(Unit); return }
             restartSoon()
         }
 
         override fun onPartialResults(partialResults: Bundle?) {
             val text = partialResults?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)?.firstOrNull().orEmpty()
-            Log.d(TAG, "onPartial '$text'")
             _state.value = _state.value.copy(partial = text)
         }
 
@@ -188,7 +182,6 @@ class LiveRecognizer(private val context: Context) {
     }
 
     companion object {
-        private const val TAG = "OpicSTT"
         fun errorMessage(code: Int): String = when (code) {
             SpeechRecognizer.ERROR_AUDIO -> "오디오 입력 오류입니다. 다른 앱이 마이크를 사용 중인지 확인하세요."
             SpeechRecognizer.ERROR_CLIENT -> "음성 인식 클라이언트 오류입니다. 다시 시도하세요."
