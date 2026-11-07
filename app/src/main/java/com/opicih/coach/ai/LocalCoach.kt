@@ -42,7 +42,7 @@ class LocalCoach : AiCoach {
                 if (context.frequentErrors.isEmpty()) "아직 기록된 반복 오류가 없습니다. 말하기 연습을 몇 번 하면 자동으로 쌓입니다."
                 else "자주 나온 오류:\n" + context.frequentErrors.take(5).joinToString("\n") { "- $it" }
             "약" in q || "취약" in q -> if (context.weakTopics.isEmpty()) "취약 주제를 판단할 기록이 아직 부족합니다." else "지금 약한 주제: ${context.weakTopics.joinToString()}"
-            else -> "지금은 AI가 꺼져 있어서 자유 대화는 할 수 없습니다. 설정 > AI에서 Claude API 키를 입력하고 텍스트 전송에 동의하면 사용할 수 있습니다.\n오프라인으로 가능한 요청: \"돌발 질문 하나 내줘\", \"내가 반복해서 틀리는 문법이 뭐야?\", \"내 취약 주제가 뭐야?\""
+            else -> "지금은 AI가 꺼져 있어서 자유 대화는 할 수 없습니다. 설정 > AI에서 Gemini API 키를 입력하고 텍스트 전송에 동의하면 사용할 수 있습니다.\n오프라인으로 가능한 요청: \"돌발 질문 하나 내줘\", \"내가 반복해서 틀리는 문법이 뭐야?\", \"내 취약 주제가 뭐야?\""
         }
         return Result.success(reply)
     }

@@ -34,3 +34,19 @@ class GeminiParseTest {
         assertEquals(listOf("gemini-2.5-flash", "gemini-2.5-pro"), GeminiAiCoach.parseModels(body))
     }
 }
+
+class GeminiTranscriberTest {
+    @Test fun requestCarriesInlineAudioAndVerbatimPrompt() {
+        val body = com.opicih.coach.ai.GeminiTranscriber.requestBody("QUJD", "audio/wav").toString()
+        assertTrue(body.contains("\"inline_data\""))
+        assertTrue(body.contains("\"mime_type\":\"audio/wav\""))
+        assertTrue(body.contains("\"data\":\"QUJD\""))
+        assertTrue(body.contains("verbatim") && body.contains("filler"))
+        assertTrue(body.contains("\"temperature\":0.0"))
+    }
+
+    @Test fun cleansWrappers() {
+        assertEquals("Um, I went there.", com.opicih.coach.ai.GeminiTranscriber.clean("```\n\"Um, I went there.\"\n```"))
+        assertEquals("", com.opicih.coach.ai.GeminiTranscriber.clean("  "))
+    }
+}

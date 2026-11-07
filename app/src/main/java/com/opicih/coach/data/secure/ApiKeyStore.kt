@@ -18,8 +18,6 @@ import javax.crypto.spec.GCMParameterSpec
 class ApiKeyStore(context: Context) {
     enum class Provider(val prefKey: String, val label: String) {
         GEMINI("gemini", "Gemini (Google AI Studio) API 키"),
-        ANTHROPIC("anthropic", "Claude (Anthropic) API 키"),
-        OPENAI_STT("openai", "OpenAI API 키 (음성 전사 전용)"),
     }
 
     private val prefs = context.getSharedPreferences("secure_keys", Context.MODE_PRIVATE)

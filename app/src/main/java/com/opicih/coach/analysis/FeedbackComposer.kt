@@ -18,7 +18,7 @@ data class Feedback(
     val score: Int = 0,
     /** LOCAL or AI */
     val source: String = "LOCAL",
-    /** AI engine name when source == AI (Gemini / Claude). */
+    /** AI engine name when source == AI (e.g. Gemini). */
     val engine: String = "",
     val relevance: Int? = null,
     val specificity: Int? = null,

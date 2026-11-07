@@ -21,7 +21,7 @@ import java.util.concurrent.TimeUnit
 
 /**
  * Google Gemini via the REST API (generativelanguage.googleapis.com, v1beta generateContent).
- * Uses the same prompts and JSON contract as the Claude implementation, so the rest of the app does not change.
+ * Prompts and the JSON contract live in Prompts / AiJson, so another provider can be added behind AiCoach later.
  * The key comes from the user's Keystore-encrypted settings and is sent in the x-goog-api-key header, never in the URL.
  */
 class GeminiAiCoach(private val apiKey: String, private val model: String) : AiCoach {

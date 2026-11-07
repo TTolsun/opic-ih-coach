@@ -51,7 +51,6 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import com.opicih.coach.alarm.AlarmScheduler
 import com.opicih.coach.alarm.ReminderWorker
-import com.opicih.coach.data.prefs.AiProvider
 import com.opicih.coach.data.prefs.CaptureMode
 import com.opicih.coach.data.prefs.Settings
 import com.opicih.coach.data.prefs.StudyLevel
@@ -196,52 +195,39 @@ fun SettingsScreen() {
             Text("발음 정확도·억양은 측정하지 않습니다. 전용 발음 평가 엔진이 없기 때문입니다. 녹음과 TTS를 직접 비교해 들으세요.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
 
-        SectionCard(title = "AI (선택, 비용 발생)") {
-            Text("키는 APK에 포함되지 않고, 이 기기의 Android Keystore로 암호화해 저장합니다. 서버 중계 없이 기기에서 직접 호출합니다.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Text("제공자", style = MaterialTheme.typography.labelLarge)
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                AiProvider.entries.forEach { p -> Pill(p.label, s.aiProvider == p) { save { it.copy(aiProvider = p) } } }
+        SectionCard(title = "AI · Gemini (선택, 비용 발생)") {
+            Text("키는 APK에 포함되지 않고, 이 기기의 Android Keystore로 암호화해 저장합니다. 서버 중계 없이 기기에서 직접 호출합니다. Gemini 무료 등급은 입력 내용이 Google 제품 개선에 사용될 수 있고, 유료 등급은 사용되지 않습니다 (Google 약관 기준).", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            KeyField(c.keys, ApiKeyStore.Provider.GEMINI) { message = it }
+            var model by remember(s.geminiModel) { mutableStateOf(s.geminiModel) }
+            var models by remember { mutableStateOf<List<String>>(emptyList()) }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                OutlinedTextField(model, { model = it }, label = { Text("Gemini 모델 ID") }, singleLine = true, modifier = Modifier.weight(1f))
+                TextButton(enabled = model.isNotBlank() && model != s.geminiModel, onClick = { save { it.copy(geminiModel = model.trim()) } }) { Text("저장") }
             }
-            ToggleRow("AI 사용 (스크립트 개선, 답변 평가, 코치)", s.aiEnabled) { v -> save { it.copy(aiEnabled = v) } }
-            ToggleRow("답변 텍스트를 선택한 AI 제공자에 전송하는 것에 동의", s.aiTextConsent) { v -> save { it.copy(aiTextConsent = v) } }
-            when (s.aiProvider) {
-                AiProvider.GEMINI -> {
-                    Text("Gemini 무료 등급은 입력 내용이 Google 제품 개선에 사용될 수 있고, 유료 등급은 사용되지 않습니다 (Google 약관 기준).", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    KeyField(c.keys, ApiKeyStore.Provider.GEMINI) { message = it }
-                    var model by remember(s.geminiModel) { mutableStateOf(s.geminiModel) }
-                    var models by remember { mutableStateOf<List<String>>(emptyList()) }
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        OutlinedTextField(model, { model = it }, label = { Text("Gemini 모델 ID") }, singleLine = true, modifier = Modifier.weight(1f))
-                        TextButton(enabled = model.isNotBlank() && model != s.geminiModel, onClick = { save { it.copy(geminiModel = model.trim()) } }) { Text("저장") }
-                    }
-                    OutlinedButton(onClick = {
-                        val key = c.keys.get(ApiKeyStore.Provider.GEMINI)
-                        if (key == null) { message = "먼저 Gemini 키를 저장하세요." } else scope.launch {
-                            GeminiAiCoach.listModels(key)
-                                .onSuccess { models = it; message = "사용 가능한 모델 ${it.size}개를 불러왔습니다." }
-                                .onFailure { message = it.message }
-                        }
-                    }) { Text("모델 목록 불러오기 (키 확인 겸)") }
-                    FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        models.forEach { m -> Pill(m, m == s.geminiModel) { save { it.copy(geminiModel = m) } } }
-                    }
-                    Text("flash 계열은 빠르고 저렴하며, pro 계열은 평가 품질이 더 높습니다.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            OutlinedButton(onClick = {
+                val key = c.keys.get(ApiKeyStore.Provider.GEMINI)
+                if (key == null) { message = "먼저 Gemini 키를 저장하세요." } else scope.launch {
+                    GeminiAiCoach.listModels(key)
+                        .onSuccess { models = it; message = "사용 가능한 모델 ${it.size}개를 불러왔습니다." }
+                        .onFailure { message = it.message }
                 }
-                AiProvider.CLAUDE -> {
-                    KeyField(c.keys, ApiKeyStore.Provider.ANTHROPIC) { message = it }
-                    Text("모델", style = MaterialTheme.typography.labelLarge)
-                    Settings.MODEL_CHOICES.forEach { (id, label) ->
-                        Row(Modifier.fillMaxWidth().clickable { save { it.copy(aiModel = id) } }.padding(vertical = 4.dp)) {
-                            Pill(label, s.aiModel == id) { save { it.copy(aiModel = id) } }
-                        }
-                    }
-                }
+            }) { Text("모델 목록 불러오기 (키 확인 겸)") }
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                models.forEach { m -> Pill(m, m == s.geminiModel) { save { it.copy(geminiModel = m) } } }
             }
+            Text("flash 계열은 빠르고 저렴하며, pro 계열은 평가 품질이 더 높습니다.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(Modifier.height(10.dp))
-            Text("녹음 클라우드 전사 (녹음 우선 모드에서만)", style = MaterialTheme.typography.labelLarge)
-            KeyField(c.keys, ApiKeyStore.Provider.OPENAI_STT) { message = it }
-            ToggleRow("녹음 파일을 OpenAI로 보내 텍스트로 전사", s.cloudSttEnabled) { v -> save { it.copy(cloudSttEnabled = v) } }
+            Text("텍스트 분석", style = MaterialTheme.typography.labelLarge)
+            ToggleRow("AI 사용 (스크립트 개선, 답변 평가, 코치)", s.aiEnabled) { v -> save { it.copy(aiEnabled = v) } }
+            ToggleRow("답변 텍스트를 Gemini에 전송하는 것에 동의", s.aiTextConsent) { v -> save { it.copy(aiTextConsent = v) } }
+            Spacer(Modifier.height(10.dp))
+            Text("녹음 전사 (녹음 우선 모드에서만)", style = MaterialTheme.typography.labelLarge)
+            Text("녹음 파일을 Gemini로 보내 필러(um, uh)와 문법 실수를 그대로 받아 적습니다. 기기 음성 인식보다 실제 발화에 가깝습니다.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            ToggleRow("녹음 파일을 Gemini로 전사", s.cloudSttEnabled) { v -> save { it.copy(cloudSttEnabled = v) } }
             ToggleRow("원본 음성 외부 전송에 동의", s.audioUploadConsent) { v -> save { it.copy(audioUploadConsent = v) } }
+            if (s.cloudSttEnabled && s.audioUploadConsent && s.captureMode != CaptureMode.RECORD_ONLY) {
+                Banner("녹음 전사는 '녹음 우선' 캡처 방식에서만 동작합니다.", "녹음 우선으로") { save { it.copy(captureMode = CaptureMode.RECORD_ONLY) } }
+            }
         }
 
         SectionCard(title = "데이터") {

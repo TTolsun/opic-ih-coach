@@ -3,11 +3,9 @@ package com.opicih.coach
 import android.app.Application
 import android.content.Context
 import com.opicih.coach.ai.AiCoach
-import com.opicih.coach.ai.ClaudeAiCoach
 import com.opicih.coach.ai.GeminiAiCoach
-import com.opicih.coach.data.prefs.AiProvider
 import com.opicih.coach.ai.LocalCoach
-import com.opicih.coach.ai.OpenAiTranscriber
+import com.opicih.coach.ai.GeminiTranscriber
 import com.opicih.coach.ai.Transcriber
 import com.opicih.coach.alarm.AlarmScheduler
 import com.opicih.coach.alarm.Notifications
@@ -46,29 +44,21 @@ class AppContainer(context: Context) {
 
     private var cachedAi: Pair<String, AiCoach>? = null
 
-    /** Real AI only when the user enabled it, consented to sending text, and stored a key for the chosen provider. */
+    /** Real AI only when the user enabled it, consented to sending text, and stored a Gemini key. */
     fun realAi(s: Settings): AiCoach? {
         if (!s.aiEnabled || !s.aiTextConsent) return null
-        val (provider, model) = when (s.aiProvider) {
-            AiProvider.GEMINI -> ApiKeyStore.Provider.GEMINI to s.geminiModel
-            AiProvider.CLAUDE -> ApiKeyStore.Provider.ANTHROPIC to s.aiModel
-        }
-        val key = keys.get(provider) ?: return null
-        val cacheKey = s.aiProvider.name + key.takeLast(6) + model
+        val key = keys.get(ApiKeyStore.Provider.GEMINI) ?: return null
+        val cacheKey = key.takeLast(6) + s.geminiModel
         cachedAi?.let { if (it.first == cacheKey) return it.second }
-        val coach: AiCoach = when (s.aiProvider) {
-            AiProvider.GEMINI -> GeminiAiCoach(key, model)
-            AiProvider.CLAUDE -> ClaudeAiCoach(key, model)
-        }
-        return coach.also { cachedAi = cacheKey to it }
+        return GeminiAiCoach(key, s.geminiModel).also { cachedAi = cacheKey to it }
     }
 
     fun coach(s: Settings): AiCoach = realAi(s) ?: localCoach
 
     fun transcriber(s: Settings): Transcriber? {
         if (!s.cloudSttEnabled || !s.audioUploadConsent) return null
-        val key = keys.get(ApiKeyStore.Provider.OPENAI_STT) ?: return null
-        return OpenAiTranscriber(key)
+        val key = keys.get(ApiKeyStore.Provider.GEMINI) ?: return null
+        return GeminiTranscriber(key, s.geminiModel)
     }
 }
 

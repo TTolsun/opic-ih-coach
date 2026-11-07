@@ -101,7 +101,7 @@ data class ScriptEntity(
 enum class RevisionStatus { PENDING, APPROVED, REJECTED }
 
 enum class RevisionOrigin(val label: String) {
-    AI_CLAUDE("AI 생성 (Gemini/Claude)"), PREBUILT("앱 내장 개선안 (AI 작성)"), USER("직접 수정"), LOCAL("로컬 규칙 생성")
+    AI_CLAUDE("AI 생성 (Gemini)"), PREBUILT("앱 내장 개선안 (AI 작성)"), USER("직접 수정"), LOCAL("로컬 규칙 생성")
 }
 
 /** Improvement proposals. Kept separately so the original is never overwritten without approval. */

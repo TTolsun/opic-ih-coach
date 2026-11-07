@@ -79,9 +79,7 @@ dependencies {
 
     // PDF text extraction (text-based PDFs only)
     implementation("com.tom-roush:pdfbox-android:2.0.27.0")
-    // Claude API (official SDK). Only used when the user enters their own key.
-    implementation("com.anthropic:anthropic-java:3.2.0")
-    // HTTP client for the optional cloud transcription (OpenAI audio API)
+    // HTTP client for the Gemini REST API (AI coach and audio transcription)
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
 
     testImplementation("junit:junit:4.13.2")
