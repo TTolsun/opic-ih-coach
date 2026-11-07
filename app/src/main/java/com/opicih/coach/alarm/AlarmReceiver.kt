@@ -32,7 +32,11 @@ class AlarmReceiver : BroadcastReceiver() {
                         val today = LocalDate.now()
                         val due = app.container.dao.scripts().count { it.dueEpochDay <= today.toEpochDay() }
                         val focus = app.container.exams.focus()
-                        val plan = PlanGenerator.forExam(today, focus?.type, focus?.date, s.studyLevel.minutes, due, false)
+                        val dao = app.container.dao
+                        val weak = com.opicih.coach.learning.WeaknessAnalyzer.analyze(
+                            dao.attempts(), dao.errors(), com.opicih.coach.ui.screens.conversationReports(dao.trainingSessions()), System.currentTimeMillis(),
+                        )
+                        val plan = PlanGenerator.forExam(today, focus?.type, focus?.date, s.studyLevel.minutes, due, false, weak)
                         val mission = "${plan.focus.titleKo} · 약 ${plan.totalMinutes}분\n아침 표현 5분부터 시작하세요. 복습할 스크립트 ${due}개"
                         Notifications.showMorning(context, plan.dLabel, mission, s.alarmSound, s.alarmVibrate)
                         // Re-arm for tomorrow (alarms are one-shot).

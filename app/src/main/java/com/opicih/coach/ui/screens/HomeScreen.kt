@@ -182,6 +182,18 @@ fun HomeScreen(
             }
         }
 
+        if (st.weaknesses.isNotEmpty()) SectionCard(title = "가장 부족한 역량", trailing = { SourceTag("최근 14일 기록") }) {
+            st.weaknesses.forEachIndexed { i, w ->
+                Column(Modifier.fillMaxWidth().heightIn(min = 44.dp).clickable { onSpeakMode(w.competency.practiceMode) }.padding(vertical = 4.dp)) {
+                    Text("${i + 1}. ${w.competency.label}", style = MaterialTheme.typography.bodyLarge)
+                    Text(w.evidence, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+            st.plan?.weakness?.let { Text("오늘 계획의 '${it.competency.practiceTitle}' 항목이 1번 약점을 겨냥합니다.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary) }
+            Text("기기 음성 인식과 멈춤 감지로 잰 학습용 신호이며 등급 평가가 아닙니다. 발음은 측정하지 않습니다.",
+                style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+
         if (st.weak.isNotEmpty()) SectionCard(title = "취약 주제") {
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 st.weak.forEach { w -> Pill(w.topic, false) { w.scriptId?.let(onScript) ?: onSpeak() } }
