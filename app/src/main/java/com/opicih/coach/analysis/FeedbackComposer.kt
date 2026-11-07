@@ -40,6 +40,10 @@ data class AnalysisInput(
 /** Rule table that turns metrics into "잘한 점 2 / 수정 ≤3 / 미션". Labelled "로컬 분석(AI 아님)" in the UI. */
 object FeedbackComposer {
 
+    /** Cuts at a word boundary so the UI never shows half a word. */
+    fun shorten(s: String, max: Int = 60): String =
+        if (s.length <= max) s else s.take(max).substringBeforeLast(' ') + "…"
+
     fun wpm(wordCount: Int, speechMs: Long, totalMs: Long): Int {
         val ms = if (speechMs > 0) speechMs else totalMs
         return if (ms <= 0) 0 else (wordCount * 60_000L / ms).toInt()
@@ -165,7 +169,7 @@ object FeedbackComposer {
         )
         if (input.compare != null && input.compare.coverage < 0.5f) fixCandidates += 9 to FixItem(
             "스크립트 핵심 내용의 ${(input.compare.coverage * 100).toInt()}%만 말했습니다.",
-            "빠진 문장: ${input.compare.sentences.filter { !it.covered }.take(2).joinToString(" / ") { it.sentence.take(40) }}",
+            "빠진 문장: ${input.compare.sentences.filter { !it.covered }.take(2).joinToString(" / ") { shorten(it.sentence) }}",
             "Keyword 모드로 빠진 부분의 키워드만 보고 다시 말해 보세요.",
         )
         if (d.repeatedWords >= 3) fixCandidates += 4 to FixItem("같은 단어를 연달아 반복했습니다 (${d.repeatedWords}회).", "반복은 머뭇거림으로 들립니다.", "천천히 말하더라도 한 번에 말하는 연습을 하세요.")

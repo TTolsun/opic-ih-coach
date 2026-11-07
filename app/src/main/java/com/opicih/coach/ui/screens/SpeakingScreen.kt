@@ -21,6 +21,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -113,10 +115,11 @@ fun SpeakingScreen(scriptId: Long?, mode: PracticeMode?, onOpenSettings: () -> U
 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
         // Mode selector
-        Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            PracticeMode.entries.filter { it != PracticeMode.MOCK }.forEach { m ->
-                Pill(m.label, ui.mode == m) { vm.setMode(m) }
-            }
+        val modes = remember { PracticeMode.entries.filter { it != PracticeMode.MOCK } }
+        val modeRow = rememberLazyListState()
+        LaunchedEffect(ui.mode) { modeRow.animateScrollToItem(modes.indexOf(ui.mode).coerceAtLeast(0)) }
+        LazyRow(state = modeRow, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            items(modes) { m -> Pill(m.label, ui.mode == m) { vm.setMode(m) } }
         }
 
         if (micDenied) Banner("마이크 권한이 거부되었습니다. 말하기 훈련에는 마이크가 필요합니다. 권한 없이도 '직접 입력'으로 분석할 수 있습니다.", "권한 설정") {
