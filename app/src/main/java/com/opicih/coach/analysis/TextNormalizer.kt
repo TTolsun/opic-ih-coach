@@ -35,6 +35,22 @@ object TextNormalizer {
         "bathroom" to "restroom", "purchase" to "buy", "bought" to "buy", "usually" to "often", "normally" to "often",
         "begin" to "start", "kid" to "child", "children" to "child", "young" to "child", "mom" to "mother", "mum" to "mother",
         "jog" to "run", "jogging" to "run", "running" to "run", "ran" to "run", "tv" to "television",
+        // Paraphrase groups common in OPIc answers (Blind mode accepts same content in other words).
+        "autumn" to "fall", "scenery" to "view", "landscape" to "view", "sight" to "view",
+        "place" to "spot", "location" to "spot", "unique" to "special", "lovely" to "beautiful",
+        "trip" to "travel", "journey" to "travel", "traveling" to "travel", "travelling" to "travel",
+        "beach" to "coast", "shore" to "coast", "seaside" to "coast", "farming" to "farm", "farmer" to "farm",
+        "delicious" to "tasty", "yummy" to "tasty", "scared" to "afraid", "frightened" to "afraid",
+        "exhausted" to "tired", "sick" to "ill", "unwell" to "ill", "pal" to "friend", "buddy" to "friend",
+        "store" to "shop", "fond" to "love", "enjoy" to "love", "fan" to "love",
+        "chat" to "talk", "speak" to "talk", "spoke" to "talk",
+        // Irregular past forms, so "ate"/"eat" or "saw"/"see" count as the same content word.
+        "ate" to "eat", "eaten" to "eat", "saw" to "see", "seen" to "see", "felt" to "feel", "took" to "take",
+        "taken" to "take", "made" to "make", "came" to "come", "met" to "meet", "found" to "find",
+        "gave" to "give", "given" to "give", "thought" to "think", "told" to "tell", "said" to "say", "slept" to "sleep",
+        "spent" to "spend", "brought" to "bring", "caught" to "catch", "lost" to "lose", "won" to "win",
+        "drank" to "drink", "drove" to "drive", "rode" to "ride", "swam" to "swim", "sat" to "sit", "stood" to "stand",
+        "wrote" to "write", "began" to "start",
     )
 
     fun normalize(text: String): String {
