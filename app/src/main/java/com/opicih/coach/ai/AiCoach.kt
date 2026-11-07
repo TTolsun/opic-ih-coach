@@ -42,9 +42,11 @@ data class EvalInput(
 /** One question/answer pair of a SAIL practice conversation. */
 data class ConvExchange(val question: String, val answer: String)
 
-/** AI features behind one interface. ClaudeAiCoach is the real AI; LocalCoach is the offline rule-based fallback. */
+/** AI features behind one interface. GeminiAiCoach is the real AI; LocalCoach is the offline rule-based fallback. */
 interface AiCoach {
     val isRealAi: Boolean
+    /** Shown in the UI next to AI results (e.g. "Gemini"). */
+    val engineName: String get() = if (isRealAi) "AI" else "로컬"
     suspend fun improveScript(input: ScriptInput): Result<ScriptVersions>
     suspend fun evaluate(input: EvalInput): Result<Feedback>
     suspend fun chat(history: List<ChatTurn>, context: CoachContext): Result<String>

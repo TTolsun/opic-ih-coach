@@ -54,6 +54,7 @@ import com.opicih.coach.alarm.ReminderWorker
 import com.opicih.coach.data.prefs.CaptureMode
 import com.opicih.coach.data.prefs.Settings
 import com.opicih.coach.data.prefs.StudyLevel
+import com.opicih.coach.ai.GeminiAiCoach
 import com.opicih.coach.data.secure.ApiKeyStore
 import com.opicih.coach.speech.SpeechCapabilities
 import com.opicih.coach.ui.LocalContainer
@@ -109,7 +110,6 @@ fun SettingsScreen(onExams: () -> Unit = {}) {
         }
 
         SectionCard(title = "재응시 규칙 (다음 시험 추천에 사용)") {
-            Text("앱이 직접 조회할 수 없는 값입니다. 사내 공지나 접수 사이트에서 확인한 값으로 고치세요.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             NumberRow("재응시 간격(일)", s.retakeDays) { v -> save { it.copy(retakeDays = v.coerceIn(0, 120)) } }
             ToggleRow("위 간격을 공지/접수 사이트에서 확인함", s.retakeVerified) { v -> save { it.copy(retakeVerified = v) } }
             NumberRow("결과 발표까지(일)", s.resultLagDays) { v -> save { it.copy(resultLagDays = v.coerceIn(0, 60)) } }
@@ -134,7 +134,6 @@ fun SettingsScreen(onExams: () -> Unit = {}) {
         }
 
         SectionCard(title = "Background Survey 주제") {
-            Text("선택한 주제를 자유 발화와 모의시험에서 우선 출제합니다. 주제를 겹치게 고르면 준비 범위가 줄어듭니다 (응시 후기 기반 비공식 전략).", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(Modifier.height(6.dp))
             FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 SURVEY_CHOICES.forEach { t ->
@@ -144,7 +143,6 @@ fun SettingsScreen(onExams: () -> Unit = {}) {
             Spacer(Modifier.height(8.dp))
             Text("Self Assessment 난이도: ${s.selfLevel}", style = MaterialTheme.typography.labelLarge)
             Slider(s.selfLevel.toFloat(), { v -> save { it.copy(selfLevel = v.toInt()) } }, valueRange = 1f..6f, steps = 4)
-            Text("IH 목표라면 4~5단계를 많이 고릅니다 (비공식 경향). 모의시험 문항 난도에 반영됩니다.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
 
         SectionCard(title = "아침 알람") {
@@ -159,14 +157,14 @@ fun SettingsScreen(onExams: () -> Unit = {}) {
             ToggleRow("진동", s.alarmVibrate) { v -> save { it.copy(alarmVibrate = v) } }
             ToggleRow("저녁 학습 리마인더 (목표 미달 시, 일반 알림)", s.eveningReminder) { v -> save { it.copy(eveningReminder = v) } }
             if (!AlarmScheduler.canExact(context)) {
-                Banner("정확한 알람 권한이 꺼져 있습니다. 켜지 않으면 알람이 몇 분 늦을 수 있습니다.", "권한 열기") {
+                Banner("정확한 알람 권한이 꺼져 있습니다.", "권한 열기") {
                     if (Build.VERSION.SDK_INT >= 31) runCatching { context.startActivity(Intent(AndroidSettings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, Uri.parse("package:" + context.packageName))) }
                     refresh++
                 }
             }
             val pm = context.getSystemService(PowerManager::class.java)
             if (!pm.isIgnoringBatteryOptimizations(context.packageName)) {
-                Banner("삼성 절전 기능이 알람을 늦출 수 있습니다. 배터리 > 백그라운드 사용 제한에서 이 앱을 '제한 없음'으로 두세요.", "설정 열기") {
+                Banner("절전 설정이 알람을 늦출 수 있습니다.", "설정 열기") {
                     runCatching { context.startActivity(Intent(AndroidSettings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)) }
                 }
             }
@@ -190,28 +188,44 @@ fun SettingsScreen(onExams: () -> Unit = {}) {
             Text("음성 인식: ${if (cap.recognitionAvailable) "사용 가능" else "없음"} · 온디바이스: ${when (cap.onDeviceAvailable) { true -> "가능"; false -> "불가"; null -> "확인 불가(Android 12 미만)" }}", style = MaterialTheme.typography.bodySmall)
             Text("인식 서비스: ${cap.recognizerPackages.joinToString().ifBlank { "-" }}", style = MaterialTheme.typography.bodySmall)
             Text("TTS: ${c.tts.stateMessage()} (${tts.name})", style = MaterialTheme.typography.bodySmall)
-            Text("발음 정확도·억양은 측정하지 않습니다. 전용 발음 평가 엔진이 없기 때문입니다. 녹음과 TTS를 직접 비교해 들으세요.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
 
-        SectionCard(title = "AI (선택, 비용 발생)") {
-            Text("키는 APK에 포함되지 않고, 이 기기의 Android Keystore로 암호화해 저장합니다. 서버 중계 없이 기기에서 직접 호출합니다.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            KeyField(c.keys, ApiKeyStore.Provider.ANTHROPIC) { message = it }
-            ToggleRow("AI 사용 (스크립트 개선, 답변 평가, 코치)", s.aiEnabled) { v -> save { it.copy(aiEnabled = v) } }
-            ToggleRow("답변 텍스트를 Anthropic에 전송하는 것에 동의", s.aiTextConsent) { v -> save { it.copy(aiTextConsent = v) } }
-            Text("모델", style = MaterialTheme.typography.labelLarge)
-            Settings.MODEL_CHOICES.forEach { (id, label) ->
-                Row(Modifier.fillMaxWidth().clickable { save { it.copy(aiModel = id) } }.padding(vertical = 4.dp)) {
-                    Pill(label, s.aiModel == id) { save { it.copy(aiModel = id) } }
-                }
+        SectionCard(title = "AI · Gemini (선택, 비용 발생)") {
+            Text("키는 이 기기에만 암호화해 저장합니다. 무료 등급은 입력 내용이 Google 제품 개선에 쓰일 수 있고, 유료 등급은 쓰이지 않습니다.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            KeyField(c.keys, ApiKeyStore.Provider.GEMINI) { message = it }
+            var model by remember(s.geminiModel) { mutableStateOf(s.geminiModel) }
+            var models by remember { mutableStateOf<List<String>>(emptyList()) }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                OutlinedTextField(model, { model = it }, label = { Text("Gemini 모델 ID") }, singleLine = true, modifier = Modifier.weight(1f))
+                TextButton(enabled = model.isNotBlank() && model != s.geminiModel, onClick = { save { it.copy(geminiModel = model.trim()) } }) { Text("저장") }
             }
-            NumberRow("SAIL 대화 AI 호출 하루 상한 (대화당 최대 6회)", s.aiDailyCap) { v -> save { it.copy(aiDailyCap = v.coerceIn(0, 200)) } }
-            Text("오늘 사용: ${s.aiCallsToday(java.time.LocalDate.now().toEpochDay())}회. 상한에 도달하면 추가 질문은 오프라인 규칙으로 만듭니다.",
+            OutlinedButton(onClick = {
+                val key = c.keys.get(ApiKeyStore.Provider.GEMINI)
+                if (key == null) { message = "먼저 Gemini 키를 저장하세요." } else scope.launch {
+                    GeminiAiCoach.listModels(key)
+                        .onSuccess { models = it; message = "사용 가능한 모델 ${it.size}개를 불러왔습니다." }
+                        .onFailure { message = it.message }
+                }
+            }) { Text("모델 목록 불러오기") }
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                models.forEach { m -> Pill(m, m == s.geminiModel) { save { it.copy(geminiModel = m) } } }
+            }
+            Text("flash: 빠르고 저렴 · pro: 평가 품질 높음", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            NumberRow("SAIL 대화 AI 호출 하루 상한", s.aiDailyCap) { v -> save { it.copy(aiDailyCap = v.coerceIn(0, 200)) } }
+            Text("오늘 ${s.aiCallsToday(java.time.LocalDate.now().toEpochDay())}회 사용. 상한을 넘으면 추가 질문은 오프라인 규칙으로 만듭니다.",
                 style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(Modifier.height(10.dp))
-            Text("녹음 클라우드 전사 (녹음 우선 모드에서만)", style = MaterialTheme.typography.labelLarge)
-            KeyField(c.keys, ApiKeyStore.Provider.OPENAI_STT) { message = it }
-            ToggleRow("녹음 파일을 OpenAI로 보내 텍스트로 전사", s.cloudSttEnabled) { v -> save { it.copy(cloudSttEnabled = v) } }
+            Text("텍스트 분석", style = MaterialTheme.typography.labelLarge)
+            ToggleRow("AI 사용 (스크립트 개선, 답변 평가, 코치)", s.aiEnabled) { v -> save { it.copy(aiEnabled = v) } }
+            ToggleRow("답변 텍스트를 Gemini에 전송하는 것에 동의", s.aiTextConsent) { v -> save { it.copy(aiTextConsent = v) } }
+            Spacer(Modifier.height(10.dp))
+            Text("녹음 전사 (녹음 우선 모드에서만)", style = MaterialTheme.typography.labelLarge)
+            Text("필러(um, uh)와 문법 실수까지 그대로 받아 적습니다.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            ToggleRow("녹음 파일을 Gemini로 전사", s.cloudSttEnabled) { v -> save { it.copy(cloudSttEnabled = v) } }
             ToggleRow("원본 음성 외부 전송에 동의", s.audioUploadConsent) { v -> save { it.copy(audioUploadConsent = v) } }
+            if (s.cloudSttEnabled && s.audioUploadConsent && s.captureMode != CaptureMode.RECORD_ONLY) {
+                Banner("녹음 전사는 '녹음 우선' 캡처 방식에서만 동작합니다.", "녹음 우선으로") { save { it.copy(captureMode = CaptureMode.RECORD_ONLY) } }
+            }
         }
 
         SectionCard(title = "데이터") {
@@ -226,7 +240,7 @@ fun SettingsScreen(onExams: () -> Unit = {}) {
                 Button(onClick = { exportLauncher.launch("opic-coach-backup-${LocalDate.now()}.json") }) { Text("백업") }
                 OutlinedButton(onClick = { importLauncher.launch(arrayOf("application/json", "application/octet-stream", "text/plain")) }) { Text("복원") }
             }
-            Text("백업에는 스크립트, 개선안, 연습 기록, 오류 노트, 시험 일정이 들어갑니다. 녹음 파일과 API 키는 포함되지 않습니다.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("시험 일정도 백업됩니다. 녹음 파일과 API 키는 백업되지 않습니다.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             OutlinedButton(onClick = { confirmWipe = true }) { Text("모든 학습 데이터 삭제", color = MaterialTheme.colorScheme.error) }
         }
         Spacer(Modifier.height(24.dp))
@@ -280,12 +294,33 @@ private fun ToggleRow(label: String, value: Boolean, onChange: (Boolean) -> Unit
 private fun KeyField(keys: ApiKeyStore, p: ApiKeyStore.Provider, onMessage: (String) -> Unit) {
     var has by remember { mutableStateOf(keys.has(p)) }
     var input by remember { mutableStateOf("") }
+    var status by remember { mutableStateOf<String?>(null) }
+    val focus = androidx.compose.ui.platform.LocalFocusManager.current
+    fun saveKey() {
+        if (input.isBlank()) return
+        keys.set(p, input)
+        input = ""; has = true
+        status = "저장했습니다. 이 기기에 암호화되어 보관됩니다."
+        focus.clearFocus()
+        onMessage("키를 암호화해 저장했습니다.")
+    }
     Column(Modifier.padding(vertical = 6.dp)) {
-        Text(p.label + if (has) " · 저장됨" else " · 없음", style = MaterialTheme.typography.labelLarge)
+        Text(p.label + if (has) " · 저장됨" else " · 없음", style = MaterialTheme.typography.labelLarge,
+            color = if (has) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.onSurface)
         Row(verticalAlignment = Alignment.CenterVertically) {
-            OutlinedTextField(input, { input = it }, singleLine = true, visualTransformation = PasswordVisualTransformation(), placeholder = { Text(if (has) "변경하려면 새 키 입력" else "키 붙여넣기") }, modifier = Modifier.weight(1f))
-            TextButton(enabled = input.isNotBlank(), onClick = { keys.set(p, input); input = ""; has = true; onMessage("키를 암호화해 저장했습니다.") }) { Text("저장") }
-            if (has) TextButton(onClick = { keys.set(p, null); has = false; onMessage("키를 삭제했습니다.") }) { Text("삭제") }
+            OutlinedTextField(
+                input, { input = it; status = null }, singleLine = true, visualTransformation = PasswordVisualTransformation(),
+                placeholder = { Text(if (has) "변경하려면 새 키 입력" else "키 붙여넣기") }, modifier = Modifier.weight(1f),
+                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(imeAction = androidx.compose.ui.text.input.ImeAction.Done),
+                keyboardActions = androidx.compose.foundation.text.KeyboardActions(onDone = { saveKey() }),
+            )
+            Spacer(Modifier.padding(4.dp))
+            Button(enabled = input.isNotBlank(), onClick = { saveKey() }) { Text("저장") }
+            if (has && input.isBlank()) TextButton(onClick = { keys.set(p, null); has = false; status = "키를 삭제했습니다."; onMessage("키를 삭제했습니다.") }) { Text("삭제") }
+        }
+        when {
+            input.isNotBlank() -> Text("아직 저장되지 않았습니다. '저장' 또는 키보드의 완료를 누르세요.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.tertiary)
+            status != null -> Text(status!!, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
         }
     }
 }

@@ -3,9 +3,9 @@ package com.opicih.coach
 import android.app.Application
 import android.content.Context
 import com.opicih.coach.ai.AiCoach
-import com.opicih.coach.ai.ClaudeAiCoach
+import com.opicih.coach.ai.GeminiAiCoach
 import com.opicih.coach.ai.LocalCoach
-import com.opicih.coach.ai.OpenAiTranscriber
+import com.opicih.coach.ai.GeminiTranscriber
 import com.opicih.coach.ai.Transcriber
 import com.opicih.coach.alarm.AlarmScheduler
 import com.opicih.coach.alarm.Notifications
@@ -44,23 +44,23 @@ class AppContainer(context: Context) {
     val seed = SeedLoader(ctx, dao, settings)
     val localCoach = LocalCoach()
 
-    private var cachedAi: Pair<String, ClaudeAiCoach>? = null
+    private var cachedAi: Pair<String, AiCoach>? = null
 
-    /** Real AI only when the user enabled it, consented to sending text, and stored a key. Otherwise null. */
+    /** Real AI only when the user enabled it, consented to sending text, and stored a Gemini key. */
     fun realAi(s: Settings): AiCoach? {
         if (!s.aiEnabled || !s.aiTextConsent) return null
-        val key = keys.get(ApiKeyStore.Provider.ANTHROPIC) ?: return null
-        val cacheKey = key.takeLast(6) + s.aiModel
+        val key = keys.get(ApiKeyStore.Provider.GEMINI) ?: return null
+        val cacheKey = key.takeLast(6) + s.geminiModel
         cachedAi?.let { if (it.first == cacheKey) return it.second }
-        return ClaudeAiCoach(key, s.aiModel).also { cachedAi = cacheKey to it }
+        return GeminiAiCoach(key, s.geminiModel).also { cachedAi = cacheKey to it }
     }
 
     fun coach(s: Settings): AiCoach = realAi(s) ?: localCoach
 
     fun transcriber(s: Settings): Transcriber? {
         if (!s.cloudSttEnabled || !s.audioUploadConsent) return null
-        val key = keys.get(ApiKeyStore.Provider.OPENAI_STT) ?: return null
-        return OpenAiTranscriber(key)
+        val key = keys.get(ApiKeyStore.Provider.GEMINI) ?: return null
+        return GeminiTranscriber(key, s.geminiModel)
     }
 }
 

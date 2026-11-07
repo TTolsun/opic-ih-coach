@@ -28,7 +28,7 @@ enum class StudyLevel(val label: String, val minutes: Int) {
 /** How the Speaking screen captures audio. See docs/HANDOFF.md section 4. */
 enum class CaptureMode(val label: String, val description: String) {
     LIVE_STT("실시간 인식", "기기 음성 인식으로 바로 텍스트를 만듭니다. 녹음 파일은 남지 않습니다."),
-    RECORD_ONLY("녹음 우선", "녹음해서 다시 들을 수 있습니다. 텍스트는 클라우드 전사(선택) 또는 없음입니다.");
+    RECORD_ONLY("녹음 우선", "녹음해서 다시 들을 수 있습니다. 텍스트는 Gemini 전사(설정에서 켜기) 또는 없음입니다.");
 
     companion object {
         fun of(name: String?) = entries.firstOrNull { it.name == name } ?: LIVE_STT
@@ -54,7 +54,7 @@ data class Settings(
     val captureMode: CaptureMode = CaptureMode.LIVE_STT,
     val ttsRate: Float = 0.9f,
     val aiEnabled: Boolean = false,
-    val aiModel: String = DEFAULT_MODEL,
+    val geminiModel: String = "gemini-3.5-flash",
     val aiTextConsent: Boolean = false,
     val cloudSttEnabled: Boolean = false,
     val audioUploadConsent: Boolean = false,
@@ -82,14 +82,8 @@ data class Settings(
     fun slotDates(): List<LocalDate> = examSlots.mapNotNull { runCatching { LocalDate.parse(it) }.getOrNull() }.sorted()
 
     companion object {
-        val DEFAULT_EXAM: LocalDate = LocalDate.of(2026, 11, 14)
-        const val DEFAULT_MODEL = "claude-sonnet-5-5"
+        val DEFAULT_EXAM: LocalDate = LocalDate.of(2026, 11, 11)
         val DEFAULT_SURVEY = setOf("Overseas Travel", "Domestic Travel", "Movies", "Vacation", "Home & Furniture", "Park & Music")
-        val MODEL_CHOICES = listOf(
-            "claude-opus-5-5" to "Claude Opus 5.5 (품질 우선)",
-            "claude-sonnet-5-5" to "Claude Sonnet 5.5 (기본, 균형)",
-            "claude-haiku-5-5" to "Claude Haiku 5.5 (저비용)",
-        )
     }
 }
 
@@ -109,7 +103,7 @@ class SettingsRepository(private val context: Context) {
         val capture = stringPreferencesKey("capture_mode")
         val ttsRate = floatPreferencesKey("tts_rate")
         val aiOn = booleanPreferencesKey("ai_on")
-        val aiModel = stringPreferencesKey("ai_model")
+        val geminiModel = stringPreferencesKey("gemini_model")
         val aiText = booleanPreferencesKey("ai_text_consent")
         val cloudStt = booleanPreferencesKey("cloud_stt")
         val audioConsent = booleanPreferencesKey("audio_consent")
@@ -150,7 +144,7 @@ class SettingsRepository(private val context: Context) {
             p[K.capture] = s.captureMode.name
             p[K.ttsRate] = s.ttsRate
             p[K.aiOn] = s.aiEnabled
-            p[K.aiModel] = s.aiModel
+            p[K.geminiModel] = s.geminiModel
             p[K.aiText] = s.aiTextConsent
             p[K.cloudStt] = s.cloudSttEnabled
             p[K.audioConsent] = s.audioUploadConsent
@@ -188,7 +182,7 @@ class SettingsRepository(private val context: Context) {
             captureMode = CaptureMode.of(this[K.capture]),
             ttsRate = this[K.ttsRate] ?: d.ttsRate,
             aiEnabled = this[K.aiOn] ?: d.aiEnabled,
-            aiModel = this[K.aiModel] ?: d.aiModel,
+            geminiModel = this[K.geminiModel] ?: d.geminiModel,
             aiTextConsent = this[K.aiText] ?: d.aiTextConsent,
             cloudSttEnabled = this[K.cloudStt] ?: d.cloudSttEnabled,
             audioUploadConsent = this[K.audioConsent] ?: d.audioUploadConsent,

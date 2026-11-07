@@ -100,7 +100,7 @@ fun ScriptsScreen(onOpen: (Long) -> Unit, onNew: () -> Unit, onImport: () -> Uni
                 }
                 if (scripts.isEmpty()) {
                     Spacer(Modifier.height(16.dp))
-                    Text("스크립트가 없습니다. 파일을 가져오거나 직접 작성하세요.", style = MaterialTheme.typography.bodyMedium)
+                    Text("스크립트가 없습니다.", style = MaterialTheme.typography.bodyMedium)
                 }
             }
             filtered.groupBy { it.topic }.forEach { (topic, list) ->
@@ -178,7 +178,7 @@ fun ScriptDetailScreen(id: Long, onPractice: (Long, PracticeMode) -> Unit, onEdi
                 ScriptVersion.KEYWORDS -> s.keywords
             }
             if (text.isNullOrBlank()) {
-                Text("아직 승인된 ${tab.label} 버전이 없습니다. 아래 개선안을 승인하거나 'AI 개선 요청'을 누르세요.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("승인된 ${tab.label} 버전이 없습니다.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             } else {
                 Text(text, style = EnglishReading)
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -195,7 +195,6 @@ fun ScriptDetailScreen(id: Long, onPractice: (Long, PracticeMode) -> Unit, onEdi
         val pending = revisions.filter { it.status == RevisionStatus.PENDING.name }
         if (pending.isNotEmpty()) {
             Text("승인 대기 개선안", style = MaterialTheme.typography.titleMedium)
-            Text("승인 전까지 원본은 바뀌지 않습니다. 사실과 다른 디테일은 승인 후 편집에서 고치세요.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             pending.forEach { r ->
                 SectionCard(title = ScriptVersion.of(r.version).label, trailing = { SourceTag(RevisionOrigin.entries.firstOrNull { it.name == r.origin }?.label ?: r.origin) }) {
                     if (r.version != ScriptVersion.KEYWORDS.name) {
@@ -222,7 +221,7 @@ fun ScriptDetailScreen(id: Long, onPractice: (Long, PracticeMode) -> Unit, onEdi
         SectionCard(title = "AI 개선") {
             val ai = c.realAi(settings)
             Text(
-                if (ai != null) "Claude(${settings.aiModel})가 Natural / IH Target / Short / Keywords와 변경 이유를 만듭니다. 결과는 승인 대기로 저장됩니다. (API 비용 발생)"
+                if (ai != null) "${ai.engineName}가 Natural / IH Target / Short / Keywords와 변경 이유를 만듭니다. 결과는 승인 대기로 저장됩니다. (API 비용 발생)"
                 else "AI가 꺼져 있습니다. 지금은 로컬 규칙으로 Short/Keywords만 만들 수 있습니다. 설정 > AI에서 키를 입력하고 동의하면 전체 개선을 쓸 수 있습니다.",
                 style = MaterialTheme.typography.bodySmall,
             )
@@ -279,7 +278,7 @@ fun ScriptEditScreen(id: Long, onDone: (Long) -> Unit) {
     }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         if (loaded != null && loaded!!.active != ScriptVersion.ORIGINAL) {
-            Banner("현재 학습본(${loaded!!.active.label})을 편집합니다. 원본은 별도로 보존됩니다.")
+            Banner("학습본(${loaded!!.active.label}) 편집 · 원본은 보존됩니다")
         }
         OutlinedTextField(topic, { topic = it }, label = { Text("주제 (예: Movies)") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
         OutlinedTextField(title, { title = it }, label = { Text("제목") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
@@ -339,7 +338,7 @@ fun ImportScreen(onDone: () -> Unit) {
     }
 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text("TXT, Markdown, PDF(텍스트 PDF), DOCX 파일 또는 붙여넣기를 지원합니다. Google Docs는 '다운로드 > .docx 또는 .txt'로 저장한 뒤 가져오세요.", style = MaterialTheme.typography.bodySmall)
+        Text("TXT · MD · PDF · DOCX", style = MaterialTheme.typography.bodySmall)
         Button(onClick = { picker.launch(ImportService.MIME_TYPES) }, enabled = !busy) { Icon(Icons.Filled.FileOpen, null); Spacer(Modifier.width(6.dp)); Text("파일 선택") }
         OutlinedTextField(raw, { raw = it; fileName = "붙여넣기"; mime = "text/plain" }, label = { Text("또는 여기에 붙여넣기") }, minLines = 8, maxLines = 14, modifier = Modifier.fillMaxWidth())
         OutlinedButton(enabled = raw.isNotBlank() && !busy, onClick = { scope.launch { parsed = c.importer.parseText(raw, fileName) } }) { Text("분석하기") }
@@ -356,7 +355,7 @@ fun ImportScreen(onDone: () -> Unit) {
             }
             Button(onClick = {
                 scope.launch { c.scripts.importParsed(fileName, mime, raw, parsed); onDone() }
-            }, modifier = Modifier.fillMaxWidth()) { Icon(Icons.Filled.Add, null); Text("${parsed.size}개 가져오기 (원문 보존)") }
+            }, modifier = Modifier.fillMaxWidth()) { Icon(Icons.Filled.Add, null); Text("${parsed.size}개 가져오기") }
         }
     }
 }

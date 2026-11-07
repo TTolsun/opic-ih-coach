@@ -115,8 +115,7 @@ fun NextExamScreen(onOpenSettings: () -> Unit) {
             }
             Spacer(Modifier.height(10.dp))
             advice.reasons.forEach { Bullet(it) }
-            Spacer(Modifier.height(6.dp))
-            advice.cautions.forEach { Bullet(it, color = MaterialTheme.colorScheme.tertiary, mark = "!") }
+            // Rule assumptions (unverified retake interval, register lead time) are shown once, in the rules card below.
             Spacer(Modifier.height(10.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 val rec = advice.recommended
@@ -144,7 +143,7 @@ fun NextExamScreen(onOpenSettings: () -> Unit) {
         }
 
         SectionCard(title = "준비도 조건 (${advice.gates.count { it.passed }}/${advice.gates.size})") {
-            Text("${last} 이후 실제 연습 기록 기준입니다. 4개 이상 통과하면 가장 빠른 날짜를 권합니다.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("4개 이상 통과하면 가장 빠른 날짜를 권합니다.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(Modifier.height(6.dp))
             advice.gates.forEach { g ->
                 Row(Modifier.fillMaxWidth().padding(vertical = 5.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -157,7 +156,6 @@ fun NextExamScreen(onOpenSettings: () -> Unit) {
                     }
                 }
             }
-            Text("기기 음성 인식 정확도에 따라 단어 수와 점수가 실제와 다를 수 있습니다. 판단 기준은 보수적으로 잡았습니다.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
 
         SectionCard(title = "적용 중인 규칙", trailing = { OutlinedButton(onClick = onOpenSettings) { Text("수정") } }) {
@@ -183,7 +181,7 @@ private fun DebriefCard(examDate: LocalDate, today: LocalDate, row: ExamEntity?,
     val scope = rememberCoroutineScope()
     if (today.isBefore(examDate)) {
         SectionCard(title = "시험 직후 복기") {
-            Text("${examDate} 시험이 끝나면 1시간 안에 여기서 복기를 남기세요. 나온 주제와 막힌 문항은 하루만 지나도 기억이 흐려집니다.", style = MaterialTheme.typography.bodySmall)
+            Text("${examDate} 시험이 끝나면 1시간 안에 남기세요.", style = MaterialTheme.typography.bodySmall)
         }
         return
     }
@@ -226,7 +224,7 @@ private fun DebriefCard(examDate: LocalDate, today: LocalDate, row: ExamEntity?,
             }
         }) { Text("복기 저장") }
         saved?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary) }
-        Text("다음 시험에서는 Self Assessment 단계와 Survey 선택을 바꾸지 않는 것을 권합니다. 무엇이 효과가 있었는지 비교할 수 있습니다.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text("다음 시험에서도 Self Assessment와 Survey는 같게 고르세요.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 

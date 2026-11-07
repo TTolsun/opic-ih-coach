@@ -216,3 +216,15 @@ class SeedAssetsTest {
         assertTrue(c.questions.all { it.source == "USER_LIST" || it.source == "AI_GENERATED" })
     }
 }
+
+class DeleteAttemptLogTest {
+    @Test fun removesSpeakingTimeAndCounts() {
+        val log = DailyLogEntity(100, speakingMs = 90_000, attempts = 3, scriptsReviewed = 1)
+        val a = com.opicih.coach.data.db.PracticeAttemptEntity(scriptId = 5, topic = "t", questionText = "q", mode = "BLIND", speechMs = 30_000, durationMs = 40_000)
+        val r = ProgressCalculator.withoutAttempt(log, a)
+        assertEquals(60_000, r.speakingMs); assertEquals(2, r.attempts); assertEquals(0, r.scriptsReviewed)
+        // Typed answers have no speech time; never below zero.
+        val typed = a.copy(scriptId = null, speechMs = 0, durationMs = 0)
+        assertEquals(0, ProgressCalculator.withoutAttempt(DailyLogEntity(100), typed).attempts)
+    }
+}

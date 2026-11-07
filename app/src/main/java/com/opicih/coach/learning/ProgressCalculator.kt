@@ -67,6 +67,13 @@ object ProgressCalculator {
 
     fun chunkDueCount(chunks: List<ChunkEntity>, today: Long) = chunks.count { it.dueEpochDay <= today }
 
+    /** Pure: the daily log after removing one attempt that was recorded on that day. Never goes below zero. */
+    fun withoutAttempt(log: DailyLogEntity, a: PracticeAttemptEntity): DailyLogEntity = log.copy(
+        speakingMs = (log.speakingMs - (if (a.speechMs > 0) a.speechMs else a.durationMs)).coerceAtLeast(0),
+        attempts = (log.attempts - 1).coerceAtLeast(0),
+        scriptsReviewed = (log.scriptsReviewed - if (a.scriptId != null) 1 else 0).coerceAtLeast(0),
+    )
+
     /** Readiness signals since [sinceEpochMs] (normally the last exam), for RetestAdvisor. */
     fun readiness(attempts: List<PracticeAttemptEntity>, logs: List<DailyLogEntity>, sinceEpochDay: Long, sinceEpochMs: Long): RetestAdvisor.Readiness {
         val after = attempts.filter { it.createdAt >= sinceEpochMs }

@@ -34,6 +34,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.opicih.coach.data.db.ExamEntity
 import com.opicih.coach.data.db.MasteryState
+import com.opicih.coach.data.db.PracticeMode
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.ui.Alignment
 import com.opicih.coach.data.prefs.Settings
 import com.opicih.coach.learning.ProgressCalculator
 import com.opicih.coach.learning.RetestCalculator
@@ -52,6 +58,7 @@ import java.time.LocalDate
 fun ProgressScreen(onNextExam: () -> Unit = {}) {
     val c = LocalContainer.current
     val scope = rememberCoroutineScope()
+    var toDelete by remember { mutableStateOf<com.opicih.coach.data.db.PracticeAttemptEntity?>(null) }
     val s by c.settings.flow.collectAsState(initial = Settings())
     val attempts by c.dao.attemptsFlow().collectAsState(initial = emptyList())
     val regs by c.exams.flow.collectAsState(initial = emptyList())
@@ -63,8 +70,7 @@ fun ProgressScreen(onNextExam: () -> Unit = {}) {
     val today = LocalDate.now().toEpochDay()
 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-        Text("Progress", style = MaterialTheme.typography.headlineMedium)
-        Text("모든 수치는 실제 발화·복습 기록 기준입니다. 점수는 학습용 참고값이며 OPIc 공식 등급이 아닙니다.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text("기록", style = MaterialTheme.typography.headlineMedium)
 
         val totalSpeak = attempts.sumOf { if (it.speechMs > 0) it.speechMs else it.durationMs }
         val withText = attempts.filter { it.wordCount > 0 }
@@ -118,15 +124,29 @@ fun ProgressScreen(onNextExam: () -> Unit = {}) {
                     Text("→ ${e.correction}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
                 }
             }
-            Text("앱 시작 시 원본 스크립트 분석에서 나온 오류 후보 6개가 1회로 등록되어 있습니다.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+
+        SectionCard(title = "최근 연습 기록") {
+            if (attempts.isEmpty()) Text("아직 기록이 없습니다.", style = MaterialTheme.typography.bodyMedium)
+            attempts.take(15).forEach { a ->
+                Row(Modifier.fillMaxWidth().padding(vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        val t = java.time.Instant.ofEpochMilli(a.createdAt).atZone(java.time.ZoneId.systemDefault())
+                        Text("%d/%d %02d:%02d · %s · %s".format(t.monthValue, t.dayOfMonth, t.hour, t.minute, PracticeMode.of(a.mode).label, a.topic),
+                            style = MaterialTheme.typography.bodySmall)
+                        Text(if (a.transcript.isBlank()) "전사 없음 · ${a.speechMs / 1000}초" else "${a.wordCount}단어 · ${a.score}점 · ${a.transcript.take(40)}",
+                            style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+                    }
+                    IconButton(onClick = { toDelete = a }) { Icon(Icons.Filled.Delete, "기록 삭제") }
+                }
+            }
         }
 
         SectionCard(title = "시험 결과와 재응시") {
             exams.forEach { e -> Bullet("${LocalDate.ofEpochDay(e.epochDay)} · ${e.resultGrade ?: "결과 대기"} ${e.note}") }
             val last = lastExamDate(s, exams, LocalDate.now(), regs)
             Spacer(Modifier.height(6.dp))
-            Text("OPIc 재응시 가능 예상일: ${last.plusDays(s.retakeDays.toLong())} (마지막 OPIc 응시 $last + ${s.retakeDays}일${if (s.retakeVerified) "" else ", 미검증"})", style = MaterialTheme.typography.bodyMedium)
-            Banner(RetestCalculator.NOTICE)
+            Text("OPIc 다음 응시 가능: ${last.plusDays(s.retakeDays.toLong())}${if (s.retakeVerified) "" else " (미검증)"}", style = MaterialTheme.typography.bodyMedium)
             Spacer(Modifier.height(6.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Button(onClick = onNextExam) { Text("다음 시험 추천") }
@@ -134,6 +154,16 @@ fun ProgressScreen(onNextExam: () -> Unit = {}) {
             }
         }
         Spacer(Modifier.height(16.dp))
+    }
+
+    toDelete?.let { a ->
+        AlertDialog(
+            onDismissRequest = { toDelete = null },
+            title = { Text("연습 기록 삭제") },
+            text = { Text("이 기록과 녹음 파일을 삭제하고, 그날 발화 시간에서 뺍니다. 스크립트 숙련도와 복습 일정은 그대로입니다. 되돌릴 수 없습니다.") },
+            confirmButton = { TextButton(onClick = { toDelete = null; scope.launch { c.practice.deleteAttempt(a) } }) { Text("삭제") } },
+            dismissButton = { TextButton(onClick = { toDelete = null }) { Text("취소") } },
+        )
     }
 
     if (showExam) {

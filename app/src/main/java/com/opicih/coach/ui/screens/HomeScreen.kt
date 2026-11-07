@@ -15,54 +15,64 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Chat
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.automirrored.filled.MenuBook
+import androidx.compose.material.icons.filled.Assignment
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.RadioButtonUnchecked
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.WbSunny
 import androidx.compose.material3.Button
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.opicih.coach.alarm.AlarmScheduler
 import com.opicih.coach.alarm.Notifications
 import com.opicih.coach.data.db.ExamRegistrationEntity
 import com.opicih.coach.data.db.ExamType
 import com.opicih.coach.data.prefs.Settings
-import com.opicih.coach.data.repo.ExamRepository
 import com.opicih.coach.learning.DayPlan
 import com.opicih.coach.learning.ExamSchedule
-import com.opicih.coach.learning.PlanGenerator
-import com.opicih.coach.learning.ProgressCalculator
+import com.opicih.coach.learning.PlanTask
 import com.opicih.coach.learning.TaskType
-import com.opicih.coach.ui.LocalContainer
 import com.opicih.coach.ui.components.Banner
 import com.opicih.coach.ui.components.Bullet
 import com.opicih.coach.ui.components.Pill
 import com.opicih.coach.ui.components.ProgressRow
+import com.opicih.coach.ui.components.InfoButton
+import com.opicih.coach.ui.components.InfoTopics
 import com.opicih.coach.ui.components.SectionCard
 import com.opicih.coach.ui.components.SourceTag
-import java.time.LocalDate
+import java.time.Instant
+import java.time.ZoneId
 
+/**
+ * Home answers one question: "what do I do now?". The first unfinished task is the single primary button;
+ * everything else is status or a shortcut to a concrete script.
+ */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun HomeScreen(
@@ -74,172 +84,171 @@ fun HomeScreen(
     onCoach: () -> Unit,
     onSettings: () -> Unit,
     onNextExam: () -> Unit,
-    onExams: () -> Unit,
-    onSpeakMode: (String?) -> Unit,
+    onExams: () -> Unit = {},
+    /** Opens speaking with the task's PracticeMode name (null = default; SAIL_CONVERSATION = SAIL screen). */
+    onSpeakMode: (String?) -> Unit = { onSpeak() },
 ) {
-    val c = LocalContainer.current
-    val context = LocalContext.current
-    val s by c.settings.flow.collectAsState(initial = Settings())
-    val scripts by c.dao.scriptsFlow().collectAsState(initial = emptyList())
-    val attempts by c.dao.attemptsFlow().collectAsState(initial = emptyList())
-    val logs by c.dao.dailyLogsFlow().collectAsState(initial = emptyList())
-    val mocks by c.dao.mocksFlow().collectAsState(initial = emptyList())
-    val exams by c.dao.examsFlow().collectAsState(initial = emptyList())
-    val pending by c.dao.pendingRevisionsFlow().collectAsState(initial = emptyList())
-    val regs by c.exams.flow.collectAsState(initial = emptyList())
-    var permTick by remember { mutableIntStateOf(0) }
-    val notifLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { permTick++ }
-
-    val now = ExamRepository.nowKst()
-    val today = now.toLocalDate()
-    val todayDay = today.toEpochDay()
-    val due = scripts.filter { it.dueEpochDay <= todayDay }.sortedBy { it.masteryScore }
-    val mockDone = logs.any { it.mockDone && it.epochDay >= todayDay - 7 }
-    val focusExam = ExamSchedule.focus(regs, now)
-    val plan = PlanGenerator.forExam(today, focusExam?.type, focusExam?.date, s.studyLevel.minutes, due.size, mockDone)
-    val log = logs.firstOrNull { it.epochDay == todayDay }
-    val reviewGoal = plan.tasks.firstOrNull { it.type == TaskType.REVIEW }?.targetCount ?: 1
-    val completion = ProgressCalculator.todayCompletion(log, s.studyLevel.minutes, reviewGoal)
-    val streak = ProgressCalculator.streak(logs, todayDay)
-    val readiness = ProgressCalculator.ihReadiness(scripts, attempts)
-    val weak = ProgressCalculator.weakTopics(attempts, s.surveyTopics)
+    val vm: HomeViewModel = viewModel()
+    val st by vm.state.collectAsStateWithLifecycle()
+    val plan = st.plan
+    fun open(t: PlanTask) = when (t.type) {
+        TaskType.MORNING -> onMorning()
+        TaskType.MOCK -> onMock()
+        TaskType.IMPROVE -> onScripts()
+        TaskType.REVIEW, TaskType.SPEAK, TaskType.FREE, TaskType.ROLEPLAY -> onSpeakMode(t.mode)
+    }
 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
         Row(verticalAlignment = Alignment.Top) {
-            NextExamHeader(focusExam, plan, Modifier.weight(1f).clickable(onClick = onExams))
+            NextExamHeader(st.focusExam, plan?.dLabel.orEmpty(), Modifier.weight(1f).clickable(onClick = onExams))
             IconButton(onClick = onCoach) { Icon(Icons.AutoMirrored.Filled.Chat, "AI 코치") }
             IconButton(onClick = onSettings) { Icon(Icons.Filled.Settings, "설정") }
         }
 
-        ExamReviewBanner(ExamSchedule.needsReview(regs).size, onExams)
-        ExamSchedule.awaitingConfirmation(regs, now).firstOrNull()?.let { r ->
+        PermissionBanners(st.alarmNeedsExact, onSettings)
+
+        ExamReviewBanner(st.examsToReview, onExams)
+        st.awaitingConfirm?.let { r ->
             Banner("${r.type.label} ${ExamSchedule.formatWhen(r)} 시험에 응시했나요? 확인하면 다음 시험 기준으로 계획이 바뀝니다.", "확인", tone = MaterialTheme.colorScheme.secondary, onAction = onExams)
         }
-        ExamStatusCard(regs, now, s, plan, onExams)
 
-        permTick.let { }
-        if (Build.VERSION.SDK_INT >= 33 && ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
-            Banner("알림 권한이 없어 아침 알람이 표시되지 않습니다. 앱을 열면 홈 화면에서 오늘 미션을 확인할 수 있습니다.", "허용") {
-                notifLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-            }
-        } else if (!Notifications.canPost(context)) {
-            Banner("시스템 설정에서 이 앱의 알림이 꺼져 있습니다.", "설정", onAction = onSettings)
-        }
-        if (s.alarmEnabled && s.useExactAlarm && !AlarmScheduler.canExact(context)) {
-            Banner("정확한 알람 권한이 없어 알람이 몇 분 늦게 울릴 수 있습니다.", "설정", onAction = onSettings)
-        }
+        if (plan == null) return@Column
 
-        val firstTask = plan.tasks.firstOrNull { t ->
-            when (t.type) {
-                TaskType.MORNING -> log?.morningDone != true
-                TaskType.REVIEW -> (log?.scriptsReviewed ?: 0) < t.targetCount
-                TaskType.MOCK -> log?.mockDone != true
-                else -> true
-            }
-        }
-        fun open(t: com.opicih.coach.learning.PlanTask) = when (t.type) {
-            TaskType.MORNING -> onMorning(); TaskType.MOCK -> onMock(); TaskType.IMPROVE -> onScripts(); else -> onSpeakMode(t.mode)
-        }
-        Button(onClick = { firstTask?.let(::open) ?: onSpeak() }, modifier = Modifier.fillMaxWidth().height(64.dp)) {
-            Icon(Icons.Filled.Mic, null); Spacer(Modifier.width(8.dp))
-            Text(if (firstTask != null) "오늘 훈련 시작 · ${firstTask.title}" else "지금 바로 말하기", style = MaterialTheme.typography.titleMedium, maxLines = 1)
-        }
+        // 1) The one thing to do now.
+        NextActionButton(st.next, onClick = { st.next?.let { open(it) } ?: onSpeak() })
 
-        SectionCard(title = "오늘의 훈련 · ${plan.focus.titleKo}", trailing = { Text("${(completion * 100).toInt()}%", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.titleMedium) }) {
-            Text(plan.focus.detailKo, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Spacer(Modifier.height(10.dp))
-            plan.tasks.forEach { t ->
-                val done = when (t.type) {
-                    TaskType.MORNING -> log?.morningDone == true
-                    TaskType.REVIEW -> (log?.scriptsReviewed ?: 0) >= t.targetCount
-                    TaskType.MOCK -> log?.mockDone == true
-                    else -> (log?.attempts ?: 0) >= t.targetCount + (if ((log?.scriptsReviewed ?: 0) > 0) reviewGoal else 0)
-                }
+        // 2) Today's checklist (same tasks, with progress). No duplicate shortcut buttons below it.
+        SectionCard(
+            title = "오늘의 훈련 · ${plan.focus.titleKo}",
+            trailing = { Text("${(st.completion * 100).toInt()}%", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.titleMedium) },
+        ) {
+            st.tasks.forEach { ts ->
                 Row(
-                    Modifier.fillMaxWidth().clickable {
-                        open(t)
-                    }.padding(vertical = 6.dp),
+                    Modifier.fillMaxWidth().heightIn(min = 48.dp).clickable { open(ts.task) },
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Icon(if (done) Icons.Filled.CheckCircle else Icons.Filled.RadioButtonUnchecked, null,
-                        tint = if (done) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.onSurfaceVariant)
+                    Icon(
+                        if (ts.done) Icons.Filled.CheckCircle else Icons.Filled.RadioButtonUnchecked, null,
+                        tint = if (ts.done) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                     Spacer(Modifier.width(10.dp))
-                    Text(t.title, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
-                    Text("${t.minutes}분", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(
+                        ts.task.title, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f),
+                        color = if (ts.done) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
+                    )
+                    Text("${ts.task.minutes}분", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
-            Spacer(Modifier.height(4.dp))
-            Text("완료율은 실제 발화 시간과 복습 기록으로만 계산합니다.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
 
-        FilledTonalButton(onClick = onMorning, modifier = Modifier.fillMaxWidth()) {
-            Icon(Icons.Filled.WbSunny, null); Spacer(Modifier.width(8.dp)); Text(if (log?.morningDone == true) "아침 표현 루틴 (완료)" else "아침 표현 루틴 시작 (5~10분)")
+        st.debriefDue?.let { d ->
+            Banner("${d.monthValue}/${d.dayOfMonth} ${st.debriefType} 시험 복기 (5분)".replace("  ", " "), "복기", tone = MaterialTheme.colorScheme.secondary, onAction = onNextExam)
         }
 
-        SectionCard(title = "IH 준비도", trailing = { SourceTag("학습용 참고") }) {
-            ProgressRow("스크립트 숙련 + 최근 자유 발화 + 주제 범위", readiness / 100f, "$readiness / 100")
-            Spacer(Modifier.height(8.dp))
+        if (st.pendingRevisions > 0) {
+            Banner("승인 대기 개선안 ${st.pendingRevisions}개", "검토", tone = MaterialTheme.colorScheme.primary, onAction = onScripts)
+        }
+
+        // 3) Status: one card, one caveat.
+        SectionCard(title = "내 상태", trailing = { InfoButton(InfoTopics.MEASUREMENT) }) {
             Row {
-                Text("연속 학습 ", style = MaterialTheme.typography.bodyMedium)
-                Text("${streak}일", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.secondary)
-                Spacer(Modifier.weight(1f))
-                Text("총 발화 ${attempts.sumOf { if (it.speechMs > 0) it.speechMs else it.durationMs } / 60000}분", style = MaterialTheme.typography.bodyMedium)
+                Stat("연속 학습", "${st.streak}일", Modifier.weight(1f))
+                Stat("누적 발화", "${st.totalSpeakingMin}분", Modifier.weight(1f))
             }
-            Text("이 수치는 공식 OPIc 등급 예측이 아닙니다.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Spacer(Modifier.height(10.dp))
+            ProgressRow("IH 준비도", st.readiness / 100f, "${st.readiness} / 100")
         }
 
-        run {
-            val last = lastExamDate(s, exams, today, regs)
-            val sat = lastSatDate(regs, today) ?: last
-            val satType = regs.firstOrNull { it.date == sat && it.type != ExamType.UNKNOWN }?.type?.label.orEmpty()
-            val examRow = exams.firstOrNull { it.epochDay == sat.toEpochDay() }
-            val needsDebrief = !today.isBefore(sat) && examRow?.debriefAt == null && today.toEpochDay() - sat.toEpochDay() <= 7 &&
-                (sat != today || ExamSchedule.focus(regs, now)?.date != today)
-            if (needsDebrief) Banner("${sat.monthValue}/${sat.dayOfMonth} $satType 시험 복기를 남기세요 (5분). 다음 시험 계획에 바로 반영됩니다.", "복기", tone = MaterialTheme.colorScheme.secondary, onAction = onNextExam)
-            val sinceMs = last.atStartOfDay(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli()
-            val advice = com.opicih.coach.learning.RetestAdvisor.advise(today, last, rulesOf(s), ProgressCalculator.readiness(attempts, logs, last.toEpochDay(), sinceMs))
-            SectionCard(Modifier.clickable(onClick = onNextExam), title = "다음 OPIc 추천 (학습용)", trailing = { SourceTag(advice.verdict.label) }) {
-                val rec = advice.recommended
-                val reg = advice.registerBy
+        ExamStatusCard(st.regs, st.now, st.settings, plan, onExams)
+
+        st.nextExam?.let { n ->
+            SectionCard(Modifier.clickable(onClick = onNextExam), title = "다음 OPIc 추천 (학습용)", trailing = { SourceTag(n.verdict) }) {
+                val rec = n.recommended
                 Text(
-                    if (rec != null) "추천 ${rec.monthValue}/${rec.dayOfMonth} · 접수 ${reg?.let { "${it.monthValue}/${it.dayOfMonth}" } ?: "-"}까지 · 준비도 ${advice.gates.count { it.passed }}/${advice.gates.size}"
-                    else "마감 전 응시 가능한 날짜가 없습니다. 규칙을 확인하세요.",
+                    if (rec != null) "추천 ${rec.monthValue}/${rec.dayOfMonth} · 접수 ${n.registerBy?.let { "${it.monthValue}/${it.dayOfMonth}" } ?: "-"}까지 · 준비도 ${n.gatesPassed}/${n.gatesTotal}"
+                    else "응시 가능한 날짜가 없습니다",
                     style = MaterialTheme.typography.bodyMedium,
                 )
             }
         }
 
-        if (pending.isNotEmpty()) {
-            Banner("승인 대기 중인 개선안 ${pending.size}개가 있습니다. 원본은 승인 전까지 그대로 유지됩니다.", "검토", tone = MaterialTheme.colorScheme.primary, onAction = onScripts)
-        }
-
-        SectionCard(title = "복습 예정 스크립트 ${due.size}개") {
-            if (due.isEmpty()) Text("오늘 복습할 스크립트가 없습니다. 자유 발화로 응용력을 키우세요.", style = MaterialTheme.typography.bodyMedium)
-            due.take(4).forEach { sc ->
-                Row(Modifier.fillMaxWidth().clickable { onScript(sc.id) }.padding(vertical = 6.dp)) {
+        // 4) Concrete shortcuts: each opens a specific script.
+        if (st.due.isNotEmpty()) SectionCard(title = "복습 예정 스크립트 ${st.due.size}개") {
+            st.due.take(4).forEach { sc ->
+                Row(Modifier.fillMaxWidth().heightIn(min = 44.dp).clickable { onScript(sc.id) }, verticalAlignment = Alignment.CenterVertically) {
                     Text("${sc.topic} · ${sc.title}", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
                     Text(sc.mastery.label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         }
 
-        if (weak.isNotEmpty()) SectionCard(title = "취약 주제") {
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) { weak.forEach { Pill(it, false, onSpeak) } }
+        if (st.weak.isNotEmpty()) SectionCard(title = "취약 주제") {
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                st.weak.forEach { w -> Pill(w.topic, false) { w.scriptId?.let(onScript) ?: onSpeak() } }
+            }
         }
 
-        mocks.firstOrNull()?.let { m ->
-            SectionCard(title = "최근 모의시험") {
-                Text("${java.time.Instant.ofEpochMilli(m.startedAt).atZone(java.time.ZoneId.systemDefault()).toLocalDate()} · ${m.questionCount}문항 · ${if (m.finishedAt != null) "완료" else "중단"}", style = MaterialTheme.typography.bodyMedium)
-                Bullet("결과는 Mock Test 탭에서 확인합니다.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+        st.lastMock?.let { m ->
+            SectionCard(Modifier.clickable(onClick = onMock), title = "최근 모의시험", trailing = { Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, "결과 보기") }) {
+                val date = Instant.ofEpochMilli(m.startedAt).atZone(ZoneId.systemDefault()).toLocalDate()
+                Text("$date · ${m.questionCount}문항 · ${if (m.finishedAt != null) "완료" else "중단"}", style = MaterialTheme.typography.bodyMedium)
             }
         }
         Spacer(Modifier.height(16.dp))
     }
 }
 
+@Composable
+private fun NextActionButton(next: PlanTask?, onClick: () -> Unit) {
+    val (icon, label) = when (next?.type) {
+        null -> Icons.Filled.Mic to "자유 발화 더 하기"
+        TaskType.MORNING -> Icons.Filled.WbSunny to "${next.title} 시작 · ${next.minutes}분"
+        TaskType.MOCK -> Icons.Filled.Assignment to "${next.title} 시작"
+        TaskType.IMPROVE -> Icons.AutoMirrored.Filled.MenuBook to "${next.title} · ${next.minutes}분"
+        else -> Icons.Filled.Mic to "${next.title} · ${next.minutes}분"
+    }
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(if (next == null) "오늘 완료" else "지금 할 일", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        BigButton(icon, label, onClick)
+    }
+}
+
+@Composable
+private fun BigButton(icon: ImageVector, label: String, onClick: () -> Unit) {
+    Button(onClick = onClick, modifier = Modifier.fillMaxWidth().heightIn(min = 64.dp)) {
+        Icon(icon, null); Spacer(Modifier.width(8.dp)); Text(label, style = MaterialTheme.typography.titleMedium)
+    }
+}
+
+@Composable
+private fun Stat(label: String, value: String, modifier: Modifier = Modifier) {
+    Column(modifier) {
+        Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(value, style = MaterialTheme.typography.titleLarge)
+    }
+}
+
+@Composable
+private fun PermissionBanners(alarmNeedsExact: Boolean, onSettings: () -> Unit) {
+    val context = LocalContext.current
+    var permTick by remember { mutableIntStateOf(0) }
+    val notifLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { permTick++ }
+    // key(permTick) re-runs the permission checks after the system dialog closes.
+    key(permTick) {
+    if (Build.VERSION.SDK_INT >= 33 && ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+        Banner("아침 알람을 받으려면 알림을 허용하세요.", "허용") { notifLauncher.launch(Manifest.permission.POST_NOTIFICATIONS) }
+    } else if (!Notifications.canPost(context)) {
+        Banner("알림이 꺼져 있습니다.", "설정", onAction = onSettings)
+    }
+    if (alarmNeedsExact && !AlarmScheduler.canExact(context)) {
+        Banner("알람이 몇 분 늦을 수 있습니다.", "설정", onAction = onSettings)
+    }
+    }
+}
+
 /** Top of Home: the nearest registered exam. Nothing here is a recommendation. */
 @Composable
-private fun NextExamHeader(r: ExamRegistrationEntity?, plan: DayPlan, modifier: Modifier) {
+private fun NextExamHeader(r: ExamRegistrationEntity?, dLabel: String, modifier: Modifier) {
     Column(modifier) {
         if (r == null) {
             Text("등록된 다음 시험 없음", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -248,7 +257,7 @@ private fun NextExamHeader(r: ExamRegistrationEntity?, plan: DayPlan, modifier: 
         }
         Text("Next Exam: ${r.type.label}", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Text(ExamSchedule.formatWhen(r), style = MaterialTheme.typography.titleMedium)
-        Text(plan.dLabel, style = MaterialTheme.typography.displaySmall, color = MaterialTheme.colorScheme.primary)
+        Text(dLabel, style = MaterialTheme.typography.displaySmall, color = MaterialTheme.colorScheme.primary)
         if (r.location.isNotBlank()) Text(r.location, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         val start = r.startTime
         if (r.type == ExamType.SAIL && start != null) {

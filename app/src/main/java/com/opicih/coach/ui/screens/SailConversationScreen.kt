@@ -85,7 +85,7 @@ fun SailConversationScreen(vm: SailConversationViewModel = viewModel()) {
                 Text("대화 길이", style = MaterialTheme.typography.labelLarge)
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) { (3..5).forEach { n -> Pill("${n}턴", ui.targetTurns == n) { vm.setTurns(n) } } }
                 Spacer(Modifier.height(8.dp))
-                Bullet(if (ui.aiAvailable) "추가 질문: Claude AI (대화당 최대 6회 호출, 하루 상한은 설정값)" else "추가 질문: 오프라인 규칙 (AI 꺼짐, 비용 없음)")
+                Bullet(if (ui.aiAvailable) "추가 질문: Gemini AI (대화당 최대 6회 호출, 하루 상한은 설정값)" else "추가 질문: 오프라인 규칙 (AI 꺼짐, 비용 없음)")
                 Bullet("질문이 끝나면 마이크가 자동으로 켜집니다. 답을 마치면 정지 버튼을 누르세요.")
                 Bullet("이 화면은 녹음 파일을 남기지 않는 실시간 인식만 사용합니다.")
                 Spacer(Modifier.height(10.dp))
@@ -189,7 +189,7 @@ private fun ReportCard(r: ConversationReport, turns: List<ConvTurn>, aiCalls: In
         r.fixes.forEach { Bullet(it, color = MaterialTheme.colorScheme.tertiary, mark = "!") }
     }
     r.aiSummary?.let { s ->
-        SectionCard(title = "Claude 종합 피드백", trailing = { SourceTag("AI · 호출 ${aiCalls}회") }) { Text(s, style = MaterialTheme.typography.bodyMedium) }
+        SectionCard(title = "Gemini 종합 피드백", trailing = { SourceTag("AI · 호출 ${aiCalls}회") }) { Text(s, style = MaterialTheme.typography.bodyMedium) }
     }
     SectionCard(title = "대화 기록") { turns.forEach { TurnRow(it) } }
     SectionCard(title = "측정 한계") { r.limits.forEach { Bullet(it, color = MaterialTheme.colorScheme.onSurfaceVariant) } }

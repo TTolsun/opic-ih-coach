@@ -44,7 +44,7 @@ fun SectionCard(
 ) {
     Surface(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(16.dp),
         color = MaterialTheme.colorScheme.surfaceContainerLow,
         border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
     ) {
@@ -94,7 +94,7 @@ fun Pill(text: String, selected: Boolean, onClick: () -> Unit) {
 fun MetricTile(label: String, value: String, modifier: Modifier = Modifier, hint: String? = null) {
     Column(
         modifier
-            .clip(RoundedCornerShape(14.dp))
+            .clip(RoundedCornerShape(16.dp))
             .background(MaterialTheme.colorScheme.surfaceContainerHigh)
             .padding(horizontal = 12.dp, vertical = 10.dp)
     ) {
@@ -162,7 +162,7 @@ fun Bullet(text: String, color: Color = MaterialTheme.colorScheme.onSurface, mar
 @Composable
 fun Banner(text: String, action: String? = null, tone: Color = MaterialTheme.colorScheme.tertiary, onAction: () -> Unit = {}) {
     Row(
-        Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(tone.copy(alpha = 0.14f)).padding(12.dp),
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(tone.copy(alpha = 0.14f)).padding(12.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {

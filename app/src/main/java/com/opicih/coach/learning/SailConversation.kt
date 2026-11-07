@@ -14,7 +14,7 @@ import kotlinx.serialization.Serializable
 enum class QuestionOrigin(val label: String) {
     SEED("기본 질문"),
     DEBRIEF("내 시험 복기"),
-    AI("Claude AI"),
+    AI("Gemini AI"),
     LOCAL_RULE("로컬 규칙 (AI 아님)"),
 }
 

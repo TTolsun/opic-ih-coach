@@ -35,6 +35,7 @@ import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.SkipNext
+import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -114,21 +115,15 @@ fun SpeakingScreen(scriptId: Long?, mode: PracticeMode?, onOpenSettings: () -> U
     var showTyped by remember { mutableStateOf(false) }
 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-        // Mode selector
-        val modes = remember { PracticeMode.entries.filter { it != PracticeMode.MOCK && it != PracticeMode.SAIL_CONVERSATION } }
-        val modeRow = rememberLazyListState()
-        LaunchedEffect(ui.mode) { modeRow.animateScrollToItem(modes.indexOf(ui.mode).coerceAtLeast(0)) }
-        LazyRow(state = modeRow, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            items(modes) { m -> Pill(m.label, ui.mode == m) { vm.setMode(m) } }
-        }
+        ModeSelector(ui.mode) { vm.setMode(it) }
 
-        if (micDenied) Banner("마이크 권한이 거부되었습니다. 말하기 훈련에는 마이크가 필요합니다. 권한 없이도 '직접 입력'으로 분석할 수 있습니다.", "권한 설정") {
+        if (micDenied) Banner("마이크 권한이 필요합니다.", "권한 설정") {
             context.startActivity(Intent(AndroidSettings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:" + context.packageName)))
         }
 
         val q = ui.question
         if (q == null) {
-            SectionCard { Text("질문을 불러오는 중입니다. 스크립트가 없으면 Scripts 탭에서 추가하세요.") }
+            SectionCard { Text("질문을 불러오는 중입니다.") }
             return@Column
         }
 
@@ -143,8 +138,7 @@ fun SpeakingScreen(scriptId: Long?, mode: PracticeMode?, onOpenSettings: () -> U
             if (ui.mode == PracticeMode.BLIND && ui.phase != Phase.RESULT) {
                 var reveal by remember(q.text) { mutableStateOf(false) }
                 if (reveal) Text(q.text, style = EnglishReading)
-                else Text("질문을 듣고 답하세요. (실제 시험처럼 텍스트 없이) · 탭해서 질문 보기", style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.clickable { reveal = true })
+                else OutlinedButton(onClick = { reveal = true }) { Icon(Icons.Filled.Visibility, null); Spacer(Modifier.width(6.dp)); Text("질문 보기") }
             } else {
                 Text(q.text, style = EnglishReading)
             }
@@ -160,7 +154,6 @@ fun SpeakingScreen(scriptId: Long?, mode: PracticeMode?, onOpenSettings: () -> U
                 if (ui.mode.usesScript) IconButton(onClick = { showPicker = true }) { Icon(Icons.Filled.List, "스크립트 선택") }
                 IconButton(onClick = { vm.next() }) { Icon(Icons.Filled.SkipNext, "다음 질문") }
             }
-            if (ui.replays > 1) Text("재청취 ${ui.replays - 1}회. 실제 시험에서는 질문 재청취가 제한적이니 첫 번에 듣는 연습도 하세요.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
 
         // Mode-specific support panel
@@ -169,14 +162,14 @@ fun SpeakingScreen(scriptId: Long?, mode: PracticeMode?, onOpenSettings: () -> U
         // Mic area
         Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
             when (ui.phase) {
-                Phase.PROCESSING -> { CircularProgressIndicator(); Text("분석 중입니다...", style = MaterialTheme.typography.bodyMedium) }
+                Phase.PROCESSING -> { CircularProgressIndicator(); Text("분석 중", style = MaterialTheme.typography.bodyMedium) }
                 else -> {
                     MicButton(recording = ui.phase == Phase.RECORDING) { onMic() }
                     Text(
                         when (ui.phase) {
-                            Phase.RECORDING -> "${formatMs(ui.elapsedMs)} · 다시 누르면 멈추고 분석"
+                            Phase.RECORDING -> "${formatMs(ui.elapsedMs)} · 눌러서 끝내기"
                             Phase.RESULT -> "다시 말하기"
-                            else -> "눌러서 바로 말하기 · ${ui.captureMode.label}"
+                            else -> "눌러서 말하기"
                         },
                         style = MaterialTheme.typography.labelLarge,
                     )
@@ -185,22 +178,17 @@ fun SpeakingScreen(scriptId: Long?, mode: PracticeMode?, onOpenSettings: () -> U
             if (ui.phase == Phase.RECORDING) {
                 LevelBar(ui.level, Modifier.fillMaxWidth(0.6f))
                 if (ui.liveText.isNotBlank()) Text(ui.liveText, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                if (ui.captureMode == CaptureMode.RECORD_ONLY) Text("녹음 우선 모드: 텍스트는 끝난 뒤 만들어집니다.", style = MaterialTheme.typography.labelSmall)
-                if (ui.elapsedMs in 60_000..65_000) Text("1분 경과. IH 목표 답변은 1~2분입니다.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
+                if (ui.elapsedMs in 60_000..65_000) Text("1분 · 목표 1~2분", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.secondary)
             }
             if (ui.phase == Phase.IDLE || ui.showTypedFallback) {
-                TextButton(onClick = { showTyped = true }) { Icon(Icons.Filled.Edit, null); Spacer(Modifier.width(4.dp)); Text("인식 실패 시: 말한 내용 직접 입력") }
+                TextButton(onClick = { showTyped = true }) { Icon(Icons.Filled.Edit, null); Spacer(Modifier.width(4.dp)); Text("직접 입력") }
             }
         }
 
         ui.error?.let { Banner(it, "닫기", tone = MaterialTheme.colorScheme.error) { vm.dismissError() } }
 
-        ui.result?.let { ResultPanel(it, ui, vm) }
+        ui.result?.let { ResultPanel(it, ui, vm, onRetry = { onMic() }) }
 
-        if (ui.captureMode == CaptureMode.LIVE_STT && ui.phase == Phase.IDLE && ui.result == null) {
-            Text("실시간 인식은 녹음 파일을 남기지 않습니다. 녹음을 다시 들으려면 설정에서 '녹음 우선'을 선택하세요.",
-                style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.clickable { onOpenSettings() })
-        }
         Spacer(Modifier.height(24.dp))
     }
 
@@ -226,8 +214,6 @@ fun SpeakingScreen(scriptId: Long?, mode: PracticeMode?, onOpenSettings: () -> U
             title = { Text("말한 내용 입력") },
             text = {
                 Column {
-                    Text("음성 인식이 실패했을 때 사용하세요. 입력한 텍스트로 내용·구조를 분석합니다. 유창성(무음)은 측정되지 않습니다.", style = MaterialTheme.typography.bodySmall)
-                    Spacer(Modifier.height(8.dp))
                     OutlinedTextField(text, { text = it }, minLines = 5, modifier = Modifier.fillMaxWidth())
                 }
             },
@@ -251,7 +237,7 @@ private fun ModePanel(ui: SpeakingUi, vm: SpeakingViewModel) {
         PracticeMode.SHADOWING -> {
             val sentences = vm.shadowSentences()
             val cur = sentences.getOrNull(ui.shadowIndex).orEmpty()
-            SectionCard(title = "Shadowing ${ui.shadowIndex + 1}/${sentences.size}") {
+            SectionCard(title = "${ui.shadowIndex + 1} / ${sentences.size}") {
                 Text(cur, style = EnglishReading)
                 Spacer(Modifier.height(8.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -262,13 +248,12 @@ private fun ModePanel(ui: SpeakingUi, vm: SpeakingViewModel) {
                     Spacer(Modifier.weight(1f))
                     IconButton(onClick = { vm.shadowMove(1) }) { Icon(Icons.AutoMirrored.Filled.ArrowForward, "다음 문장") }
                 }
-                Text("듣고 바로 같은 속도로 따라 말한 뒤 마이크를 누르세요. 이 문장과 비교합니다.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
         PracticeMode.FILL_BLANK -> {
             val words = remember(text) { text.split(Regex("(?<=\\s)|(?=\\s)")) }
             val revealed = remember(text) { mutableStateListOf<Int>() }
-            SectionCard(title = "빈칸 채우기", trailing = { ModelButtons(vm, text) }) {
+            SectionCard(trailing = { ModelButtons(vm, text) }) {
                 FlowRow {
                     var contentIdx = 0
                     words.forEachIndexed { i, w ->
@@ -281,19 +266,11 @@ private fun ModePanel(ui: SpeakingUi, vm: SpeakingViewModel) {
                         } else Text(w, style = EnglishReading)
                     }
                 }
-                Text("빈칸을 떠올리며 전체를 소리 내어 말하세요. 막히면 빈칸을 탭해서 확인합니다.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
-        PracticeMode.KEYWORD -> SectionCard(title = "키워드만 보고 말하기") {
+        PracticeMode.KEYWORD -> SectionCard(trailing = { if (s.keywords == null) SourceTag("자동 추출") }) {
             val kws = s.keywordList().ifEmpty { com.opicih.coach.analysis.ScriptComparator.pickKeywords(text, 5) }
             kws.forEachIndexed { i, k -> Bullet(k, mark = "${i + 1}") }
-            if (s.keywords == null) Text("승인된 Keywords 버전이 없어 자동 추출했습니다. Scripts에서 Keywords 개선안을 승인하세요.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-        PracticeMode.BLIND, PracticeMode.RANDOM -> SectionCard {
-            Text("스크립트 없이 답하세요. 순서가 달라도, 표현이 달라도 같은 내용이면 인정합니다.", style = MaterialTheme.typography.bodyMedium)
-        }
-        PracticeMode.VARIATION -> SectionCard {
-            Text("암기한 내용을 바꿔서 응용합니다. 미션 조건(시제/질문)을 지켰는지 함께 확인합니다.", style = MaterialTheme.typography.bodyMedium)
         }
         else -> Unit
     }
@@ -306,101 +283,3 @@ private fun ModelButtons(vm: SpeakingViewModel, text: String) {
         TextButton(onClick = { vm.speakText(text, 0.75f) }) { Text("0.75x") }
     }
 }
-
-@OptIn(ExperimentalLayoutApi::class)
-@Composable
-private fun ResultPanel(r: AnalyzedAttempt, ui: SpeakingUi, vm: SpeakingViewModel) {
-    val fb = r.feedback
-    val a = r.attempt
-    val m = r.metrics
-    SectionCard(
-        title = "결과",
-        trailing = { SourceTag(if (fb.source == "AI") "AI 분석 (Claude)" else "로컬 분석 (AI 아님)", if (fb.source == "AI") MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant) },
-    ) {
-        if (a.transcript.isNotBlank() || fb.score > 0) {
-            Row(verticalAlignment = Alignment.Bottom) {
-                Text("${fb.score}", style = MaterialTheme.typography.displaySmall, color = MaterialTheme.colorScheme.primary)
-                Spacer(Modifier.width(8.dp))
-                Text("학습용 참고 점수 · OPIc 공식 등급과 무관", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(bottom = 8.dp))
-            }
-        }
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            MetricTile("발화 시간", m.pauses?.let { formatMs(it.speechMs) } ?: "측정 안 됨")
-            MetricTile("2초+ 무음", m.pauses?.longPauseCount?.let { "${it}회" } ?: "-")
-            if (a.transcript.isNotBlank()) {
-                MetricTile("단어 수", "${m.discourse.wordCount}")
-                if (a.wpm > 0) MetricTile("속도", "${a.wpm} wpm")
-                MetricTile("시제", "과${m.discourse.pastCount}·현${m.discourse.presentCount}·미${m.discourse.futureCount}")
-                MetricTile("연결 표현", "${m.discourse.connectorCount}회")
-            } else {
-                MetricTile("텍스트", "전사 없음", hint = "음향 지표만")
-            }
-            m.compare?.let { MetricTile("내용 일치", "${(it.coverage * 100).toInt()}%") }
-        }
-        r.previous?.let { p ->
-            Spacer(Modifier.height(10.dp))
-            val dScore = a.score - p.score
-            val dWords = a.wordCount - p.wordCount
-            val dPause = a.longPauseCount - p.longPauseCount
-            Banner(
-                "이전 시도 대비: 점수 ${signed(dScore)}, 단어 ${signed(dWords)}, 긴 무음 ${signed(dPause)}회" +
-                    when { dScore > 0 && dWords >= 0 -> " · 좋아졌습니다."; dScore < 0 -> " · 이번엔 조금 떨어졌습니다."; else -> "" },
-                tone = if (dScore >= 0) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.tertiary,
-            )
-        }
-        Spacer(Modifier.height(12.dp))
-        Text("잘한 점", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.secondary)
-        fb.strengths.forEach { Bullet(it) }
-        if (fb.fixes.isNotEmpty()) {
-            Spacer(Modifier.height(8.dp))
-            Text("우선 고칠 점", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.tertiary)
-            fb.fixes.forEachIndexed { i, f ->
-                Column(Modifier.padding(vertical = 4.dp)) {
-                    Text("${i + 1}. ${f.issue}", fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium)
-                    if (f.why.isNotBlank()) Text(f.why, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    if (f.better.isNotBlank()) Text("→ ${f.better}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
-                }
-            }
-        }
-        m.compare?.let { cmp ->
-            val missing = cmp.sentences.filter { !it.covered }
-            if (missing.isNotEmpty()) {
-                Spacer(Modifier.height(8.dp))
-                Text("빠진 내용", style = MaterialTheme.typography.titleSmall)
-                missing.take(4).forEach { Bullet(it.sentence, color = MaterialTheme.colorScheme.onSurfaceVariant) }
-            }
-        }
-        val better = fb.betterAnswer.ifBlank { ui.question?.script?.studyText.orEmpty() }
-        if (better.isNotBlank()) {
-            Spacer(Modifier.height(8.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(if (fb.betterAnswer.isNotBlank()) "더 자연스러운 답변 예시 (AI)" else "학습본 다시 보기", style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
-                IconButton(onClick = { vm.speakText(better, 0.9f) }) { Icon(Icons.AutoMirrored.Filled.VolumeUp, "듣기") }
-            }
-            Text(better, style = MaterialTheme.typography.bodyMedium)
-        }
-        Spacer(Modifier.height(10.dp))
-        Banner("다시 말하기 미션: ${fb.retryMission}", tone = MaterialTheme.colorScheme.primary)
-        if (a.transcript.isNotBlank()) {
-            Spacer(Modifier.height(10.dp))
-            Text("인식된 내 답변", style = MaterialTheme.typography.titleSmall)
-            Text(a.transcript, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-        Spacer(Modifier.height(8.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            if (a.audioPath != null) {
-                FilledTonalButton(onClick = { vm.playRecording(1.0f) }) { Icon(Icons.Filled.PlayArrow, null); Text("내 녹음") }
-                OutlinedButton(onClick = { vm.playRecording(0.75f) }) { Text("0.75x") }
-            }
-            OutlinedButton(onClick = { vm.next() }) { Icon(Icons.Filled.Refresh, null); Text("다음 질문") }
-        }
-        if (fb.limits.isNotEmpty()) {
-            var open by remember { mutableStateOf(false) }
-            Spacer(Modifier.height(8.dp))
-            Text(if (open) "측정 한계 접기" else "측정 한계 보기", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.clickable { open = !open })
-            if (open) fb.limits.forEach { Bullet(it, color = MaterialTheme.colorScheme.onSurfaceVariant) }
-        }
-    }
-}
-
-private fun signed(v: Int) = if (v > 0) "+$v" else "$v"
