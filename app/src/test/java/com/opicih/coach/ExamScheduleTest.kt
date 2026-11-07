@@ -198,7 +198,8 @@ class ExamPlanTest {
         assertEquals(listOf(5, 5, 10, 5, 5), p.tasks.map { it.minutes })
         assertEquals(TaskType.MORNING, p.tasks[0].type)
         assertEquals("KEYWORD", p.tasks[1].mode)
-        assertTrue(p.tasks.drop(2).all { it.mode == "FREE" })
+        assertEquals("SAIL_CONVERSATION", p.tasks[2].mode)
+        assertTrue(p.tasks.drop(3).all { it.mode == "FREE" })
     }
 
     @Test fun lightDayAndWarmupStayShort() {

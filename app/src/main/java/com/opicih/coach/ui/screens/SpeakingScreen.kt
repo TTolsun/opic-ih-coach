@@ -115,7 +115,7 @@ fun SpeakingScreen(scriptId: Long?, mode: PracticeMode?, onOpenSettings: () -> U
 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
         // Mode selector
-        val modes = remember { PracticeMode.entries.filter { it != PracticeMode.MOCK } }
+        val modes = remember { PracticeMode.entries.filter { it != PracticeMode.MOCK && it != PracticeMode.SAIL_CONVERSATION } }
         val modeRow = rememberLazyListState()
         LaunchedEffect(ui.mode) { modeRow.animateScrollToItem(modes.indexOf(ui.mode).coerceAtLeast(0)) }
         LazyRow(state = modeRow, horizontalArrangement = Arrangement.spacedBy(8.dp)) {

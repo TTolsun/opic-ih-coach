@@ -190,9 +190,12 @@ fun HomeScreen(
 
         run {
             val last = lastExamDate(s, exams, today, regs)
-            val examRow = exams.firstOrNull { it.epochDay == last.toEpochDay() }
-            val needsDebrief = !today.isBefore(last) && examRow?.debriefAt == null && today.toEpochDay() - last.toEpochDay() <= 7
-            if (needsDebrief) Banner("${last.monthValue}/${last.dayOfMonth} 시험 복기를 남기세요 (5분). 다음 시험 계획에 바로 반영됩니다.", "복기", tone = MaterialTheme.colorScheme.secondary, onAction = onNextExam)
+            val sat = lastSatDate(regs, today) ?: last
+            val satType = regs.firstOrNull { it.date == sat && it.type != ExamType.UNKNOWN }?.type?.label.orEmpty()
+            val examRow = exams.firstOrNull { it.epochDay == sat.toEpochDay() }
+            val needsDebrief = !today.isBefore(sat) && examRow?.debriefAt == null && today.toEpochDay() - sat.toEpochDay() <= 7 &&
+                (sat != today || ExamSchedule.focus(regs, now)?.date != today)
+            if (needsDebrief) Banner("${sat.monthValue}/${sat.dayOfMonth} $satType 시험 복기를 남기세요 (5분). 다음 시험 계획에 바로 반영됩니다.", "복기", tone = MaterialTheme.colorScheme.secondary, onAction = onNextExam)
             val sinceMs = last.atStartOfDay(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli()
             val advice = com.opicih.coach.learning.RetestAdvisor.advise(today, last, rulesOf(s), ProgressCalculator.readiness(attempts, logs, last.toEpochDay(), sinceMs))
             SectionCard(Modifier.clickable(onClick = onNextExam), title = "다음 OPIc 추천 (학습용)", trailing = { SourceTag(advice.verdict.label) }) {

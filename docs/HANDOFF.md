@@ -40,7 +40,10 @@
 - A1 완료: Room v3(`exam_registrations`, `exam_status_events`, `exam_training_sessions`, `attempts.trainingSessionId`), 사용자 확인 시험 데이터 1회 등록, 홈 다음 시험 헤더·시험 현황, 시험 일정 화면, SAIL D-day 계획, 백업 v2.
 - 고친 결함: 다음 시험 화면이 추천일을 `Settings.examDate`에 덮어쓰던 문제. 이제 추천일은 OPIc "접수 예정 (미확정)" 기록으로만 추가됩니다.
 - `Settings.examDate`는 더 이상 계획에 쓰지 않습니다. 모든 화면은 `ExamRepository.focus()`를 씁니다.
-- 다음: A2 SAIL 대화 시뮬레이터. 그 뒤 B단계(정답 데이터 B0 먼저).
+- A2 완료: SAIL 대화 연습 화면(`sail` 라우트, 홈의 SAIL 계획 항목에서 연결), 오프라인 추가 질문 규칙, Claude 추가 질문·종합 피드백(비용 상한), SAIL 시험 복기와 복기 질문 재사용.
+- 에뮬레이터에서 찾아 고친 문제: (1) TTS 엔진이 처음 쓰일 때 초기화 중이라 첫 질문을 읽지 못함 → 최대 4초 대기. (2) "we had a problem"이 과거 경험 규칙에 걸려 어색한 질문이 나옴 → 문제 상황 규칙 우선.
+- 아직 없음: 대화 결과의 취약 역량(`weakCompetencies`)을 다음 날 계획에 반영하는 연결(C단계), 시험 당일 입실 알림.
+- 다음: B단계(정답 데이터 B0 먼저).
 
 ## 0. 현재 상태 (클라우드 세션 작성 당시)
 

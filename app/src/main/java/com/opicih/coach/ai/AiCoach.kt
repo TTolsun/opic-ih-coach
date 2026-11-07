@@ -39,12 +39,21 @@ data class EvalInput(
     val transcriptFromDeviceStt: Boolean,
 )
 
+/** One question/answer pair of a SAIL practice conversation. */
+data class ConvExchange(val question: String, val answer: String)
+
 /** AI features behind one interface. ClaudeAiCoach is the real AI; LocalCoach is the offline rule-based fallback. */
 interface AiCoach {
     val isRealAi: Boolean
     suspend fun improveScript(input: ScriptInput): Result<ScriptVersions>
     suspend fun evaluate(input: EvalInput): Result<Feedback>
     suspend fun chat(history: List<ChatTurn>, context: CoachContext): Result<String>
+
+    /** One English follow-up question based on the last answer. */
+    suspend fun followUp(history: List<ConvExchange>): Result<String>
+
+    /** Short Korean feedback on a whole conversation (real AI only; LocalCoach uses ConversationScoring). */
+    suspend fun summarizeConversation(history: List<ConvExchange>, localFindings: String): Result<String>
 }
 
 class AiException(message: String, val retryable: Boolean = true) : Exception(message)

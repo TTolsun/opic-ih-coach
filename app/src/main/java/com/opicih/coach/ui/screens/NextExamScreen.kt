@@ -167,7 +167,10 @@ fun NextExamScreen(onOpenSettings: () -> Unit) {
             Bullet(if (s.examSlots.isEmpty()) "회차 제한 없음 (원하는 날짜 응시 가능으로 계산)" else "사내 회차: ${s.slotDates().joinToString()}")
         }
 
-        DebriefCard(debriefDate, today, examRow, s)
+        val debriefReg = regs.firstOrNull { it.date == debriefDate && it.type != ExamType.UNKNOWN &&
+            (it.state == RegistrationStatus.REGISTERED || it.state == RegistrationStatus.COMPLETED) }
+        if (debriefReg?.type == ExamType.SAIL) SailDebriefCard(debriefReg, today, examRow)
+        else DebriefCard(debriefDate, today, examRow, s)
         Spacer(Modifier.height(24.dp))
     }
 }
@@ -224,5 +227,64 @@ private fun DebriefCard(examDate: LocalDate, today: LocalDate, row: ExamEntity?,
         }) { Text("복기 저장") }
         saved?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary) }
         Text("다음 시험에서는 Self Assessment 단계와 Survey 선택을 바꾸지 않는 것을 권합니다. 무엇이 효과가 있었는지 비교할 수 있습니다.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+/** "Q: ..." lines + "[템포] ..." in ExamEntity.note. Kept as plain text so old app versions can still show it. */
+object SailDebriefNote {
+    fun encode(questions: String, tempo: String): String = buildString {
+        questions.lines().map { it.trim() }.filter { it.isNotBlank() }.forEach { append("Q: ").append(it.removePrefix("Q:").trim()).append('\n') }
+        if (tempo.isNotBlank()) append("[템포] ").append(tempo.trim())
+    }.trim()
+
+    fun questions(note: String): String = note.lines().filter { it.trim().startsWith("Q:") }.joinToString("\n") { it.trim().removePrefix("Q:").trim() }
+    fun tempo(note: String): String = note.lines().firstOrNull { it.startsWith("[템포]") }?.removePrefix("[템포]")?.trim().orEmpty()
+}
+
+/**
+ * SAIL debrief ("정찰 기록"): the real questions and tempo are the best data the app can get about SAIL,
+ * because its item format is not public. Saved questions feed the SAIL conversation practice as openers.
+ */
+@Composable
+private fun SailDebriefCard(reg: ExamRegistrationEntity, today: LocalDate, row: ExamEntity?) {
+    val c = LocalContainer.current
+    val scope = rememberCoroutineScope()
+    val date = reg.date ?: return
+    if (today.isBefore(date)) {
+        SectionCard(title = "SAIL 시험 직후 복기") {
+            Text("${date} 시험이 끝나면 1시간 안에 실제 질문을 적어 두세요. 적은 질문은 SAIL 대화 연습의 첫 질문으로 다시 나옵니다.", style = MaterialTheme.typography.bodySmall)
+        }
+        return
+    }
+    var questions by remember(row?.id) { mutableStateOf(SailDebriefNote.questions(row?.note.orEmpty())) }
+    var stuck by remember(row?.id) { mutableStateOf(row?.stuckPoints.orEmpty()) }
+    var tempo by remember(row?.id) { mutableStateOf(SailDebriefNote.tempo(row?.note.orEmpty())) }
+    var feeling by remember(row?.id) { mutableIntStateOf(row?.feeling?.takeIf { it > 0 } ?: 3) }
+    var grade by remember(row?.id) { mutableStateOf(row?.resultGrade ?: reg.resultGrade.orEmpty()) }
+    var saved by remember { mutableStateOf<String?>(if (row?.debriefAt != null) "저장된 복기가 있습니다. 수정 후 다시 저장할 수 있습니다." else null) }
+
+    SectionCard(title = "${date.monthValue}/${date.dayOfMonth} SAIL 시험 복기", trailing = { SourceTag("정찰 기록") }) {
+        OutlinedTextField(questions, { questions = it }, label = { Text("기억나는 질문 (한 줄에 하나, 영어 그대로)") }, minLines = 4, modifier = Modifier.fillMaxWidth())
+        OutlinedTextField(stuck, { stuck = it }, label = { Text("답하지 못했거나 막힌 질문") }, minLines = 2, modifier = Modifier.fillMaxWidth())
+        OutlinedTextField(tempo, { tempo = it }, label = { Text("형식·템포 (준비 시간, 추가 질문 수, 시험관 반응 등)") }, minLines = 2, modifier = Modifier.fillMaxWidth())
+        Text("체감 난이도 ${feeling} (1 매우 어려움 ~ 5 쉬움)", style = MaterialTheme.typography.labelLarge)
+        Slider(feeling.toFloat(), { feeling = it.toInt() }, valueRange = 1f..5f, steps = 3)
+        OutlinedTextField(grade, { grade = it }, label = { Text("결과 등급 (나오면 입력)") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+        Spacer(Modifier.height(8.dp))
+        Button(onClick = {
+            scope.launch {
+                val base = row ?: ExamEntity(epochDay = date.toEpochDay(), type = "SAIL")
+                val updated = base.copy(topicsSeen = "SAIL", note = SailDebriefNote.encode(questions, tempo), stuckPoints = stuck.trim(), feeling = feeling,
+                    resultGrade = grade.trim().ifBlank { null }, debriefAt = System.currentTimeMillis())
+                val examId = if (row == null) c.dao.insertExam(updated) else { c.dao.updateExam(updated); row.id }
+                // Writing a debrief means the user sat the exam.
+                val status = if (reg.state == RegistrationStatus.REGISTERED) RegistrationStatus.COMPLETED.name else reg.status
+                c.exams.save(reg.copy(status = status, resultGrade = grade.trim().ifBlank { reg.resultGrade }, legacyExamId = reg.legacyExamId ?: examId),
+                    "복기 저장 (응시 완료)")
+                val n = questions.lines().count { it.isNotBlank() }
+                saved = "복기를 저장했습니다. 질문 ${n}개가 SAIL 대화 연습의 첫 질문 후보로 들어갑니다."
+            }
+        }) { Text("복기 저장") }
+        saved?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary) }
     }
 }

@@ -5,6 +5,7 @@ import com.opicih.coach.analysis.Feedback
 import com.opicih.coach.analysis.FeedbackComposer
 import com.opicih.coach.analysis.ScriptComparator
 import com.opicih.coach.analysis.TextNormalizer
+import com.opicih.coach.learning.LocalFollowUp
 
 /** Offline, rule-based fallback. Everything it produces is labelled "로컬 분석(AI 아님)". */
 class LocalCoach : AiCoach {
@@ -33,6 +34,15 @@ class LocalCoach : AiCoach {
             )
         )
     }
+
+    /** Rule-based follow-up. Callers that keep template state use LocalFollowUp directly. */
+    override suspend fun followUp(history: List<ConvExchange>): Result<String> {
+        val last = history.lastOrNull() ?: return Result.failure(AiException("대화 기록이 없습니다.", retryable = false))
+        return Result.success(LocalFollowUp.next(last.answer, emptySet(), last.question).text)
+    }
+
+    override suspend fun summarizeConversation(history: List<ConvExchange>, localFindings: String): Result<String> =
+        Result.failure(AiException("AI가 꺼져 있어 로컬 분석만 표시합니다.", retryable = false))
 
     override suspend fun chat(history: List<ChatTurn>, context: CoachContext): Result<String> {
         val q = history.lastOrNull { it.fromUser }?.text.orEmpty()

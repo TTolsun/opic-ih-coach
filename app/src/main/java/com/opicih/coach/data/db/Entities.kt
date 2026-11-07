@@ -136,7 +136,9 @@ enum class PracticeMode(val label: String, val usesScript: Boolean) {
     RANDOM("다른 표현 질문", true),
     VARIATION("응용 챌린지", true),
     FREE("자유 발화", false),
-    MOCK("모의시험", false);
+    MOCK("모의시험", false),
+    /** One turn of a SAIL practice conversation (v3). */
+    SAIL_CONVERSATION("SAIL 대화", false);
 
     companion object {
         fun of(name: String?): PracticeMode = entries.firstOrNull { it.name == name } ?: FREE

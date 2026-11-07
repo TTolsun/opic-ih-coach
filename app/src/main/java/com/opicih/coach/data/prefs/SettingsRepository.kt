@@ -72,7 +72,13 @@ data class Settings(
     val examBootstrapVersion: Int = 0,
     /** OPIc waivers the user reports holding; -1 = not entered. Waiver rules themselves are unverified (B phase). */
     val opicWaivers: Int = -1,
+    /** Paid AI calls allowed per day for automatic chains (SAIL conversation follow-ups + summaries). */
+    val aiDailyCap: Int = 30,
+    val aiCallDay: Long = 0,
+    val aiCallCount: Int = 0,
 ) {
+    fun aiCallsToday(todayEpochDay: Long): Int = if (aiCallDay == todayEpochDay) aiCallCount else 0
+
     fun slotDates(): List<LocalDate> = examSlots.mapNotNull { runCatching { LocalDate.parse(it) }.getOrNull() }.sorted()
 
     companion object {
@@ -118,6 +124,9 @@ class SettingsRepository(private val context: Context) {
         val lead = intPreferencesKey("register_lead_days")
         val examBootstrap = intPreferencesKey("exam_bootstrap_version")
         val opicWaivers = intPreferencesKey("opic_waivers")
+        val aiCap = intPreferencesKey("ai_daily_cap")
+        val aiDay = longPreferencesKey("ai_call_day")
+        val aiCount = intPreferencesKey("ai_call_count")
     }
 
     val flow: Flow<Settings> = context.dataStore.data.map { it.toSettings() }
@@ -156,6 +165,9 @@ class SettingsRepository(private val context: Context) {
             p[K.lead] = s.registerLeadDays
             p[K.examBootstrap] = s.examBootstrapVersion
             p[K.opicWaivers] = s.opicWaivers
+            p[K.aiCap] = s.aiDailyCap
+            p[K.aiDay] = s.aiCallDay
+            p[K.aiCount] = s.aiCallCount
         }
     }
 
@@ -191,6 +203,9 @@ class SettingsRepository(private val context: Context) {
             registerLeadDays = this[K.lead] ?: d.registerLeadDays,
             examBootstrapVersion = this[K.examBootstrap] ?: d.examBootstrapVersion,
             opicWaivers = this[K.opicWaivers] ?: d.opicWaivers,
+            aiDailyCap = this[K.aiCap] ?: d.aiDailyCap,
+            aiCallDay = this[K.aiDay] ?: d.aiCallDay,
+            aiCallCount = this[K.aiCount] ?: d.aiCallCount,
         )
     }
 }

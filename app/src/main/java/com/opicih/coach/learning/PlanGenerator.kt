@@ -169,19 +169,19 @@ object PlanGenerator {
                 val core = if (focus == Focus.SAIL_QUICK) "SAIL 즉답 + 추가 질문" else "SAIL 추가 질문 이어 답하기"
                 if (minutes <= 10) listOf(
                     PlanTask(TaskType.MORNING, "어제 틀린 표현 복습", 3),
-                    PlanTask(TaskType.FREE, core, 5, 2, MODE_FREE),
+                    PlanTask(TaskType.FREE, core, 5, 2, MODE_SAIL),
                     PlanTask(TaskType.FREE, "같은 질문 다시 답하기", 2, 1, MODE_FREE),
                 ) else listOf(
                     expressions,
                     PlanTask(TaskType.REVIEW, "핵심 스크립트 키워드 말하기", part(5), 1, MODE_KEYWORD),
-                    PlanTask(TaskType.FREE, core, part(10), 3, MODE_FREE),
+                    PlanTask(TaskType.FREE, core, part(10), 3, MODE_SAIL),
                     PlanTask(TaskType.SPEAK, "취약 문법·유창성 교정", part(5), 1, MODE_FREE),
                     PlanTask(TaskType.FREE, "같은 질문 다시 답하기", part(5), 1, MODE_FREE),
                 )
             }
             Focus.SAIL_MOCK -> listOf(
                 expressions,
-                PlanTask(TaskType.FREE, "SAIL 실전 대화 (질문 + 추가 질문 3~5턴)", (minutes - expressions.minutes - part(5)).coerceAtLeast(5), 4, MODE_FREE),
+                PlanTask(TaskType.FREE, "SAIL 실전 대화 (질문 + 추가 질문 3~5턴)", (minutes - expressions.minutes - part(5)).coerceAtLeast(5), 4, MODE_SAIL),
                 PlanTask(TaskType.FREE, "막힌 질문 다시 답하기", part(5), 1, MODE_FREE),
             )
             Focus.SAIL_LIGHT -> listOf(
@@ -190,7 +190,7 @@ object PlanGenerator {
             )
             Focus.SAIL_WARMUP -> listOf(
                 PlanTask(TaskType.MORNING, "시작 문장 소리 내어 읽기", 3),
-                PlanTask(TaskType.FREE, "짧은 즉답 2개 (워밍업)", 5, 2, MODE_FREE),
+                PlanTask(TaskType.FREE, "짧은 대화 3턴 (워밍업)", 5, 2, MODE_SAIL),
             )
             else -> null
         }
@@ -198,6 +198,7 @@ object PlanGenerator {
 
     private const val MODE_FREE = "FREE"
     private const val MODE_KEYWORD = "KEYWORD"
+    private const val MODE_SAIL = "SAIL_CONVERSATION"
 }
 
 /** OPIc retake rule as provided by the user (25 days, waiver exception). Must be verified on opic.or.kr. */

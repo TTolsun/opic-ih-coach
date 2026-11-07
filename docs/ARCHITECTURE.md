@@ -117,6 +117,7 @@ interface AiCoach {
 - **마스터리**: NEW → LEARNING → NO_SCRIPT_OK(Blind/다른 표현 70%+) → VARIATION_OK(응용 60점+) / 하락 시 NEEDS_REVIEW.
 - **시험 기준 (`ExamSchedule`)**: 계획과 D-day의 기준은 "아직 끝나지 않은 가장 가까운 접수 완료(REGISTERED) 시험"입니다. 접수 예정(PLANNED)은 기준이 되지 않습니다. 시험 종료 시각(종료 시각, 없으면 시작+1시간, 없으면 그날 끝)이 지나면 다음 시험으로 넘어가고, 응시 여부는 사용자에게 묻습니다. 시각 비교는 휴대폰 시간대와 관계없이 KST로 합니다.
 - **SAIL 계획 (`PlanGenerator.forExam`)**: D-8 이상 공통 기본기, D-7~D-4 즉답·추가 질문, D-3~D-2 실전 대화 연습, D-1 가벼운 복습(15분 이하), D-Day 워밍업(10분 이하). 30분 기준 표현 5 · 키워드 5 · 즉답+추가 질문 10 · 약점 교정 5 · 같은 질문 다시 5. OPIc 시험은 기존 스프린트를 그대로 씁니다.
+- **SAIL 대화 (`SailConversation.kt`, `SailConversationViewModel`)**: 학습용 시뮬레이션입니다. 첫 질문은 내장 질문 15개 또는 SAIL 복기에 적은 실제 질문("Q: " 줄)에서 고릅니다. 추가 질문은 Claude(`AiCoach.followUp`)가 만들고, AI가 꺼져 있거나 실패하거나 `AiBudget` 상한(대화당 6회, 하루 `aiDailyCap`회)에 닿으면 `LocalFollowUp`이 만듭니다. `LocalFollowUp`은 키워드 규칙(문제 상황 → 좋아하는 것 → 과거 경험 → 계획 → 짧은 답 → 일반) 순서로 직전 답변의 구절을 되묻고, 한 대화에서 같은 템플릿을 반복하지 않습니다. 턴마다 `attempts`에 SAIL_CONVERSATION 모드로 저장하되 턴별 AI 평가는 하지 않고, 끝에 `ConversationScoring`(로컬) 결과와 선택적 Claude 종합 피드백 1회를 `exam_training_sessions.summaryJson`에 저장합니다. 답변 시작 시간은 마이크가 질문 음성 직후에 켜지므로 `PauseMetrics.leadingSilenceMs`로 잽니다. 직접 입력한 답변은 시간 지표에서 빠집니다.
 - **계획**: 매일 "남은 일수"로 다시 계산. 7일 이상이면 템플릿, 그보다 적으면 D-1 가벼운 복습과 D-2 모의시험을 고정하고 나머지는 우선순위(자유 발화 > 과거·비교 > 롤플레이 > 핵심 > 진단)로 채움. 시험 후에는 12월까지 7일 주기 장기 훈련.
 - **완료율**: 발화 시간 60% + 아침 루틴 20% + 복습 20%. 앱을 켜 둔 시간은 세지 않음.
 - **다음 시험 추천 (`RetestAdvisor`)**: 입력은 두 가지입니다.

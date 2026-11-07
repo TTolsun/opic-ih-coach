@@ -46,10 +46,20 @@ class ClaudeAiCoach(private val apiKey: String, private val model: String) : AiC
         send(system, history.takeLast(16), OutputConfig.Effort.LOW)
     }
 
-    private suspend fun send(system: String, turns: List<ChatTurn>, effort: OutputConfig.Effort): String = withContext(Dispatchers.IO) {
+    override suspend fun followUp(history: List<ConvExchange>): Result<String> = call {
+        val text = send(Prompts.FOLLOWUP_SYSTEM, listOf(ChatTurn(true, Prompts.followUpUser(history))), OutputConfig.Effort.LOW, 2000L)
+        // Keep only the question itself, even if the model adds a label or quotes.
+        text.lines().map { it.trim().trim('"').removePrefix("Follow-up:").trim() }.firstOrNull { it.endsWith("?") } ?: text.lines().first().trim()
+    }
+
+    override suspend fun summarizeConversation(history: List<ConvExchange>, localFindings: String): Result<String> = call {
+        send(Prompts.CONV_SUMMARY_SYSTEM, listOf(ChatTurn(true, Prompts.convSummaryUser(history, localFindings))), OutputConfig.Effort.LOW, 6000L)
+    }
+
+    private suspend fun send(system: String, turns: List<ChatTurn>, effort: OutputConfig.Effort, maxTokens: Long = 16000L): String = withContext(Dispatchers.IO) {
         val builder = MessageCreateParams.builder()
             .model(model)
-            .maxTokens(16000L)
+            .maxTokens(maxTokens)
             .system(system)
             .outputConfig(OutputConfig.builder().effort(effort).build())
         // Server-side refusal fallback (routes a declined request to a suitable model). Not available on Haiku.

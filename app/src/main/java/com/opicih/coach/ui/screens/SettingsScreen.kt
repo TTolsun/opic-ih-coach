@@ -204,6 +204,9 @@ fun SettingsScreen(onExams: () -> Unit = {}) {
                     Pill(label, s.aiModel == id) { save { it.copy(aiModel = id) } }
                 }
             }
+            NumberRow("SAIL 대화 AI 호출 하루 상한 (대화당 최대 6회)", s.aiDailyCap) { v -> save { it.copy(aiDailyCap = v.coerceIn(0, 200)) } }
+            Text("오늘 사용: ${s.aiCallsToday(java.time.LocalDate.now().toEpochDay())}회. 상한에 도달하면 추가 질문은 오프라인 규칙으로 만듭니다.",
+                style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(Modifier.height(10.dp))
             Text("녹음 클라우드 전사 (녹음 우선 모드에서만)", style = MaterialTheme.typography.labelLarge)
             KeyField(c.keys, ApiKeyStore.Provider.OPENAI_STT) { message = it }

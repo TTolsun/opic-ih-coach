@@ -42,6 +42,7 @@ import com.opicih.coach.ui.screens.MockScreen
 import com.opicih.coach.ui.screens.MorningScreen
 import com.opicih.coach.ui.screens.NextExamScreen
 import com.opicih.coach.ui.screens.ProgressScreen
+import com.opicih.coach.ui.screens.SailConversationScreen
 import com.opicih.coach.ui.screens.ScriptDetailScreen
 import com.opicih.coach.ui.screens.ScriptEditScreen
 import com.opicih.coach.ui.screens.ScriptsScreen
@@ -62,7 +63,7 @@ private val tabs = listOf(
 
 private val titles = mapOf(
     "script/{id}" to "스크립트", "scriptEdit/{id}" to "스크립트 편집", "import" to "스크립트 가져오기",
-    "settings" to "설정", "nextExam" to "다음 OPIc 추천", "exams" to "시험 일정", "morning" to "아침 표현 루틴", "coach" to "AI 코치",
+    "settings" to "설정", "nextExam" to "다음 OPIc 추천", "exams" to "시험 일정", "sail" to "SAIL 대화 연습", "morning" to "아침 표현 루틴", "coach" to "AI 코치",
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -117,7 +118,13 @@ fun AppNav(startRoute: String?, onRouteConsumed: () -> Unit) {
                     onSettings = { nav.navigate("settings") },
                     onNextExam = { nav.navigate("nextExam") },
                     onExams = { nav.navigate("exams") },
-                    onSpeakMode = { m -> if (m == null) nav.goTab("speaking") else nav.navigate("speaking?mode=$m") },
+                    onSpeakMode = { m ->
+                        when (m) {
+                            null -> nav.goTab("speaking")
+                            PracticeMode.SAIL_CONVERSATION.name -> nav.navigate("sail")
+                            else -> nav.navigate("speaking?mode=$m")
+                        }
+                    },
                 )
             }
             composable("scripts") {
@@ -153,6 +160,7 @@ fun AppNav(startRoute: String?, onRouteConsumed: () -> Unit) {
             composable("import") { ImportScreen(onDone = { nav.popBackStack() }) }
             composable("settings") { SettingsScreen(onExams = { nav.navigate("exams") }) }
             composable("exams") { ExamsScreen() }
+            composable("sail") { SailConversationScreen() }
             composable("coach") { CoachScreen() }
             composable("nextExam") { NextExamScreen(onOpenSettings = { nav.navigate("settings") }) }
             composable("morning") {
