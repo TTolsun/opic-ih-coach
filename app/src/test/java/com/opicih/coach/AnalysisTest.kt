@@ -6,6 +6,7 @@ import com.opicih.coach.analysis.FeedbackComposer
 import com.opicih.coach.analysis.PauseAnalyzer
 import com.opicih.coach.analysis.ScriptComparator
 import com.opicih.coach.analysis.TextNormalizer
+import com.opicih.coach.data.db.PracticeMode
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -187,5 +188,16 @@ class AdaptiveThresholdTest {
         val fb = FeedbackComposer.acousticOnly(PauseAnalyzer.analyze(List(800) { 120f }, 20, 250f))
         assertTrue(fb.fixes.single().issue.contains("감지되지"))
         assertEquals(2, fb.strengths.size)
+    }
+}
+
+class PracticeModeScoringTest {
+    @Test fun variationIsNotScoredAgainstScriptWording() {
+        assertTrue(PracticeMode.BLIND.comparesToScript)
+        assertTrue(PracticeMode.RANDOM.comparesToScript)
+        assertTrue(PracticeMode.SHADOWING.comparesToScript)
+        assertFalse(PracticeMode.VARIATION.comparesToScript)
+        assertFalse(PracticeMode.FREE.comparesToScript)
+        assertFalse(PracticeMode.MOCK.comparesToScript)
     }
 }

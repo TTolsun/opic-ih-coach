@@ -140,7 +140,7 @@ class PracticeRepository(private val dao: AppDao) {
     /** Local analysis always runs; AI evaluation is attempted only when [ai] is a real AI and falls back on failure. */
     suspend fun analyzeAndSave(req: Request, ai: AiCoach?, examEpochDay: Long?): AnalyzedAttempt {
         val discourse = DiscourseAnalyzer.analyze(req.transcript)
-        val target = req.target ?: req.script?.studyText?.takeIf { req.mode.usesScript }
+        val target = req.target ?: req.script?.studyText?.takeIf { req.mode.comparesToScript }
         val compare = target?.takeIf { req.transcript.isNotBlank() }?.let { ScriptComparator.compare(it, req.transcript, req.script?.keywordList().orEmpty()) }
         val local = if (req.transcript.isBlank() && req.pauses != null && !req.transcriptFromDeviceStt) {
             FeedbackComposer.acousticOnly(req.pauses)
