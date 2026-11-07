@@ -51,9 +51,15 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.opicih.coach.alarm.AlarmScheduler
 import com.opicih.coach.alarm.Notifications
+import com.opicih.coach.data.db.ExamRegistrationEntity
+import com.opicih.coach.data.db.ExamType
+import com.opicih.coach.data.prefs.Settings
+import com.opicih.coach.learning.DayPlan
+import com.opicih.coach.learning.ExamSchedule
 import com.opicih.coach.learning.PlanTask
 import com.opicih.coach.learning.TaskType
 import com.opicih.coach.ui.components.Banner
+import com.opicih.coach.ui.components.Bullet
 import com.opicih.coach.ui.components.Pill
 import com.opicih.coach.ui.components.ProgressRow
 import com.opicih.coach.ui.components.InfoButton
@@ -78,33 +84,38 @@ fun HomeScreen(
     onCoach: () -> Unit,
     onSettings: () -> Unit,
     onNextExam: () -> Unit,
+    onExams: () -> Unit = {},
+    /** Opens speaking with the task's PracticeMode name (null = default; SAIL_CONVERSATION = SAIL screen). */
+    onSpeakMode: (String?) -> Unit = { onSpeak() },
 ) {
     val vm: HomeViewModel = viewModel()
     val st by vm.state.collectAsStateWithLifecycle()
     val plan = st.plan
-    fun open(t: TaskType) = when (t) {
+    fun open(t: PlanTask) = when (t.type) {
         TaskType.MORNING -> onMorning()
         TaskType.MOCK -> onMock()
         TaskType.IMPROVE -> onScripts()
-        TaskType.REVIEW, TaskType.SPEAK, TaskType.FREE, TaskType.ROLEPLAY -> onSpeak()
+        TaskType.REVIEW, TaskType.SPEAK, TaskType.FREE, TaskType.ROLEPLAY -> onSpeakMode(t.mode)
     }
 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) {
-                Text("첫 시험 ${st.examDate.monthValue}/${st.examDate.dayOfMonth}", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text(plan?.dLabel.orEmpty(), style = MaterialTheme.typography.displaySmall)
-            }
+        Row(verticalAlignment = Alignment.Top) {
+            NextExamHeader(st.focusExam, plan?.dLabel.orEmpty(), Modifier.weight(1f).clickable(onClick = onExams))
             IconButton(onClick = onCoach) { Icon(Icons.AutoMirrored.Filled.Chat, "AI 코치") }
             IconButton(onClick = onSettings) { Icon(Icons.Filled.Settings, "설정") }
         }
 
         PermissionBanners(st.alarmNeedsExact, onSettings)
 
+        ExamReviewBanner(st.examsToReview, onExams)
+        st.awaitingConfirm?.let { r ->
+            Banner("${r.type.label} ${ExamSchedule.formatWhen(r)} 시험에 응시했나요? 확인하면 다음 시험 기준으로 계획이 바뀝니다.", "확인", tone = MaterialTheme.colorScheme.secondary, onAction = onExams)
+        }
+
         if (plan == null) return@Column
 
         // 1) The one thing to do now.
-        NextActionButton(st.next, onClick = { st.next?.let { open(it.type) } ?: onSpeak() })
+        NextActionButton(st.next, onClick = { st.next?.let { open(it) } ?: onSpeak() })
 
         // 2) Today's checklist (same tasks, with progress). No duplicate shortcut buttons below it.
         SectionCard(
@@ -113,7 +124,7 @@ fun HomeScreen(
         ) {
             st.tasks.forEach { ts ->
                 Row(
-                    Modifier.fillMaxWidth().heightIn(min = 48.dp).clickable { open(ts.task.type) },
+                    Modifier.fillMaxWidth().heightIn(min = 48.dp).clickable { open(ts.task) },
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Icon(
@@ -131,7 +142,7 @@ fun HomeScreen(
         }
 
         st.debriefDue?.let { d ->
-            Banner("${d.monthValue}/${d.dayOfMonth} 시험 복기 (5분)", "복기", tone = MaterialTheme.colorScheme.secondary, onAction = onNextExam)
+            Banner("${d.monthValue}/${d.dayOfMonth} ${st.debriefType} 시험 복기 (5분)".replace("  ", " "), "복기", tone = MaterialTheme.colorScheme.secondary, onAction = onNextExam)
         }
 
         if (st.pendingRevisions > 0) {
@@ -148,8 +159,10 @@ fun HomeScreen(
             ProgressRow("IH 준비도", st.readiness / 100f, "${st.readiness} / 100")
         }
 
+        ExamStatusCard(st.regs, st.now, st.settings, plan, onExams)
+
         st.nextExam?.let { n ->
-            SectionCard(Modifier.clickable(onClick = onNextExam), title = "다음 시험", trailing = { SourceTag(n.verdict) }) {
+            SectionCard(Modifier.clickable(onClick = onNextExam), title = "다음 OPIc 추천 (학습용)", trailing = { SourceTag(n.verdict) }) {
                 val rec = n.recommended
                 Text(
                     if (rec != null) "추천 ${rec.monthValue}/${rec.dayOfMonth} · 접수 ${n.registerBy?.let { "${it.monthValue}/${it.dayOfMonth}" } ?: "-"}까지 · 준비도 ${n.gatesPassed}/${n.gatesTotal}"
@@ -230,5 +243,48 @@ private fun PermissionBanners(alarmNeedsExact: Boolean, onSettings: () -> Unit) 
     if (alarmNeedsExact && !AlarmScheduler.canExact(context)) {
         Banner("알람이 몇 분 늦을 수 있습니다.", "설정", onAction = onSettings)
     }
+    }
+}
+
+/** Top of Home: the nearest registered exam. Nothing here is a recommendation. */
+@Composable
+private fun NextExamHeader(r: ExamRegistrationEntity?, dLabel: String, modifier: Modifier) {
+    Column(modifier) {
+        if (r == null) {
+            Text("등록된 다음 시험 없음", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("시험 추가", style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.primary)
+            return@Column
+        }
+        Text("Next Exam: ${r.type.label}", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(ExamSchedule.formatWhen(r), style = MaterialTheme.typography.titleMedium)
+        Text(dLabel, style = MaterialTheme.typography.displaySmall, color = MaterialTheme.colorScheme.primary)
+        if (r.location.isNotBlank()) Text(r.location, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        val start = r.startTime
+        if (r.type == ExamType.SAIL && start != null) {
+            Text("입실 ${start.minusMinutes(10)}까지 (시작 10분 전)", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.tertiary)
+        }
+    }
+}
+
+/** Facts and unverified items, labelled as such. */
+@Composable
+private fun ExamStatusCard(regs: List<ExamRegistrationEntity>, now: java.time.ZonedDateTime, s: Settings, plan: DayPlan, onExams: () -> Unit) {
+    val today = now.toLocalDate()
+    SectionCard(Modifier.clickable(onClick = onExams), title = "시험 현황", trailing = { SourceTag("일정 관리") }) {
+        val nextOpic = ExamSchedule.nextOfType(regs, ExamType.OPIC, now)
+        Bullet("다음 OPIc 일정: " + (nextOpic?.let { "${ExamSchedule.formatWhen(it)} · ${statusLabel(it.state)}" } ?: "미정"))
+        Bullet("OPIc Waiver: " + if (s.opicWaivers >= 0) "사용 가능 ${s.opicWaivers}회 (사용자 입력, 규정 미검증)" else "입력 안 됨")
+        ExamSchedule.lastCompleted(regs, ExamType.OPIC)?.let { last ->
+            Bullet("마지막 OPIc 응시: ${if (last.exact) last.date.toString() else "${last.registration.dateLocal} (일자 미입력)"}")
+        }
+        Bullet("다음 SAIL 응시 가능일: 규정 검증 필요")
+        s.gradeDeadline?.let { d ->
+            val left = java.time.temporal.ChronoUnit.DAYS.between(today, d)
+            Bullet("목표 IH 기한 ${d.monthValue}/${d.dayOfMonth}까지 ${left}일")
+        }
+        val examMinutes = plan.tasks.filter { it.type != TaskType.MORNING && it.type != TaskType.REVIEW }.sumOf { it.minutes }
+        val shared = plan.totalMinutes - examMinutes
+        val who = plan.examType?.label ?: "장기 학습"
+        Bullet("오늘 권장 ${plan.totalMinutes}분 · $who 유형 훈련 ${examMinutes}분, 공통(표현·스크립트) ${shared}분")
     }
 }

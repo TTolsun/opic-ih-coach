@@ -163,7 +163,7 @@ class MockViewModel(app: Application) : AndroidViewModel(app) {
             runCatching {
                 c.practice.analyzeAndSave(
                     PracticeRepository.Request(null, q.topic, q.text, q.type, PracticeMode.MOCK, r.transcript, r.captureMode, r.audioPath, r.durationMs, r.pauses, r.fromDeviceStt, mockId = u.mockId),
-                    ai = null, examEpochDay = settings.examDate.toEpochDay(), // per-answer AI would be slow and costly during a timed test
+                    ai = null, examEpochDay = c.exams.focusEpochDay(), // per-answer AI would be slow and costly during a timed test
                 )
             }
             val nextIndex = u.index + 1

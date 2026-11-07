@@ -136,7 +136,9 @@ enum class PracticeMode(val label: String, val usesScript: Boolean) {
     RANDOM("다른 표현 질문", true),
     VARIATION("응용 챌린지", true),
     FREE("자유 발화", false),
-    MOCK("모의시험", false);
+    MOCK("모의시험", false),
+    /** One turn of a SAIL practice conversation (v3). */
+    SAIL_CONVERSATION("SAIL 대화", false);
 
     /**
      * Whether the answer is scored against the script text. Variation asks the learner to change tense or reuse
@@ -175,6 +177,8 @@ data class PracticeAttemptEntity(
     val feedbackSource: String = "LOCAL",
     val mockId: Long? = null,
     val createdAt: Long = System.currentTimeMillis(),
+    /** v3: groups the turns of one exam training session (e.g. a SAIL conversation). */
+    val trainingSessionId: Long? = null,
 )
 
 @Entity(tableName = "error_patterns", indices = [Index(value = ["key"], unique = true)])

@@ -143,12 +143,12 @@ fun MorningScreen(onReviewScript: (Long) -> Unit, onDone: () -> Unit) {
 
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             Button(onClick = {
-                scope.launch { c.practice.reviewChunk(ch, true, c.settings.current().examDate.toEpochDay()) }
+                scope.launch { c.practice.reviewChunk(ch, true, c.exams.focusEpochDay()) }
                 next(items.size, index) { index = it; revealed = false; if (it >= items.size) scope.launch { c.practice.markMorningDone() } }
                 if (listening) { recognizer.stop(cancelOnly = true); listening = false }
             }, modifier = Modifier.weight(1f)) { Text("말할 수 있어요") }
             OutlinedButton(onClick = {
-                scope.launch { c.practice.reviewChunk(ch, false, c.settings.current().examDate.toEpochDay()) }
+                scope.launch { c.practice.reviewChunk(ch, false, c.exams.focusEpochDay()) }
                 next(items.size, index) { index = it; revealed = false; if (it >= items.size) scope.launch { c.practice.markMorningDone() } }
                 if (listening) { recognizer.stop(cancelOnly = true); listening = false }
             }, modifier = Modifier.weight(1f)) { Text("헷갈려요") }

@@ -69,12 +69,11 @@ import java.time.ZoneOffset
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
-fun SettingsScreen() {
+fun SettingsScreen(onExams: () -> Unit = {}) {
     val c = LocalContainer.current
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val s by c.settings.flow.collectAsState(initial = Settings())
-    var showDate by remember { mutableStateOf(false) }
     var showTime by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf<String?>(null) }
     var confirmWipe by remember { mutableStateOf(false) }
@@ -103,8 +102,8 @@ fun SettingsScreen() {
         message?.let { Banner(it, "닫기") { message = null } }
 
         SectionCard(title = "시험과 학습량") {
-            Row(Modifier.fillMaxWidth().clickable { showDate = true }.padding(vertical = 6.dp)) {
-                Text("첫 시험일", modifier = Modifier.weight(1f)); Text(s.examDate.toString(), color = MaterialTheme.colorScheme.primary)
+            Row(Modifier.fillMaxWidth().clickable(onClick = onExams).padding(vertical = 6.dp)) {
+                Text("시험 일정 관리 (OPIc·SAIL)", modifier = Modifier.weight(1f)); Text("열기", color = MaterialTheme.colorScheme.primary)
             }
             Text("매일 최소 훈련 시간", style = MaterialTheme.typography.labelLarge)
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) { StudyLevel.entries.forEach { l -> Pill(l.label, s.studyLevel == l) { save { it.copy(studyLevel = l) } } } }
@@ -212,6 +211,9 @@ fun SettingsScreen() {
                 models.forEach { m -> Pill(m, m == s.geminiModel) { save { it.copy(geminiModel = m) } } }
             }
             Text("flash: 빠르고 저렴 · pro: 평가 품질 높음", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            NumberRow("SAIL 대화 AI 호출 하루 상한", s.aiDailyCap) { v -> save { it.copy(aiDailyCap = v.coerceIn(0, 200)) } }
+            Text("오늘 ${s.aiCallsToday(java.time.LocalDate.now().toEpochDay())}회 사용. 상한을 넘으면 추가 질문은 오프라인 규칙으로 만듭니다.",
+                style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(Modifier.height(10.dp))
             Text("텍스트 분석", style = MaterialTheme.typography.labelLarge)
             ToggleRow("AI 사용 (스크립트 개선, 답변 평가, 코치)", s.aiEnabled) { v -> save { it.copy(aiEnabled = v) } }
@@ -238,23 +240,12 @@ fun SettingsScreen() {
                 Button(onClick = { exportLauncher.launch("opic-coach-backup-${LocalDate.now()}.json") }) { Text("백업") }
                 OutlinedButton(onClick = { importLauncher.launch(arrayOf("application/json", "application/octet-stream", "text/plain")) }) { Text("복원") }
             }
-            Text("녹음 파일과 API 키는 백업되지 않습니다.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("시험 일정도 백업됩니다. 녹음 파일과 API 키는 백업되지 않습니다.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             OutlinedButton(onClick = { confirmWipe = true }) { Text("모든 학습 데이터 삭제", color = MaterialTheme.colorScheme.error) }
         }
         Spacer(Modifier.height(24.dp))
     }
 
-    if (showDate) {
-        val st = rememberDatePickerState(initialSelectedDateMillis = s.examDate.atStartOfDay().toInstant(ZoneOffset.UTC).toEpochMilli())
-        DatePickerDialog(
-            onDismissRequest = { showDate = false },
-            confirmButton = { TextButton(onClick = {
-                st.selectedDateMillis?.let { ms -> val d = Instant.ofEpochMilli(ms).atZone(ZoneOffset.UTC).toLocalDate(); save { it.copy(examDate = d) } }
-                showDate = false
-            }) { Text("확인") } },
-            dismissButton = { TextButton(onClick = { showDate = false }) { Text("취소") } },
-        ) { DatePicker(st) }
-    }
     if (showTime) {
         val st = rememberTimePickerState(s.alarmHour, s.alarmMinute, is24Hour = true)
         AlertDialog(

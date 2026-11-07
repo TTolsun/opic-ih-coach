@@ -61,6 +61,7 @@ fun ProgressScreen(onNextExam: () -> Unit = {}) {
     var toDelete by remember { mutableStateOf<com.opicih.coach.data.db.PracticeAttemptEntity?>(null) }
     val s by c.settings.flow.collectAsState(initial = Settings())
     val attempts by c.dao.attemptsFlow().collectAsState(initial = emptyList())
+    val regs by c.exams.flow.collectAsState(initial = emptyList())
     val scripts by c.dao.scriptsFlow().collectAsState(initial = emptyList())
     val logs by c.dao.dailyLogsFlow().collectAsState(initial = emptyList())
     val errors by c.dao.errorsFlow().collectAsState(initial = emptyList())
@@ -143,9 +144,9 @@ fun ProgressScreen(onNextExam: () -> Unit = {}) {
 
         SectionCard(title = "시험 결과와 재응시") {
             exams.forEach { e -> Bullet("${LocalDate.ofEpochDay(e.epochDay)} · ${e.resultGrade ?: "결과 대기"} ${e.note}") }
-            val last = exams.maxByOrNull { it.epochDay }?.epochDay?.let { LocalDate.ofEpochDay(it) } ?: s.examDate
+            val last = lastExamDate(s, exams, LocalDate.now(), regs)
             Spacer(Modifier.height(6.dp))
-            Text("다음 응시 가능: ${last.plusDays(s.retakeDays.toLong())}${if (s.retakeVerified) "" else " (미검증)"}", style = MaterialTheme.typography.bodyMedium)
+            Text("OPIc 다음 응시 가능: ${last.plusDays(s.retakeDays.toLong())}${if (s.retakeVerified) "" else " (미검증)"}", style = MaterialTheme.typography.bodyMedium)
             Spacer(Modifier.height(6.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Button(onClick = onNextExam) { Text("다음 시험 추천") }
@@ -166,7 +167,7 @@ fun ProgressScreen(onNextExam: () -> Unit = {}) {
     }
 
     if (showExam) {
-        var date by remember { mutableStateOf(s.examDate.toString()) }
+        var date by remember { mutableStateOf(LocalDate.now().toString()) }
         var grade by remember { mutableStateOf("") }
         var note by remember { mutableStateOf("") }
         AlertDialog(
@@ -185,8 +186,7 @@ fun ProgressScreen(onNextExam: () -> Unit = {}) {
                     showExam = false
                     scope.launch {
                         c.dao.insertExam(ExamEntity(epochDay = d.toEpochDay(), type = if (exams.isEmpty()) "FIRST" else "RETAKE", resultGrade = grade.ifBlank { null }, note = note))
-                        // After a result, move the plan to the next possible exam date (user can change it in Settings).
-                        if (d >= s.examDate) c.settings.update { it.copy(examDate = d.plusDays(it.retakeDays.toLong())) }
+                        // v3: the schedule lives in exam_registrations; a result no longer rewrites a single exam date.
                     }
                 }) { Text("저장") }
             },

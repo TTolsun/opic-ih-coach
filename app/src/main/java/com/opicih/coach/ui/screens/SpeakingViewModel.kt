@@ -241,7 +241,7 @@ class SpeakingViewModel(app: Application) : AndroidViewModel(app) {
                     transcript = transcript, captureMode = captureMode, audioPath = audio, durationMs = duration,
                     pauses = pauses, transcriptFromDeviceStt = fromStt, requiredTense = q.requiredTense, target = target,
                 ),
-                ai = c.realAi(st), examEpochDay = st.examDate.toEpochDay(),
+                ai = c.realAi(st), examEpochDay = c.exams.focusEpochDay(),
             )
         }
         res.onSuccess { a ->

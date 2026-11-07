@@ -69,8 +69,9 @@ fun CoachScreen() {
         busy = true
         scope.launch {
             val attempts = c.dao.attempts()
+            val focus = c.exams.focus()
             val ctx = CoachContext(
-                examDday = PlanGenerator.dLabel(LocalDate.now(), settings.examDate) + " (${settings.examDate})",
+                examDday = focus?.date?.let { d -> "${focus.type.label} " + PlanGenerator.dLabel(LocalDate.now(), d) + " ($d)" } ?: "등록된 다음 시험 없음",
                 surveyTopics = settings.surveyTopics,
                 weakTopics = ProgressCalculator.weakTopics(attempts, settings.surveyTopics),
                 frequentErrors = c.dao.errors().take(8).map { "${it.example} → ${it.correction} (${it.count}회)" },

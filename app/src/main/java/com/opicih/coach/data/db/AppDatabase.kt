@@ -12,8 +12,9 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         ScriptEntity::class, ScriptRevisionEntity::class, ImportSourceEntity::class, PracticeAttemptEntity::class,
         ErrorPatternEntity::class, ChunkEntity::class, DailyLogEntity::class, MockTestEntity::class,
         ExamEntity::class, StoryEntity::class, QuestionEntity::class,
+        ExamRegistrationEntity::class, ExamStatusEventEntity::class, ExamTrainingSessionEntity::class,
     ],
-    version = 2,
+    version = 3,
     exportSchema = true,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -22,17 +23,20 @@ abstract class AppDatabase : RoomDatabase() {
     companion object {
         fun create(context: Context): AppDatabase =
             Room.databaseBuilder(context, AppDatabase::class.java, "opic_ih_coach.db")
-                .addMigrations(MIGRATION_1_2)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
                 .build()
 
         /** v2: exam debrief columns. Keeps all existing learning data. */
         val MIGRATION_1_2 = object : Migration(1, 2) {
             override fun migrate(db: SupportSQLiteDatabase) {
-                db.execSQL("ALTER TABLE exams ADD COLUMN topicsSeen TEXT NOT NULL DEFAULT ''")
-                db.execSQL("ALTER TABLE exams ADD COLUMN stuckPoints TEXT NOT NULL DEFAULT ''")
-                db.execSQL("ALTER TABLE exams ADD COLUMN feeling INTEGER NOT NULL DEFAULT 0")
-                db.execSQL("ALTER TABLE exams ADD COLUMN selfLevelUsed INTEGER NOT NULL DEFAULT 0")
-                db.execSQL("ALTER TABLE exams ADD COLUMN debriefAt INTEGER")
+                MigrationSql.V1_TO_V2.forEach(db::execSQL)
+            }
+        }
+
+        /** v3: multi-exam schedule tables. Adds only; every v2 row is kept. */
+        val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                MigrationSql.V2_TO_V3.forEach(db::execSQL)
             }
         }
     }

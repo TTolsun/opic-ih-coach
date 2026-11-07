@@ -135,6 +135,8 @@ class PracticeRepository(private val dao: AppDao) {
         val mockId: Long? = null,
         /** Target text used for comparison (study text, or a single sentence in shadowing). */
         val target: String? = null,
+        /** v3: turn of an exam training session (SAIL conversation). */
+        val trainingSessionId: Long? = null,
     )
 
     /** Local analysis always runs; AI evaluation is attempted only when [ai] is a real AI and falls back on failure. */
@@ -168,7 +170,7 @@ class PracticeRepository(private val dao: AppDao) {
             wordCount = discourse.wordCount, wpm = wpm, coverage = compare?.coverage, score = feedback.score,
             metricsJson = appJson.encodeToString(AttemptMetrics.serializer(), metrics),
             feedbackJson = appJson.encodeToString(Feedback.serializer(), feedback),
-            feedbackSource = feedback.source, mockId = req.mockId,
+            feedbackSource = feedback.source, mockId = req.mockId, trainingSessionId = req.trainingSessionId,
         )
         val id = dao.insertAttempt(attempt)
 

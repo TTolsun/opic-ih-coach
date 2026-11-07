@@ -1,5 +1,6 @@
 package com.opicih.coach.learning
 
+import com.opicih.coach.data.db.ExamType
 import java.time.LocalDate
 import java.time.temporal.ChronoUnit
 
@@ -16,13 +17,27 @@ enum class Focus(val titleKo: String, val detailKo: String, val priority: Int) {
     LONG_STRUCTURE("문장 구조 다양화", "비교·가정·관계사 문장을 넣어 같은 이야기를 다시 말합니다.", 5),
     LONG_ERRORS("반복 오류 감소", "오류 노트 상위 3개를 집중 교정합니다.", 5),
     LONG_FLUENCY("발음·유창성", "Shadowing과 녹음 비교로 속도와 끊김을 다듬습니다.", 5),
+    // SAIL (learning simulation; the official SAIL item format is not public)
+    SAIL_QUICK("SAIL 즉답 훈련", "짧게 생각하고 20~40초 안에 답합니다. 첫 문장을 2초 안에 시작하는 것이 목표입니다.", 6),
+    SAIL_FOLLOWUP("SAIL 추가 질문 대응", "한 질문에 이어지는 추가 질문 2~3개에 구체적인 예시로 답합니다.", 6),
+    SAIL_MOCK("SAIL 실전 대화 연습", "처음 보는 질문과 추가 질문을 시험처럼 끊지 않고 이어서 답합니다.", 9),
+    SAIL_LIGHT("SAIL 가벼운 복습·컨디션", "틀린 표현과 자신 있는 시작 문장만 복습하고 일찍 쉽니다.", 8),
+    SAIL_WARMUP("시험 당일 워밍업", "10분 이내로 시작 문장을 소리 내어 읽고 짧은 즉답 2개만 합니다.", 10),
 }
 
 enum class TaskType { MORNING, REVIEW, SPEAK, FREE, ROLEPLAY, MOCK, IMPROVE }
 
-data class PlanTask(val type: TaskType, val title: String, val minutes: Int, val targetCount: Int = 1)
+/** [mode] = PracticeMode name the Speaking screen should open with (null = keep the screen's default). */
+data class PlanTask(val type: TaskType, val title: String, val minutes: Int, val targetCount: Int = 1, val mode: String? = null)
 
-data class DayPlan(val date: LocalDate, val dLabel: String, val focus: Focus, val tasks: List<PlanTask>) {
+data class DayPlan(
+    val date: LocalDate,
+    val dLabel: String,
+    val focus: Focus,
+    val tasks: List<PlanTask>,
+    /** Exam this plan is built for; null = no registered exam (long-term cycle). */
+    val examType: ExamType? = null,
+) {
     val totalMinutes: Int get() = tasks.sumOf { it.minutes }
 }
 
@@ -79,12 +94,46 @@ object PlanGenerator {
         return DayPlan(today, dLabel(today, exam), focus, tasksFor(focus, minutes, dueScripts))
     }
 
+    /**
+     * Exam-aware entry point (v3). [examDate] is the nearest registered exam; null = none registered.
+     * OPIc keeps the original sprint. SAIL uses its own countdown:
+     * D-8+ shared basics, D-7..D-4 quick answers / follow-ups, D-3..D-2 conversation mock, D-1 light, D-Day warm-up.
+     */
+    fun forExam(
+        today: LocalDate,
+        examType: ExamType?,
+        examDate: LocalDate?,
+        minutes: Int,
+        dueScripts: Int,
+        mockDoneThisSprint: Boolean,
+    ): DayPlan {
+        if (examDate == null || examType == null) {
+            val focus = longCycle[today.toEpochDay().mod(longCycle.size)]
+            return DayPlan(today, "시험 미정", focus, tasksFor(focus, minutes, dueScripts), null)
+        }
+        if (examType != ExamType.SAIL) {
+            return today(today, examDate, minutes, dueScripts, mockDoneThisSprint).copy(examType = examType)
+        }
+        val daysLeft = ChronoUnit.DAYS.between(today, examDate).toInt()
+        val focus = sailFocus(daysLeft)
+        return DayPlan(today, dLabel(today, examDate), focus, tasksFor(focus, minutes, dueScripts), ExamType.SAIL)
+    }
+
+    fun sailFocus(daysLeft: Int): Focus = when {
+        daysLeft <= 0 -> Focus.SAIL_WARMUP
+        daysLeft == 1 -> Focus.SAIL_LIGHT
+        daysLeft <= 3 -> Focus.SAIL_MOCK
+        daysLeft <= 7 -> if (daysLeft % 2 == 0) Focus.SAIL_QUICK else Focus.SAIL_FOLLOWUP
+        else -> if (daysLeft % 2 == 0) Focus.CORE else Focus.FREE
+    }
+
     fun upcoming(today: LocalDate, exam: LocalDate, mockDone: Boolean): List<Pair<LocalDate, Focus>> {
         val daysLeft = ChronoUnit.DAYS.between(today, exam).toInt()
         return sprintFocuses(daysLeft, mockDone).mapIndexed { i, f -> today.plusDays(i.toLong()) to f }
     }
 
     fun tasksFor(focus: Focus, minutes: Int, dueScripts: Int): List<PlanTask> {
+        sailTasks(focus, minutes)?.let { return it }
         val morning = PlanTask(TaskType.MORNING, "아침 표현 루틴", if (minutes <= 10) 4 else 8)
         val reviewCount = when {
             minutes <= 10 -> 1
@@ -103,9 +152,53 @@ object PlanGenerator {
             Focus.LIGHT -> listOf(PlanTask(TaskType.SPEAK, "자신 있는 답변 2개만 Blind", rest.coerceAtMost(15), 2))
             Focus.LONG_ERRORS -> listOf(PlanTask(TaskType.SPEAK, "오류 노트 교정 말하기", rest, 3))
             Focus.LONG_FLUENCY -> listOf(PlanTask(TaskType.SPEAK, "Shadowing + 녹음 비교", rest, 3))
+            else -> emptyList() // SAIL focuses are handled by sailTasks()
         }
         return listOf(morning, review) + main
     }
+
+    /**
+     * SAIL day plans. 30 minutes = 5 expressions + 5 script keywords + 10 quick answers & follow-ups
+     * + 5 weak-point correction + 5 answering the same question again. Other lengths scale from this.
+     */
+    private fun sailTasks(focus: Focus, minutes: Int): List<PlanTask>? {
+        fun part(share: Int) = (minutes * share / 30).coerceAtLeast(2)
+        val expressions = PlanTask(TaskType.MORNING, "어제 틀린 표현 복습", part(5).coerceAtMost(10))
+        return when (focus) {
+            Focus.SAIL_QUICK, Focus.SAIL_FOLLOWUP -> {
+                val core = if (focus == Focus.SAIL_QUICK) "SAIL 즉답 + 추가 질문" else "SAIL 추가 질문 이어 답하기"
+                if (minutes <= 10) listOf(
+                    PlanTask(TaskType.MORNING, "어제 틀린 표현 복습", 3),
+                    PlanTask(TaskType.FREE, core, 5, 2, MODE_SAIL),
+                    PlanTask(TaskType.FREE, "같은 질문 다시 답하기", 2, 1, MODE_FREE),
+                ) else listOf(
+                    expressions,
+                    PlanTask(TaskType.REVIEW, "핵심 스크립트 키워드 말하기", part(5), 1, MODE_KEYWORD),
+                    PlanTask(TaskType.FREE, core, part(10), 3, MODE_SAIL),
+                    PlanTask(TaskType.SPEAK, "취약 문법·유창성 교정", part(5), 1, MODE_FREE),
+                    PlanTask(TaskType.FREE, "같은 질문 다시 답하기", part(5), 1, MODE_FREE),
+                )
+            }
+            Focus.SAIL_MOCK -> listOf(
+                expressions,
+                PlanTask(TaskType.FREE, "SAIL 실전 대화 (질문 + 추가 질문 3~5턴)", (minutes - expressions.minutes - part(5)).coerceAtLeast(5), 4, MODE_SAIL),
+                PlanTask(TaskType.FREE, "막힌 질문 다시 답하기", part(5), 1, MODE_FREE),
+            )
+            Focus.SAIL_LIGHT -> listOf(
+                PlanTask(TaskType.MORNING, "틀린 표현 가볍게 복습", 5),
+                PlanTask(TaskType.SPEAK, "자신 있는 답변 시작 문장 2개", minutes.coerceIn(5, 10), 2, MODE_FREE),
+            )
+            Focus.SAIL_WARMUP -> listOf(
+                PlanTask(TaskType.MORNING, "시작 문장 소리 내어 읽기", 3),
+                PlanTask(TaskType.FREE, "짧은 대화 3턴 (워밍업)", 5, 2, MODE_SAIL),
+            )
+            else -> null
+        }
+    }
+
+    private const val MODE_FREE = "FREE"
+    private const val MODE_KEYWORD = "KEYWORD"
+    private const val MODE_SAIL = "SAIL_CONVERSATION"
 }
 
 /** OPIc retake rule as provided by the user (25 days, waiver exception). Must be verified on opic.or.kr. */

@@ -45,7 +45,17 @@ class GeminiAiCoach(private val apiKey: String, private val model: String) : AiC
         send(Prompts.CHAT_SYSTEM + "\n\n" + Prompts.contextBlock(context), history.takeLast(16), json = false)
     }
 
-    private suspend fun send(system: String, turns: List<ChatTurn>, json: Boolean): String = withContext(Dispatchers.IO) {
+    override suspend fun followUp(history: List<ConvExchange>): Result<String> = call {
+        val text = send(Prompts.FOLLOWUP_SYSTEM, listOf(ChatTurn(true, Prompts.followUpUser(history))), json = false, maxTokens = 512)
+        // Keep only the question itself, even if the model adds a label or quotes.
+        text.lines().map { it.trim().trim('"').removePrefix("Follow-up:").trim() }.firstOrNull { it.endsWith("?") } ?: text.lines().first().trim()
+    }
+
+    override suspend fun summarizeConversation(history: List<ConvExchange>, localFindings: String): Result<String> = call {
+        send(Prompts.CONV_SUMMARY_SYSTEM, listOf(ChatTurn(true, Prompts.convSummaryUser(history, localFindings))), json = false, maxTokens = 2048)
+    }
+
+    private suspend fun send(system: String, turns: List<ChatTurn>, json: Boolean, maxTokens: Int = 8192): String = withContext(Dispatchers.IO) {
         val body = buildJsonObject {
             putJsonObject("systemInstruction") { putJsonArray("parts") { add(buildJsonObject { put("text", system) }) } }
             put("contents", buildJsonArray {
@@ -58,7 +68,7 @@ class GeminiAiCoach(private val apiKey: String, private val model: String) : AiC
             })
             putJsonObject("generationConfig") {
                 put("temperature", 0.4)
-                put("maxOutputTokens", 8192)
+                put("maxOutputTokens", maxTokens)
                 if (json) put("responseMimeType", "application/json")
             }
         }
