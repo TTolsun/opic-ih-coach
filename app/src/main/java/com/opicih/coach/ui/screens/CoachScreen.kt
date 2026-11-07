@@ -92,7 +92,7 @@ fun CoachScreen() {
         }
         LazyColumn(Modifier.weight(1f).padding(horizontal = 16.dp), state = listState, verticalArrangement = Arrangement.spacedBy(8.dp)) {
             if (turns.isEmpty()) item {
-                Text("내 스크립트, 연습 기록, 반복 오류, 시험 일정을 바탕으로 답합니다. 첫 질문에는 가장 최근 답변이 함께 전달됩니다.",
+                Text("내 스크립트와 연습 기록을 바탕으로 답합니다.",
                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             items(turns) { t ->
