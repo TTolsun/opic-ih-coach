@@ -108,7 +108,7 @@ class PlanGeneratorTest {
     }
 
     @Test fun retest() {
-        assertEquals(LocalDate.of(2026, 12, 9), RetestCalculator.nextEligible(exam))
+        assertEquals(LocalDate.of(2026, 12, 10), RetestCalculator.nextEligible(exam)) // 11/14 + 26 (exam day excluded)
     }
 }
 

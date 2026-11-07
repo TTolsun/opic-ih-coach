@@ -16,6 +16,7 @@ import java.time.temporal.ChronoUnit
 object RetestAdvisor {
 
     data class Rules(
+        /** Blocked days after the exam day (official OPIc: D+1..D+25 blocked, D+26 allowed). */
         val retakeDays: Int = 25,
         val verified: Boolean = false,
         /** Days from the exam until the result is visible. */
@@ -26,6 +27,8 @@ object RetestAdvisor {
         val slots: List<LocalDate> = emptyList(),
         /** How many days before the exam registration should be done (heuristic, editable). */
         val registerLeadDays: Int = 7,
+        /** Spend a waiver on the next sitting: allowed from the day after the last exam. */
+        val useWaiver: Boolean = false,
     )
 
     data class Readiness(
@@ -83,11 +86,13 @@ object RetestAdvisor {
     )
 
     fun advise(today: LocalDate, lastExam: LocalDate, rules: Rules, readiness: Readiness): Advice {
-        val earliest = lastExam.plusDays(rules.retakeDays.toLong())
+        // Official counting excludes the exam day: 6/1 exam -> 6/2..6/26 blocked -> 6/27 (D+26) first day.
+        val earliest = if (rules.useWaiver) lastExam.plusDays(1) else lastExam.plusDays(rules.retakeDays + 1L)
         val latestUseful = rules.deadline?.minusDays(rules.resultLagDays.toLong())
         val gates = gates(readiness)
         val cautions = mutableListOf<String>()
-        if (!rules.verified) cautions += "재응시 간격 ${rules.retakeDays}일은 확인되지 않은 값입니다. 사내 공지나 접수 사이트에서 확인한 뒤 설정에서 '확인함'으로 바꾸세요."
+        if (!rules.verified) cautions += "재응시 제한 ${rules.retakeDays}일은 확인되지 않은 값입니다. 사내 공지나 접수 사이트에서 확인한 뒤 설정에서 '확인함'으로 바꾸세요."
+        if (rules.useWaiver) cautions += "Waiver를 쓴다고 가정했습니다. 접수할 때 Waiver가 실제로 적용되는지 확인하세요."
         cautions += "접수 마감은 응시일 ${rules.registerLeadDays}일 전으로 가정했습니다. 실제 접수 기간을 확인하세요."
 
         fun slotOnOrAfter(d: LocalDate): LocalDate? =
@@ -136,7 +141,7 @@ object RetestAdvisor {
                 }
             }
         }
-        val secondChance = latestUseful != null && !target.plusDays(rules.retakeDays.toLong()).isAfter(latestUseful)
+        val secondChance = latestUseful != null && !target.plusDays(rules.retakeDays + 1L).isAfter(latestUseful)
         if (latestUseful != null) {
             reasons += if (secondChance) "이 날짜 뒤에도 마감 전에 한 번 더 응시할 수 있습니다."
             else "이 날짜가 마감 전 사실상 마지막 기회입니다. 실패에 대비한 추가 회차가 없습니다."

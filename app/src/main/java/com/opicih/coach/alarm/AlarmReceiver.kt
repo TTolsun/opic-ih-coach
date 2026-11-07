@@ -21,7 +21,8 @@ class AlarmReceiver : BroadcastReceiver() {
                 when (intent.action) {
                     AlarmScheduler.ACTION_REMIND -> Notifications.showReminder(
                         context, intent.getStringExtra(AlarmScheduler.EXTRA_TEXT).orEmpty(),
-                        intent.getStringExtra(AlarmScheduler.EXTRA_TITLE) ?: "OPIc IH Coach", route = "nextExam",
+                        intent.getStringExtra(AlarmScheduler.EXTRA_TITLE) ?: "OPIc IH Coach",
+                        route = intent.getStringExtra(AlarmScheduler.EXTRA_ROUTE) ?: "nextExam",
                     )
                     AlarmScheduler.ACTION_SNOOZE -> {
                         Notifications.cancelMorning(context)

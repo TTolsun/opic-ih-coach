@@ -72,6 +72,12 @@ data class Settings(
     val examBootstrapVersion: Int = 0,
     /** OPIc waivers the user reports holding; -1 = not entered. Waiver rules themselves are unverified (B phase). */
     val opicWaivers: Int = -1,
+    /** Day the waiver balance above was entered; later waiver uses are subtracted from it. */
+    val opicWaiverDeclaredOn: LocalDate = LocalDate.of(2026, 11, 7),
+    /** Plan the next OPIc with a waiver (recommendations are recomputed when this changes). */
+    val planWithWaiver: Boolean = false,
+    /** User setting: SAIL and OPIc share one retake limit (default: independent). */
+    val sailSharesOpicLimit: Boolean = false,
     /** Paid AI calls allowed per day for automatic chains (SAIL conversation follow-ups + summaries). */
     val aiDailyCap: Int = 30,
     val aiCallDay: Long = 0,
@@ -118,6 +124,9 @@ class SettingsRepository(private val context: Context) {
         val lead = intPreferencesKey("register_lead_days")
         val examBootstrap = intPreferencesKey("exam_bootstrap_version")
         val opicWaivers = intPreferencesKey("opic_waivers")
+        val waiverDeclaredOn = longPreferencesKey("opic_waiver_declared_on")
+        val planWaiver = booleanPreferencesKey("plan_with_waiver")
+        val sailShares = booleanPreferencesKey("sail_shares_opic_limit")
         val aiCap = intPreferencesKey("ai_daily_cap")
         val aiDay = longPreferencesKey("ai_call_day")
         val aiCount = intPreferencesKey("ai_call_count")
@@ -159,6 +168,9 @@ class SettingsRepository(private val context: Context) {
             p[K.lead] = s.registerLeadDays
             p[K.examBootstrap] = s.examBootstrapVersion
             p[K.opicWaivers] = s.opicWaivers
+            p[K.waiverDeclaredOn] = s.opicWaiverDeclaredOn.toEpochDay()
+            p[K.planWaiver] = s.planWithWaiver
+            p[K.sailShares] = s.sailSharesOpicLimit
             p[K.aiCap] = s.aiDailyCap
             p[K.aiDay] = s.aiCallDay
             p[K.aiCount] = s.aiCallCount
@@ -197,6 +209,9 @@ class SettingsRepository(private val context: Context) {
             registerLeadDays = this[K.lead] ?: d.registerLeadDays,
             examBootstrapVersion = this[K.examBootstrap] ?: d.examBootstrapVersion,
             opicWaivers = this[K.opicWaivers] ?: d.opicWaivers,
+            opicWaiverDeclaredOn = this[K.waiverDeclaredOn]?.let { LocalDate.ofEpochDay(it) } ?: d.opicWaiverDeclaredOn,
+            planWithWaiver = this[K.planWaiver] ?: d.planWithWaiver,
+            sailSharesOpicLimit = this[K.sailShares] ?: d.sailSharesOpicLimit,
             aiDailyCap = this[K.aiCap] ?: d.aiDailyCap,
             aiCallDay = this[K.aiDay] ?: d.aiCallDay,
             aiCallCount = this[K.aiCount] ?: d.aiCallCount,

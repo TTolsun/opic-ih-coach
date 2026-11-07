@@ -273,11 +273,13 @@ private fun ExamStatusCard(regs: List<ExamRegistrationEntity>, now: java.time.Zo
     SectionCard(Modifier.clickable(onClick = onExams), title = "시험 현황", trailing = { SourceTag("일정 관리") }) {
         val nextOpic = ExamSchedule.nextOfType(regs, ExamType.OPIC, now)
         Bullet("다음 OPIc 일정: " + (nextOpic?.let { "${ExamSchedule.formatWhen(it)} · ${statusLabel(it.state)}" } ?: "미정"))
-        Bullet("OPIc Waiver: " + if (s.opicWaivers >= 0) "사용 가능 ${s.opicWaivers}회 (사용자 입력, 규정 미검증)" else "입력 안 됨")
+        val retake = com.opicih.coach.learning.RetakeSummaries.of(s, regs, today)
+        Bullet("OPIc Waiver: " + when (val n = retake.opicWaiver.available) { null -> "입력 안 됨"; else -> "사용 가능 ${n}회 (사용자 입력 기준)" })
+        retake.opicPaths.firstOrNull { !it.useWaiver }?.earliest?.let { Bullet("OPIc 응시 가능: ${it.monthValue}/${it.dayOfMonth}부터 (공식 규정, 실제 회차 확인 전)") }
         ExamSchedule.lastCompleted(regs, ExamType.OPIC)?.let { last ->
             Bullet("마지막 OPIc 응시: ${if (last.exact) last.date.toString() else "${last.registration.dateLocal} (일자 미입력)"}")
         }
-        Bullet("다음 SAIL 응시 가능일: 규정 검증 필요")
+        Bullet("다음 SAIL 응시 가능일: " + (retake.sailEarliest?.let { "${it.monthValue}/${it.dayOfMonth}부터로 가정 (사내 규정 미검증)" } ?: "규정 검증 필요"))
         s.gradeDeadline?.let { d ->
             val left = java.time.temporal.ChronoUnit.DAYS.between(today, d)
             Bullet("목표 IH 기한 ${d.monthValue}/${d.dayOfMonth}까지 ${left}일")

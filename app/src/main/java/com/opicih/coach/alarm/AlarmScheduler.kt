@@ -21,6 +21,7 @@ object AlarmScheduler {
     const val ACTION_REMIND = "com.opicih.coach.REMIND"
     const val EXTRA_TITLE = "title"
     const val EXTRA_TEXT = "text"
+    const val EXTRA_ROUTE = "route"
     private const val REQ_MAIN = 100
     private const val REQ_SNOOZE = 101
 
@@ -59,6 +60,25 @@ object AlarmScheduler {
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
         context.getSystemService(AlarmManager::class.java).setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, pi)
+        return true
+    }
+
+    /** One-off reminder at an exact moment (exam reminders). Exact when allowed, otherwise inexact while-idle. */
+    fun scheduleReminderAt(context: Context, at: Long, title: String, text: String, requestCode: Int, route: String = "nextExam"): Boolean {
+        if (at <= System.currentTimeMillis()) return false
+        val pi = PendingIntent.getBroadcast(
+            context, requestCode,
+            Intent(context, AlarmReceiver::class.java).setAction(ACTION_REMIND)
+                .putExtra(EXTRA_TITLE, title).putExtra(EXTRA_TEXT, text).putExtra(EXTRA_ROUTE, route),
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+        )
+        val am = context.getSystemService(AlarmManager::class.java)
+        try {
+            if (canExact(context)) am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, pi)
+            else am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, pi)
+        } catch (e: SecurityException) {
+            am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, pi)
+        }
         return true
     }
 

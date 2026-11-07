@@ -5,6 +5,15 @@
 
 ---
 
+## 0-D. 재응시 규칙·Waiver·시험 알림 (2026-11-08)
+
+- 공식 OPIc 시험관리규정 제5조(2026-10-29 시행)를 확인했습니다: 응시일 D+0, D+1~D+25 응시 불가, D+26부터 가능, Waiver 150일마다 1회, 언어별 적용, OPIc·WPT·L&Rcat 같은 규정. 접수 시 Waiver 자동 적용과 취소·결시 시 복구는 규정에 없습니다(1644-0505 또는 시험신청 화면에서 확인 필요).
+- 고친 결함: `RetestAdvisor`, `RetestCalculator`, 진행 화면이 `plusDays(25)`로 하루 일찍 재응시 가능하다고 안내했습니다. 기존 테스트 3개도 같은 잘못된 날짜를 기대하고 있어 함께 고쳤습니다.
+- 추가: `ExamPolicy`/`WaiverLedger`/`RetakeEngine`(Waiver 경로 비교, 마감 전 기회 수), 다음 OPIc 추천 화면의 "OPIc 재응시 경로" 카드와 "Waiver 사용" 스위치(추천이 즉시 다시 계산됨), 설정의 Waiver 보유 수·SAIL 제한·제한 공유 여부, 시험 전날 20:00과 당일 알림.
+- `Settings.retakeDays`, `retakeVerified`는 이제 SAIL 값입니다. OPIc은 공식 규정 상수를 씁니다.
+- DB 변경 없음(v3 유지). 휴대폰(Galaxy S25+)에 설치해 화면과 알림 예약을 확인했습니다. 설치 전 백업: `C:\Users\baboe\opic-ih-coach-backups\phone-20261108-0405-before-retest-waiver\`
+- 남은 일: 취약 역량을 다음 날 계획에 반영(C단계), 캘린더 뷰, 실제 목소리로 SAIL 대화 확인.
+
 ## 0-A. 진행 현황 업데이트 (2026-11-07, 로컬 PC 세션)
 
 | 항목 | 상태 |
