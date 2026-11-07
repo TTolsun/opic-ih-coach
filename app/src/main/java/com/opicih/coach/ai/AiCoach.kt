@@ -37,6 +37,11 @@ data class EvalInput(
     val pauses: PauseMetrics?,
     val targetScript: String?,
     val transcriptFromDeviceStt: Boolean,
+    /**
+     * Variation drill instruction (Korean), e.g. "retell it as a future plan". The learner answers the mission,
+     * not the question as written, so the evaluator must judge relevance against it.
+     */
+    val mission: String? = null,
 )
 
 /** One question/answer pair of a SAIL practice conversation. */

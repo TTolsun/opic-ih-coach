@@ -50,3 +50,27 @@ class GeminiTranscriberTest {
         assertEquals("", com.opicih.coach.ai.GeminiTranscriber.clean("  "))
     }
 }
+
+class EvalPromptMissionTest {
+    private fun input(mission: String?) = com.opicih.coach.ai.EvalInput(
+        question = "What do you usually do on your days off?",
+        questionType = "ROUTINE",
+        transcript = "Next month I am planning to buy a new sofa.",
+        discourse = com.opicih.coach.analysis.DiscourseAnalyzer.analyze("Next month I am planning to buy a new sofa."),
+        pauses = null,
+        targetScript = null,
+        transcriptFromDeviceStt = false,
+        mission = mission,
+    )
+
+    @Test fun variationMissionReachesTheEvaluator() {
+        val p = com.opicih.coach.ai.Prompts.evalUser(input("같은 이야기를 미래 계획으로 바꿔 말하세요."))
+        org.junit.Assert.assertTrue(p.contains("Practice mission"))
+        org.junit.Assert.assertTrue(p.contains("미래 계획으로 바꿔 말하세요"))
+        org.junit.Assert.assertTrue(com.opicih.coach.ai.Prompts.EVAL_SYSTEM.contains("practice mission"))
+    }
+
+    @Test fun noMissionLineForOrdinaryAnswers() {
+        org.junit.Assert.assertFalse(com.opicih.coach.ai.Prompts.evalUser(input(null)).contains("Practice mission"))
+    }
+}

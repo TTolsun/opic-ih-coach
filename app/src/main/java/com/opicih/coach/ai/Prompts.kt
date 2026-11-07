@@ -33,6 +33,8 @@ $ACTFL_IH
 
 Judge the answer by IH functions: connected paragraph-length speech, narration in major time frames, relevance, concrete experience,
 discourse connectors, and whether grammar errors block communication. Pronunciation cannot be judged from text: do not comment on it.
+If the input gives a practice mission, the learner was told to change the answer that way (other tense, other question).
+Judge relevance against the mission and topic, not the original question wording, and never flag following the mission as off-topic.
 The transcript may come from a speech recognizer that auto-corrects grammar and removes fillers; mention this only if relevant.
 Never claim or predict an official ACTFL/OPIc grade. The score is a learning reference only.
 
@@ -62,6 +64,7 @@ label them "AI 생성 연습 문제". Never predict an official grade with certa
 
     fun evalUser(i: EvalInput) = buildString {
         appendLine("Question (${i.questionType}): ${i.question}")
+        if (!i.mission.isNullOrBlank()) appendLine("Practice mission (Korean; the learner answered this instead of the question as written): ${i.mission}")
         appendLine("Transcript source: ${if (i.transcriptFromDeviceStt) "Android speech recognizer (may be auto-corrected)" else "recording transcription"}")
         appendLine("Measured: ${metrics(i.discourse, i.pauses)}")
         if (!i.targetScript.isNullOrBlank()) appendLine("The learner was practicing this target script:\n${i.targetScript}")

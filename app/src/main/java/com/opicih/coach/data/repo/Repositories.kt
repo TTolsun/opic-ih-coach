@@ -132,6 +132,8 @@ class PracticeRepository(private val dao: AppDao) {
         val pauses: PauseMetrics?,
         val transcriptFromDeviceStt: Boolean,
         val requiredTense: String? = null,
+        /** Variation drill instruction shown with the question; passed to AI evaluation. */
+        val mission: String? = null,
         val mockId: Long? = null,
         /** Target text used for comparison (study text, or a single sentence in shadowing). */
         val target: String? = null,
@@ -154,7 +156,7 @@ class PracticeRepository(private val dao: AppDao) {
         var feedback = local
         var aiError: String? = null
         if (ai != null && ai.isRealAi && discourse.wordCount >= 5) {
-            ai.evaluate(EvalInput(req.question, req.questionType, req.transcript, discourse, req.pauses, target, req.transcriptFromDeviceStt))
+            ai.evaluate(EvalInput(req.question, req.questionType, req.transcript, discourse, req.pauses, target, req.transcriptFromDeviceStt, req.mission))
                 .onSuccess { fb -> feedback = fb.copy(limits = local.limits, errors = fb.errors + local.errors) }
                 .onFailure { aiError = it.message }
         }
