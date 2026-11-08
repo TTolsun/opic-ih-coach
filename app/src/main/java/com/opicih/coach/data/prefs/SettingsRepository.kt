@@ -1,6 +1,7 @@
 package com.opicih.coach.data.prefs
 
 import android.content.Context
+import androidx.datastore.preferences.core.MutablePreferences
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
@@ -99,140 +100,109 @@ data class Settings(
     }
 }
 
-class SettingsRepository(private val context: Context) {
-    private object K {
-        val exam = longPreferencesKey("exam_epoch_day")
-        val level = stringPreferencesKey("study_level")
-        val alarmOn = booleanPreferencesKey("alarm_on")
-        val alarmH = intPreferencesKey("alarm_h")
-        val alarmM = intPreferencesKey("alarm_m")
-        val sound = booleanPreferencesKey("alarm_sound")
-        val vibrate = booleanPreferencesKey("alarm_vibrate")
-        val exact = booleanPreferencesKey("alarm_exact")
-        val evening = booleanPreferencesKey("evening_reminder")
-        val survey = stringSetPreferencesKey("survey")
-        val selfLevel = intPreferencesKey("self_level")
-        val capture = stringPreferencesKey("capture_mode")
-        val ttsRate = floatPreferencesKey("tts_rate")
-        val ttsVoice = stringPreferencesKey("tts_voice")
-        val ttsPitch = floatPreferencesKey("tts_pitch")
-        val aiOn = booleanPreferencesKey("ai_on")
-        val geminiModel = stringPreferencesKey("gemini_model")
-        val aiText = booleanPreferencesKey("ai_text_consent")
-        val cloudStt = booleanPreferencesKey("cloud_stt")
-        val audioConsent = booleanPreferencesKey("audio_consent")
-        val retention = intPreferencesKey("audio_retention")
-        val seed = intPreferencesKey("seed_version")
-        val focus = stringSetPreferencesKey("focus_topics")
-        val retakeDays = intPreferencesKey("retake_days")
-        val retakeVerified = booleanPreferencesKey("retake_verified")
-        val resultLag = intPreferencesKey("result_lag_days")
-        val deadline = longPreferencesKey("grade_deadline")
-        val slots = stringSetPreferencesKey("exam_slots")
-        val lead = intPreferencesKey("register_lead_days")
-        val examBootstrap = intPreferencesKey("exam_bootstrap_version")
-        val opicWaivers = intPreferencesKey("opic_waivers")
-        val waiverDeclaredOn = longPreferencesKey("opic_waiver_declared_on")
-        val planWaiver = booleanPreferencesKey("plan_with_waiver")
-        val sailShares = booleanPreferencesKey("sail_shares_opic_limit")
-        val aiCap = intPreferencesKey("ai_daily_cap")
-        val aiDay = longPreferencesKey("ai_call_day")
-        val aiCount = intPreferencesKey("ai_call_count")
-        val blocksOn = booleanPreferencesKey("study_blocks_on")
-        val blocks = stringPreferencesKey("study_blocks")
+/**
+ * One persisted setting: the DataStore [key], how to read the value from / apply it to a [Settings], and how it is
+ * encoded as the stored type [S]. Adding a setting means adding a `Settings` field plus ONE entry in [SETTINGS_FIELDS]
+ * (SettingsFieldsTest fails if a field has no entry).
+ */
+internal class PrefField<T, S : Any>(
+    val property: String,
+    val key: Preferences.Key<S>,
+    private val get: (Settings) -> T,
+    private val set: (Settings, T) -> Settings,
+    private val encode: (T) -> S,
+    private val decode: (S) -> T,
+) {
+    /** Applies the stored value to [base]; an absent key leaves the data-class default untouched. */
+    fun readInto(prefs: Preferences, base: Settings): Settings =
+        prefs[key]?.let { set(base, decode(it)) } ?: base
+
+    fun write(prefs: MutablePreferences, s: Settings) {
+        prefs[key] = encode(get(s))
     }
 
+    fun changed(old: Settings, new: Settings): Boolean = get(old) != get(new)
+}
+
+private fun <T : Any> plain(
+    property: String,
+    key: Preferences.Key<T>,
+    get: (Settings) -> T,
+    set: (Settings, T) -> Settings,
+) = PrefField(property, key, get, set, { it }, { it })
+
+private fun date(
+    property: String,
+    key: Preferences.Key<Long>,
+    get: (Settings) -> LocalDate,
+    set: (Settings, LocalDate) -> Settings,
+) = PrefField(property, key, get, set, { it.toEpochDay() }, { LocalDate.ofEpochDay(it) })
+
+/** The single source of truth for persistence: key names and stored types must never change (existing installs). */
+internal val SETTINGS_FIELDS: List<PrefField<*, *>> = listOf(
+    date("examDate", longPreferencesKey("exam_epoch_day"), { it.examDate }) { s, v -> s.copy(examDate = v) },
+    PrefField("studyLevel", stringPreferencesKey("study_level"), { it.studyLevel }, { s, v -> s.copy(studyLevel = v) }, { it.name }, { StudyLevel.of(it) }),
+    plain("alarmEnabled", booleanPreferencesKey("alarm_on"), { it.alarmEnabled }) { s, v -> s.copy(alarmEnabled = v) },
+    plain("alarmHour", intPreferencesKey("alarm_h"), { it.alarmHour }) { s, v -> s.copy(alarmHour = v) },
+    plain("alarmMinute", intPreferencesKey("alarm_m"), { it.alarmMinute }) { s, v -> s.copy(alarmMinute = v) },
+    plain("alarmSound", booleanPreferencesKey("alarm_sound"), { it.alarmSound }) { s, v -> s.copy(alarmSound = v) },
+    plain("alarmVibrate", booleanPreferencesKey("alarm_vibrate"), { it.alarmVibrate }) { s, v -> s.copy(alarmVibrate = v) },
+    plain("useExactAlarm", booleanPreferencesKey("alarm_exact"), { it.useExactAlarm }) { s, v -> s.copy(useExactAlarm = v) },
+    plain("eveningReminder", booleanPreferencesKey("evening_reminder"), { it.eveningReminder }) { s, v -> s.copy(eveningReminder = v) },
+    plain("surveyTopics", stringSetPreferencesKey("survey"), { it.surveyTopics }) { s, v -> s.copy(surveyTopics = v) },
+    plain("selfLevel", intPreferencesKey("self_level"), { it.selfLevel }) { s, v -> s.copy(selfLevel = v) },
+    PrefField("captureMode", stringPreferencesKey("capture_mode"), { it.captureMode }, { s, v -> s.copy(captureMode = v) }, { it.name }, { CaptureMode.of(it) }),
+    plain("ttsRate", floatPreferencesKey("tts_rate"), { it.ttsRate }) { s, v -> s.copy(ttsRate = v) },
+    plain("ttsVoice", stringPreferencesKey("tts_voice"), { it.ttsVoice }) { s, v -> s.copy(ttsVoice = v) },
+    plain("ttsPitch", floatPreferencesKey("tts_pitch"), { it.ttsPitch }) { s, v -> s.copy(ttsPitch = v) },
+    plain("aiEnabled", booleanPreferencesKey("ai_on"), { it.aiEnabled }) { s, v -> s.copy(aiEnabled = v) },
+    plain("geminiModel", stringPreferencesKey("gemini_model"), { it.geminiModel }) { s, v -> s.copy(geminiModel = v) },
+    plain("aiTextConsent", booleanPreferencesKey("ai_text_consent"), { it.aiTextConsent }) { s, v -> s.copy(aiTextConsent = v) },
+    plain("cloudSttEnabled", booleanPreferencesKey("cloud_stt"), { it.cloudSttEnabled }) { s, v -> s.copy(cloudSttEnabled = v) },
+    plain("audioUploadConsent", booleanPreferencesKey("audio_consent"), { it.audioUploadConsent }) { s, v -> s.copy(audioUploadConsent = v) },
+    plain("audioRetentionDays", intPreferencesKey("audio_retention"), { it.audioRetentionDays }) { s, v -> s.copy(audioRetentionDays = v) },
+    plain("seedVersion", intPreferencesKey("seed_version"), { it.seedVersion }) { s, v -> s.copy(seedVersion = v) },
+    plain("focusTopics", stringSetPreferencesKey("focus_topics"), { it.focusTopics }) { s, v -> s.copy(focusTopics = v) },
+    plain("retakeDays", intPreferencesKey("retake_days"), { it.retakeDays }) { s, v -> s.copy(retakeDays = v) },
+    plain("retakeVerified", booleanPreferencesKey("retake_verified"), { it.retakeVerified }) { s, v -> s.copy(retakeVerified = v) },
+    plain("resultLagDays", intPreferencesKey("result_lag_days"), { it.resultLagDays }) { s, v -> s.copy(resultLagDays = v) },
+    // Stored as epoch day; null is written as -1. Legacy behaviour kept on purpose: reading a stored -1 yields the
+    // data-class default (not null), exactly as the previous `?: d.gradeDeadline` fallback did.
+    PrefField<LocalDate?, Long>(
+        "gradeDeadline", longPreferencesKey("grade_deadline"),
+        { it.gradeDeadline }, { s, v -> s.copy(gradeDeadline = v ?: s.gradeDeadline) },
+        { it?.toEpochDay() ?: -1L }, { if (it < 0) null else LocalDate.ofEpochDay(it) },
+    ),
+    plain("examSlots", stringSetPreferencesKey("exam_slots"), { it.examSlots }) { s, v -> s.copy(examSlots = v) },
+    plain("registerLeadDays", intPreferencesKey("register_lead_days"), { it.registerLeadDays }) { s, v -> s.copy(registerLeadDays = v) },
+    plain("examBootstrapVersion", intPreferencesKey("exam_bootstrap_version"), { it.examBootstrapVersion }) { s, v -> s.copy(examBootstrapVersion = v) },
+    plain("opicWaivers", intPreferencesKey("opic_waivers"), { it.opicWaivers }) { s, v -> s.copy(opicWaivers = v) },
+    date("opicWaiverDeclaredOn", longPreferencesKey("opic_waiver_declared_on"), { it.opicWaiverDeclaredOn }) { s, v -> s.copy(opicWaiverDeclaredOn = v) },
+    plain("planWithWaiver", booleanPreferencesKey("plan_with_waiver"), { it.planWithWaiver }) { s, v -> s.copy(planWithWaiver = v) },
+    plain("sailSharesOpicLimit", booleanPreferencesKey("sail_shares_opic_limit"), { it.sailSharesOpicLimit }) { s, v -> s.copy(sailSharesOpicLimit = v) },
+    plain("aiDailyCap", intPreferencesKey("ai_daily_cap"), { it.aiDailyCap }) { s, v -> s.copy(aiDailyCap = v) },
+    plain("aiCallDay", longPreferencesKey("ai_call_day"), { it.aiCallDay }) { s, v -> s.copy(aiCallDay = v) },
+    plain("aiCallCount", intPreferencesKey("ai_call_count"), { it.aiCallCount }) { s, v -> s.copy(aiCallCount = v) },
+    plain("studyBlocksEnabled", booleanPreferencesKey("study_blocks_on"), { it.studyBlocksEnabled }) { s, v -> s.copy(studyBlocksEnabled = v) },
+    plain("studyBlocks", stringPreferencesKey("study_blocks"), { it.studyBlocks }) { s, v -> s.copy(studyBlocks = v) },
+)
+
+internal fun Preferences.toSettings(): Settings = SETTINGS_FIELDS.fold(Settings()) { acc, f -> f.readInto(this, acc) }
+
+/** Writes only the fields that differ between [old] and [new]. */
+internal fun MutablePreferences.writeChanges(old: Settings, new: Settings) {
+    SETTINGS_FIELDS.forEach { if (it.changed(old, new)) it.write(this, new) }
+}
+
+class SettingsRepository(private val context: Context) {
     val flow: Flow<Settings> = context.dataStore.data.map { it.toSettings() }
 
     suspend fun current(): Settings = flow.first()
 
     suspend fun update(block: (Settings) -> Settings) {
         context.dataStore.edit { p ->
-            val s = block(p.toSettings())
-            p[K.exam] = s.examDate.toEpochDay()
-            p[K.level] = s.studyLevel.name
-            p[K.alarmOn] = s.alarmEnabled
-            p[K.alarmH] = s.alarmHour
-            p[K.alarmM] = s.alarmMinute
-            p[K.sound] = s.alarmSound
-            p[K.vibrate] = s.alarmVibrate
-            p[K.exact] = s.useExactAlarm
-            p[K.evening] = s.eveningReminder
-            p[K.survey] = s.surveyTopics
-            p[K.selfLevel] = s.selfLevel
-            p[K.capture] = s.captureMode.name
-            p[K.ttsRate] = s.ttsRate
-            p[K.ttsVoice] = s.ttsVoice
-            p[K.ttsPitch] = s.ttsPitch
-            p[K.aiOn] = s.aiEnabled
-            p[K.geminiModel] = s.geminiModel
-            p[K.aiText] = s.aiTextConsent
-            p[K.cloudStt] = s.cloudSttEnabled
-            p[K.audioConsent] = s.audioUploadConsent
-            p[K.retention] = s.audioRetentionDays
-            p[K.seed] = s.seedVersion
-            p[K.focus] = s.focusTopics
-            p[K.retakeDays] = s.retakeDays
-            p[K.retakeVerified] = s.retakeVerified
-            p[K.resultLag] = s.resultLagDays
-            p[K.deadline] = s.gradeDeadline?.toEpochDay() ?: -1L
-            p[K.slots] = s.examSlots
-            p[K.lead] = s.registerLeadDays
-            p[K.examBootstrap] = s.examBootstrapVersion
-            p[K.opicWaivers] = s.opicWaivers
-            p[K.waiverDeclaredOn] = s.opicWaiverDeclaredOn.toEpochDay()
-            p[K.planWaiver] = s.planWithWaiver
-            p[K.sailShares] = s.sailSharesOpicLimit
-            p[K.aiCap] = s.aiDailyCap
-            p[K.aiDay] = s.aiCallDay
-            p[K.aiCount] = s.aiCallCount
-            p[K.blocksOn] = s.studyBlocksEnabled
-            p[K.blocks] = s.studyBlocks
+            val old = p.toSettings()
+            p.writeChanges(old, block(old))
         }
-    }
-
-    private fun Preferences.toSettings(): Settings {
-        val d = Settings()
-        return Settings(
-            examDate = this[K.exam]?.let { LocalDate.ofEpochDay(it) } ?: d.examDate,
-            studyLevel = StudyLevel.of(this[K.level]),
-            alarmEnabled = this[K.alarmOn] ?: d.alarmEnabled,
-            alarmHour = this[K.alarmH] ?: d.alarmHour,
-            alarmMinute = this[K.alarmM] ?: d.alarmMinute,
-            alarmSound = this[K.sound] ?: d.alarmSound,
-            alarmVibrate = this[K.vibrate] ?: d.alarmVibrate,
-            useExactAlarm = this[K.exact] ?: d.useExactAlarm,
-            eveningReminder = this[K.evening] ?: d.eveningReminder,
-            surveyTopics = this[K.survey] ?: d.surveyTopics,
-            selfLevel = this[K.selfLevel] ?: d.selfLevel,
-            captureMode = CaptureMode.of(this[K.capture]),
-            ttsRate = this[K.ttsRate] ?: d.ttsRate,
-            ttsVoice = this[K.ttsVoice] ?: d.ttsVoice,
-            ttsPitch = this[K.ttsPitch] ?: d.ttsPitch,
-            aiEnabled = this[K.aiOn] ?: d.aiEnabled,
-            geminiModel = this[K.geminiModel] ?: d.geminiModel,
-            aiTextConsent = this[K.aiText] ?: d.aiTextConsent,
-            cloudSttEnabled = this[K.cloudStt] ?: d.cloudSttEnabled,
-            audioUploadConsent = this[K.audioConsent] ?: d.audioUploadConsent,
-            audioRetentionDays = this[K.retention] ?: d.audioRetentionDays,
-            seedVersion = this[K.seed] ?: d.seedVersion,
-            focusTopics = this[K.focus] ?: d.focusTopics,
-            retakeDays = this[K.retakeDays] ?: d.retakeDays,
-            retakeVerified = this[K.retakeVerified] ?: d.retakeVerified,
-            resultLagDays = this[K.resultLag] ?: d.resultLagDays,
-            gradeDeadline = this[K.deadline]?.let { if (it < 0) null else LocalDate.ofEpochDay(it) } ?: d.gradeDeadline,
-            examSlots = this[K.slots] ?: d.examSlots,
-            registerLeadDays = this[K.lead] ?: d.registerLeadDays,
-            examBootstrapVersion = this[K.examBootstrap] ?: d.examBootstrapVersion,
-            opicWaivers = this[K.opicWaivers] ?: d.opicWaivers,
-            opicWaiverDeclaredOn = this[K.waiverDeclaredOn]?.let { LocalDate.ofEpochDay(it) } ?: d.opicWaiverDeclaredOn,
-            planWithWaiver = this[K.planWaiver] ?: d.planWithWaiver,
-            sailSharesOpicLimit = this[K.sailShares] ?: d.sailSharesOpicLimit,
-            aiDailyCap = this[K.aiCap] ?: d.aiDailyCap,
-            aiCallDay = this[K.aiDay] ?: d.aiCallDay,
-            aiCallCount = this[K.aiCount] ?: d.aiCallCount,
-            studyBlocksEnabled = this[K.blocksOn] ?: d.studyBlocksEnabled,
-            studyBlocks = this[K.blocks] ?: d.studyBlocks,
-        )
     }
 }
