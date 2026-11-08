@@ -49,10 +49,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import com.opicih.coach.alarm.AlarmCoordinator
 import com.opicih.coach.alarm.AlarmScheduler
-import com.opicih.coach.alarm.ReminderWorker
 import com.opicih.coach.alarm.StudyBlock
-import com.opicih.coach.alarm.StudyBlockScheduler
 import com.opicih.coach.alarm.StudyBlocks
 import com.opicih.coach.data.prefs.CaptureMode
 import com.opicih.coach.data.prefs.Settings
@@ -87,12 +86,8 @@ fun SettingsScreen(onExams: () -> Unit = {}) {
     fun save(block: (Settings) -> Settings) = scope.launch {
         c.settings.update(block)
         val n = c.settings.current()
-        if (n.alarmEnabled) {
-            val mode = AlarmScheduler.schedule(context, n.alarmHour, n.alarmMinute, n.useExactAlarm)
-            if (n.useExactAlarm && mode == AlarmScheduler.Mode.INEXACT) message = "정확한 알람 권한이 없어 일반 알림 방식으로 예약했습니다. 몇 분 늦을 수 있습니다."
-        } else AlarmScheduler.cancel(context)
-        ReminderWorker.ensure(context, n.eveningReminder)
-        StudyBlockScheduler.sync(context, n)
+        val mode = AlarmCoordinator.applyAll(context, n)
+        if (n.alarmEnabled && n.useExactAlarm && mode == AlarmScheduler.Mode.INEXACT) message = "정확한 알람 권한이 없어 일반 알림 방식으로 예약했습니다. 몇 분 늦을 수 있습니다."
     }
 
     val exportLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri: Uri? ->
