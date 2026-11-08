@@ -47,6 +47,7 @@ import com.opicih.coach.data.repo.SegmentRepository
 import com.opicih.coach.learning.ListenRole
 import com.opicih.coach.playback.ListenService
 import com.opicih.coach.playback.ListenStatus
+import com.opicih.coach.speech.VoiceGender
 import com.opicih.coach.speech.VoiceGenders
 import com.opicih.coach.ui.LocalContainer
 import com.opicih.coach.ui.components.Banner
@@ -181,6 +182,9 @@ fun ListenScreen(onOpenSettings: () -> Unit) {
                     c.settings.update { it.copy(listenAnswerVoice = name) }
                     if (!playing) c.listenTts.preview(ANSWER_SAMPLE, ListenRole.ANSWER, s.listenRate)
                 }
+            }
+            if (voices.isNotEmpty() && (voices.none { VoiceGenders.of(it.name) == VoiceGender.FEMALE } || voices.none { VoiceGenders.of(it.name) == VoiceGender.MALE })) {
+                Text("이 기기의 음성은 여성과 남성을 구분할 수 없어, 자동일 때는 질문과 답변을 서로 다른 음성이나 음높이로만 구분합니다.", style = MaterialTheme.typography.bodySmall)
             }
             if (voices.isEmpty()) {
                 Text("선택할 수 있는 영어 음성이 없습니다. 기기의 TTS 설정에서 영어 음성 데이터를 설치하세요.", style = MaterialTheme.typography.bodySmall)

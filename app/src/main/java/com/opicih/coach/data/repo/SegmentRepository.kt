@@ -50,18 +50,20 @@ class SegmentRepository(
         val byScript = dao.segments().groupBy { it.scriptId }
         return scripts.filter { s ->
             val rows = byScript[s.id].orEmpty()
-            rows.isNotEmpty() && rows.all { it.sourceHash == hashOf(s) }
+            val hash = hashOf(s)
+            rows.isNotEmpty() && rows.all { it.sourceHash == hash }
         }.map { it.id }.toSet()
     }
 
     /** (번역이 끝난 스크립트 수, 전체 스크립트 수). */
     suspend fun counts(): Pair<Int, Int> {
-        val all = dao.scripts()
+        val all = dao.scripts().filter { ScriptSegmenter.plan(it.studyText).sentences.isNotEmpty() }
         return freshIds(all).size to all.size
     }
 
+    /** 번역을 만들 수 있고 아직 없거나 낡은 스크립트. 영어 문장이 없는 스크립트(빈 텍스트, 한글만 있는 텍스트)는 영원히 번역할 수 없어서 뺀다. */
     suspend fun pending(): List<ScriptEntity> {
-        val all = dao.scripts()
+        val all = dao.scripts().filter { ScriptSegmenter.plan(it.studyText).sentences.isNotEmpty() }
         val fresh = freshIds(all)
         return all.filter { it.id !in fresh }
     }
@@ -98,10 +100,12 @@ class SegmentRepository(
      * 이미 있는 번역(AI가 만든 것 포함)은 덮어쓰지 않는다. 가져온 스크립트 수를 돌려준다.
      */
     suspend fun importBundled(bundledJson: String): Int {
+        val todo = pending()
+        if (todo.isEmpty()) return 0
         val items = runCatching { BundledSegments.parse(bundledJson).items }.getOrNull().orEmpty()
         if (items.isEmpty()) return 0
         var imported = 0
-        for (s in pending()) {
+        for (s in todo) {
             val rows = BundledSegments.rowsFor(s.question, s.studyText, items) ?: continue
             val hash = hashOf(s)
             val entities = rows.map {

@@ -49,6 +49,14 @@ class ScriptSegmenterTest {
         assertEquals(listOf("I met Mr. Kim at the park.", "We talked for an hour."), plan.sentences)
     }
 
+    @Test fun wordsThatMerelyEndLikeAnAbbreviationStillEndTheSentence() {
+        val plan = ScriptSegmenter.plan("There are three rooms. One is my bedroom. It ended fast. I went home. I saw Dr. Lee. We left.")
+        assertEquals(
+            listOf("There are three rooms.", "One is my bedroom.", "It ended fast.", "I went home.", "I saw Dr. Lee.", "We left."),
+            plan.sentences,
+        )
+    }
+
     @Test fun hashChangesWhenQuestionOrStudyTextChanges() {
         val h = ScriptSegmenter.sourceHash("Q", "answer text")
         assertEquals(h, ScriptSegmenter.sourceHash(" Q ", "answer text "))

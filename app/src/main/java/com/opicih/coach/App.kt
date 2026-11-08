@@ -53,7 +53,7 @@ class AppContainer(context: Context) {
         ListenPlayer(
             scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate),
             speaker = listenTts,
-            ids = { dao.scripts().map { it.id } },
+            ids = { dao.scriptIds() },
             cycle = { id ->
                 val s = dao.script(id)
                 s?.let { sc ->

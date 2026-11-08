@@ -19,7 +19,7 @@ object ScriptSegmenter {
     /** 빈 줄로 나뉜 문단이 없을 때 한 문단에 넣을 문장 수의 상한. */
     private const val MAX_SENTENCES_PER_PARAGRAPH = 3
 
-    /** 이 약어로 끝난 조각은 문장 끝이 아니므로 다음 조각과 합친다. */
+    /** 이 약어가 마지막 단어인 조각은 문장 끝이 아니므로 다음 조각과 합친다. 단어 전체가 같아야 한다(first., rooms.는 해당 없음). */
     private val ABBREVIATIONS = setOf("mr.", "mrs.", "ms.", "dr.", "st.", "vs.", "e.g.", "i.e.")
 
     fun plan(text: String): SegmentPlan {
@@ -60,7 +60,7 @@ object ScriptSegmenter {
         var carry = ""
         for (p in parts) {
             val cur = if (carry.isEmpty()) p else "$carry $p"
-            if (ABBREVIATIONS.any { cur.lowercase().endsWith(it) }) carry = cur else { out += cur; carry = "" }
+            if (cur.trimEnd().substringAfterLast(' ').lowercase() in ABBREVIATIONS) carry = cur else { out += cur; carry = "" }
         }
         if (carry.isNotEmpty()) out += carry
         return out

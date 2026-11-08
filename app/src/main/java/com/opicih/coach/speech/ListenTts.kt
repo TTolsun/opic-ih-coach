@@ -81,7 +81,15 @@ class ListenTts(context: Context, private val prefs: suspend () -> ListenPrefs) 
     /** 기기에 설치된 영어 음성. 오프라인·고품질을 앞에 둔다. */
     suspend fun englishVoices(): List<Voice> {
         if (!awaitReady() || !enOk) return emptyList()
-        return runCatching { tts.voices }.getOrNull().orEmpty()
+        enVoices?.let { return it }
+        return loadEnglishVoices().also { if (it.isNotEmpty()) enVoices = it }
+    }
+
+    @Volatile private var enVoices: List<Voice>? = null
+    @Volatile private var koVoices: List<Voice>? = null
+
+    private fun loadEnglishVoices(): List<Voice> =
+        runCatching { tts.voices }.getOrNull().orEmpty()
             .filter { it.locale.language == "en" && !it.features.contains(TextToSpeech.Engine.KEY_FEATURE_NOT_INSTALLED) }
             .sortedWith(
                 compareByDescending<Voice> { it.locale == Locale.US }
@@ -89,9 +97,10 @@ class ListenTts(context: Context, private val prefs: suspend () -> ListenPrefs) 
                     .thenByDescending { it.quality }
                     .thenBy { it.name },
             )
-    }
 
-    private fun koreanVoices(): List<Voice> = runCatching { tts.voices }.getOrNull().orEmpty()
+    private fun koreanVoices(): List<Voice> = koVoices ?: loadKoreanVoices().also { if (it.isNotEmpty()) koVoices = it }
+
+    private fun loadKoreanVoices(): List<Voice> = runCatching { tts.voices }.getOrNull().orEmpty()
         .filter { it.locale.language == "ko" && !it.features.contains(TextToSpeech.Engine.KEY_FEATURE_NOT_INSTALLED) }
         .sortedWith(compareBy<Voice> { it.isNetworkConnectionRequired }.thenByDescending { it.quality }.thenBy { it.name })
 

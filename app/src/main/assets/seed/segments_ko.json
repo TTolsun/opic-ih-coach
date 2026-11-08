@@ -493,8 +493,12 @@
      "ko": "아주 크지는 않지만 아늑해요."
     },
     {
-     "en": "There are three rooms. One is my bedroom, one is a dress room just for clothes, and the last one is a study room filled with books.",
-     "ko": "방은 세 개예요. 하나는 제 침실이고, 하나는 옷만 두는 드레스룸이고, 마지막 하나는 책으로 가득한 서재예요."
+     "en": "There are three rooms.",
+     "ko": "방은 세 개예요."
+    },
+    {
+     "en": "One is my bedroom, one is a dress room just for clothes, and the last one is a study room filled with books.",
+     "ko": "하나는 제 침실이고, 하나는 옷만 두는 드레스룸이고, 마지막 하나는 책으로 가득한 서재예요."
     },
     {
      "en": "The living room is the biggest space, and it has a large window, so a lot of sunlight comes in during the day.",
@@ -953,8 +957,12 @@
      "ko": "하지만 요즘은 두 나라가 음식, 음악, 드라마 같은 문화를 많이 공유하고 있어요."
     },
     {
-     "en": "China, on the other hand, has grown really fast. I went there on a business trip a few years ago, and I saw so many tall buildings and luxury cars.",
-     "ko": "반면 중국은 정말 빠르게 성장했어요. 몇 년 전 출장으로 그곳에 갔는데, 높은 빌딩과 고급 자동차가 정말 많았어요."
+     "en": "China, on the other hand, has grown really fast.",
+     "ko": "반면 중국은 정말 빠르게 성장했어요."
+    },
+    {
+     "en": "I went there on a business trip a few years ago, and I saw so many tall buildings and luxury cars.",
+     "ko": "몇 년 전 출장으로 그곳에 갔는데, 높은 빌딩과 고급 자동차가 정말 많았어요."
     },
     {
      "en": "But because it grew so fast, the gap between the rich and the poor is very big.",

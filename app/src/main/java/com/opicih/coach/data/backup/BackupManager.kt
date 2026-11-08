@@ -244,8 +244,8 @@ class BackupManager(private val context: Context, private val db: AppDatabase) {
             // Frames do not point at script ids, so the current ones stay valid when an older file has none.
             if (restoresFrames(snap)) { d.clearFrames(); d.insertFrames(snap.frames.map { it.toEntity() }) }
             // Same reason: segments belong to the script ids that were just restored from this file.
-            d.clearSegments()
-            d.insertSegments(snap.segments.map { it.toEntity() })
+            // Older files have none: keep the current rows (they are validated by hash, so a mismatching one is simply ignored).
+            if (snap.version >= 6) { d.clearSegments(); d.insertSegments(snap.segments.map { it.toEntity() }) }
             if (hasSchedule) {
                 d.insertRegistrations(snap.registrations.map { it.toEntity() })
                 d.insertStatusEvents(snap.statusEvents.map { it.toEntity() })

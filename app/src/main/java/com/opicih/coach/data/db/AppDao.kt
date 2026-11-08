@@ -17,6 +17,7 @@ interface AppDao {
     @Query("SELECT * FROM scripts ORDER BY topic, id") suspend fun scripts(): List<ScriptEntity>
     @Query("SELECT * FROM scripts WHERE id = :id") fun scriptFlow(id: Long): Flow<ScriptEntity?>
     @Query("SELECT * FROM scripts WHERE id = :id") suspend fun script(id: Long): ScriptEntity?
+    @Query("SELECT id FROM scripts ORDER BY topic, id") suspend fun scriptIds(): List<Long>
     @Query("SELECT COUNT(*) FROM scripts") suspend fun scriptCount(): Int
     @Insert suspend fun insertScript(s: ScriptEntity): Long
     @Update suspend fun updateScript(s: ScriptEntity)
