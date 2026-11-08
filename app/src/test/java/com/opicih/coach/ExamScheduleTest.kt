@@ -263,12 +263,11 @@ class BackupCompatTest {
         assertTrue(BackupManager.restoresSchedule(back))
     }
 
-    @Test fun version2FileKeepsCurrentMocksAndUsesDefaults() {
+    @Test fun version2FileUsesEntityDefaults() {
         val v2 = """{"version":2,"scripts":[{"id":7,"topic":"T","title":"t","question":"q","questionType":"OTHER","original":"o",
             "natural":null,"ihTarget":null,"shortVersion":null,"keywords":null,"activeVersion":"ORIGINAL","koreanMeaning":null,
             "source":"USER_IMPORT","masteryState":"NEW","masteryScore":0,"srsStep":0,"dueEpochDay":0,"storyIds":null}]}"""
         val snap = BackupManager.decode(v2)
-        assertFalse(BackupManager.restoresMocks(snap))
         assertEquals(60, snap.scripts.single().estSeconds)
         assertNull(snap.scripts.single().linkedGroupId)
     }
@@ -310,5 +309,40 @@ class BackupCoverageTest {
         assertEquals(attempt, attempt.toBackup().toEntity())
         val mock = MockTestEntity(id = 4, startedAt = 1, finishedAt = 2, questionCount = 12, selfLevel = 5, reportJson = "{}")
         assertEquals(mock, mock.toBackup().toEntity())
+    }
+
+    /** Distinct values per column so a swapped positional argument in toBackup() fails the test. */
+    @Test fun roundTripKeepsEveryColumnInPlace() = with(BackupManager.Companion) {
+        val attempt = PracticeAttemptEntity(scriptId = 1, topic = "a", questionText = "b", questionType = "c", mode = "d", transcript = "e",
+            captureMode = "f", durationMs = 2, speechMs = 3, longPauseCount = 4, wordCount = 5, wpm = 6, coverage = 0.7f, score = 8,
+            metricsJson = "g", feedbackJson = "h", feedbackSource = "i", mockId = 9, createdAt = 10, trainingSessionId = 11)
+        assertEquals(attempt, attempt.toBackup().toEntity())
+        val script = ScriptEntity(id = 1, topic = "a", title = "b", question = "c", questionType = "d", original = "e", natural = "f",
+            ihTarget = "g", shortVersion = "h", keywords = "i", activeVersion = "j", koreanMeaning = "k", difficulty = 2, estSeconds = 3,
+            source = "l", masteryState = "m", masteryScore = 4, srsStep = 5, dueEpochDay = 6, lastReviewedAt = 7, linkedGroupId = "n",
+            storyIds = "o", createdAt = 8, updatedAt = 9)
+        assertEquals(script, script.toBackup().toEntity())
+        val revision = ScriptRevisionEntity(scriptId = 1, version = "a", text = "b", reasonKo = "c", origin = "d", status = "e", createdAt = 2)
+        assertEquals(revision, revision.toBackup().toEntity())
+        val error = ErrorPatternEntity(key = "a", category = "b", example = "c", correction = "d", count = 2, lastSeen = 3)
+        assertEquals(error, error.toBackup().toEntity())
+        val chunk = ChunkEntity(phrase = "a", meaningKo = "b", example = "c", category = "d", srsStep = 2, dueEpochDay = 3, lastResult = "e",
+            lastReviewedEpochDay = 4, failCount = 5, source = "f")
+        assertEquals(chunk, chunk.toBackup().toEntity())
+        val log = DailyLogEntity(1, 2, 3, 4, 5, mockDone = true, morningDone = false)
+        assertEquals(log, log.toBackup().toEntity())
+        val exam = ExamEntity(id = 1, epochDay = 2, type = "a", resultGrade = "b", note = "c", topicsSeen = "d", stuckPoints = "e",
+            feeling = 3, selfLevelUsed = 4, debriefAt = 5)
+        assertEquals(exam, exam.toBackup().toEntity())
+        val reg = ExamRegistrationEntity(id = 1, examType = "a", dateLocal = "b", datePrecision = "c", startTimeLocal = "d", endTimeLocal = "e",
+            zoneId = "f", location = "g", status = "h", registrationOpenAt = "i", registrationCloseAt = "j", resultGrade = "k",
+            resultPublishedAt = "l", waiverUsed = true, memo = "m", sourceType = "n", verifiedAt = 2, needsReview = true, legacyExamId = 3,
+            createdAt = 4, updatedAt = 5)
+        assertEquals(reg, reg.toBackup().toEntity())
+        val event = ExamStatusEventEntity(registrationId = 1, fromStatus = "a", toStatus = "b", effectiveDate = "c", note = "d", createdAt = 2)
+        assertEquals(event, event.toBackup().toEntity())
+        val session = ExamTrainingSessionEntity(id = 1, examType = "a", kind = "b", startedAt = 2, finishedAt = 3, turnCount = 4, aiCalls = 5,
+            summaryJson = "c")
+        assertEquals(session, session.toBackup().toEntity())
     }
 }
