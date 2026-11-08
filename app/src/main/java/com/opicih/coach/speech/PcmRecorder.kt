@@ -113,6 +113,5 @@ class PcmRecorder {
         const val FRAME = 320 // 20 ms at 16 kHz
         const val MAX_BYTES = 10L * 60 * SAMPLE_RATE * 2
         /** RMS threshold (0..32768) above which a 20 ms frame counts as speech. */
-        const val SPEECH_RMS = 700f
     }
 }

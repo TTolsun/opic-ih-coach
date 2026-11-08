@@ -17,7 +17,6 @@ import java.time.ZonedDateTime
 object AlarmScheduler {
     const val ACTION_FIRE = "com.opicih.coach.ALARM_FIRE"
     const val ACTION_SNOOZE = "com.opicih.coach.ALARM_SNOOZE"
-    const val ACTION_DISMISS = "com.opicih.coach.ALARM_DISMISS"
     const val ACTION_REMIND = "com.opicih.coach.REMIND"
     const val EXTRA_TITLE = "title"
     const val EXTRA_TEXT = "text"
@@ -72,41 +71,23 @@ object AlarmScheduler {
                 .putExtra(EXTRA_TITLE, title).putExtra(EXTRA_TEXT, text).putExtra(EXTRA_ROUTE, route),
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
-        val am = context.getSystemService(AlarmManager::class.java)
-        try {
-            if (canExact(context)) am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, pi)
-            else am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, pi)
-        } catch (e: SecurityException) {
-            am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, pi)
-        }
+        AlarmTrigger.set(context, at, pi)
         return true
     }
 
-    fun cancel(context: Context) {
+    /** Cancels the daily alarm and, unless [includeSnooze] is false, a pending snooze or test alarm. */
+    fun cancel(context: Context, includeSnooze: Boolean = true) {
         val am = context.getSystemService(AlarmManager::class.java)
         am.cancel(firePending(context, REQ_MAIN))
-        am.cancel(firePending(context, REQ_SNOOZE))
+        if (includeSnooze) am.cancel(firePending(context, REQ_SNOOZE))
     }
 
     private fun scheduleAt(context: Context, at: Long, preferExact: Boolean, req: Int): Mode {
-        val am = context.getSystemService(AlarmManager::class.java)
-        val pi = firePending(context, req)
-        return try {
-            if (preferExact && canExact(context)) {
-                val show = PendingIntent.getActivity(
-                    context, 200, Intent(context, MainActivity::class.java).putExtra(MainActivity.EXTRA_ROUTE, "morning"),
-                    PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
-                )
-                am.setAlarmClock(AlarmManager.AlarmClockInfo(at, show), pi)
-                Mode.EXACT
-            } else {
-                am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, pi)
-                Mode.INEXACT
-            }
-        } catch (e: SecurityException) {
-            am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, pi)
-            Mode.INEXACT
-        }
+        val show = PendingIntent.getActivity(
+            context, 200, Intent(context, MainActivity::class.java).putExtra(MainActivity.EXTRA_ROUTE, "morning"),
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+        )
+        return AlarmTrigger.set(context, at, firePending(context, req), preferExact, show)
     }
 
     private fun firePending(context: Context, req: Int): PendingIntent =

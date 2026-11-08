@@ -1,5 +1,8 @@
 package com.opicih.coach.ui.screens
 
+import com.opicih.coach.learning.lastExamDate
+import com.opicih.coach.learning.lastSatDate
+import com.opicih.coach.learning.rulesOf
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -62,28 +65,6 @@ import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.ZoneId
 
-/**
- * Base date for the OPIc retake advice: the last COMPLETED OPIc sitting (month-only dates use the month's last day,
- * the conservative value). Other exam types (SAIL) never count. Falls back to old v2 exam rows, then to today.
- * The legacy Settings.examDate is no longer used: it could hold a recommendation, not a sitting.
- */
-fun lastExamDate(s: Settings, exams: List<ExamEntity>, today: LocalDate, regs: List<ExamRegistrationEntity> = emptyList()): LocalDate {
-    ExamSchedule.lastCompleted(regs, ExamType.OPIC)?.let { return it.date }
-    val linkedNonOpic = regs.filter { it.type != ExamType.OPIC }.mapNotNull { it.legacyExamId }.toSet()
-    return exams.filter { it.id !in linkedNonOpic }.map { LocalDate.ofEpochDay(it.epochDay) }.filter { !it.isAfter(today) }.maxOrNull() ?: today
-}
-
-/** Most recent exam day (any type) that is over or today, for the debrief card. */
-fun lastSatDate(regs: List<ExamRegistrationEntity>, today: LocalDate): LocalDate? =
-    regs.filter { it.state == RegistrationStatus.REGISTERED || it.state == RegistrationStatus.COMPLETED }
-        .mapNotNull { it.date }.filter { !it.isAfter(today) }.maxOrNull()
-
-/** OPIc advice: official retake rule (25 blocked days, exam day excluded); waiver only when one is available and the user plans to use it. */
-fun rulesOf(s: Settings, waiverAvailable: Boolean = false) = RetestAdvisor.Rules(
-    retakeDays = ExamPolicy.opic().blockedDays, verified = true, resultLagDays = s.resultLagDays, useWaiver = s.planWithWaiver && waiverAvailable,
-    deadline = s.gradeDeadline, slots = s.slotDates(), registerLeadDays = s.registerLeadDays,
-)
-
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun NextExamScreen(onOpenSettings: () -> Unit) {
@@ -98,7 +79,7 @@ fun NextExamScreen(onOpenSettings: () -> Unit) {
     var message by remember { mutableStateOf<String?>(null) }
 
     val today = LocalDate.now()
-    val last = lastExamDate(s, exams, today, regs)
+    val last = lastExamDate(exams, today, regs)
     val sinceMs = last.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
     val readiness = ProgressCalculator.readiness(attempts, logs, last.toEpochDay(), sinceMs)
     val retake = RetakeSummaries.of(s, regs, today)

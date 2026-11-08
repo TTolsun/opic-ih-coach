@@ -1,6 +1,7 @@
 package com.opicih.coach.alarm
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
@@ -58,6 +59,13 @@ object Notifications {
         (Build.VERSION.SDK_INT < 33 || ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) &&
             NotificationManagerCompat.from(context).areNotificationsEnabled()
 
+    /** Every caller checks [canPost] first; lint cannot see that through the helper, hence the suppression. */
+    @SuppressLint("MissingPermission")
+    private fun post(context: Context, id: Int, n: android.app.Notification) {
+        if (!canPost(context)) return
+        runCatching { NotificationManagerCompat.from(context).notify(id, n) }
+    }
+
     fun showMorning(context: Context, dLabel: String, mission: String, sound: Boolean, vibrate: Boolean) {
         if (!canPost(context)) return
         val open = PendingIntent.getActivity(
@@ -89,7 +97,7 @@ object Notifications {
             .addAction(0, "바로 말하기", speak)
             .addAction(0, "10분 후", snooze)
         if (!vibrate) b.setVibrate(longArrayOf(0))
-        runCatching { NotificationManagerCompat.from(context).notify(ID_MORNING, b.build()) }
+        post(context, ID_MORNING, b.build())
     }
 
     fun showReminder(context: Context, text: String, title: String = "오늘 말하기 목표가 남았습니다", route: String = "speaking") {
@@ -106,7 +114,7 @@ object Notifications {
             .setContentIntent(open)
             .setAutoCancel(true)
             .build()
-        runCatching { NotificationManagerCompat.from(context).notify(if (route == "speaking") ID_REMINDER else ID_REMINDER + 1, n) }
+        post(context, if (route == "speaking") ID_REMINDER else ID_REMINDER + 1, n)
     }
 
     fun showStudyBlock(context: Context, title: String, text: String, loud: Boolean, route: String) {
@@ -125,7 +133,7 @@ object Notifications {
             .setAutoCancel(true)
         if (loud) b.setCategory(NotificationCompat.CATEGORY_ALARM).setPriority(NotificationCompat.PRIORITY_MAX).setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .addAction(0, "지금 시작", open)
-        runCatching { NotificationManagerCompat.from(context).notify(ID_STUDY_BLOCK, b.build()) }
+        post(context, ID_STUDY_BLOCK, b.build())
     }
 
     fun cancelMorning(context: Context) = NotificationManagerCompat.from(context).cancel(ID_MORNING)

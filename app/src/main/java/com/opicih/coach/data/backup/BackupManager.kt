@@ -4,27 +4,120 @@ import android.content.Context
 import android.net.Uri
 import androidx.room.withTransaction
 import com.opicih.coach.data.db.AppDatabase
+import com.opicih.coach.data.db.ChunkEntity
+import com.opicih.coach.data.db.ContentSource
+import com.opicih.coach.data.db.DailyLogEntity
+import com.opicih.coach.data.db.ErrorPatternEntity
+import com.opicih.coach.data.db.ExamEntity
+import com.opicih.coach.data.db.ExamRegistrationEntity
+import com.opicih.coach.data.db.ExamStatusEventEntity
+import com.opicih.coach.data.db.ExamTrainingSessionEntity
+import com.opicih.coach.data.db.MockTestEntity
+import com.opicih.coach.data.db.PracticeAttemptEntity
+import com.opicih.coach.data.db.ScriptEntity
+import com.opicih.coach.data.db.ScriptRevisionEntity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import java.io.File
 
-/** JSON backup / restore through SAF. Audio files are not included (they stay on the device). */
+/**
+ * JSON backup / restore through SAF. Audio files are not included (they stay on the device).
+ * Settings (DataStore) and the measured study time are not included either.
+ *
+ * Every entity column must either be mirrored below or listed in [NOT_BACKED_UP]; BackupTest enforces it,
+ * so a new column cannot silently drop out of backups.
+ */
 class BackupManager(private val context: Context, private val db: AppDatabase) {
     companion object {
-        const val CURRENT_VERSION = 2
+        /** 1 = learning data only. 2 = adds the exam schedule. 3 = adds mock tests and the columns v2 dropped. */
+        const val CURRENT_VERSION = 3
         private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
         fun encode(snap: Snapshot): String = json.encodeToString(Snapshot.serializer(), snap)
-        /** Reads both version-1 (pre-schedule) and version-2 files. */
+        /** Reads version-1, 2 and 3 files: columns missing from older files fall back to the entity defaults. */
         fun decode(text: String): Snapshot = json.decodeFromString(Snapshot.serializer(), text)
-        /** Only a version-2 file that actually carries a schedule replaces the current one. */
+        /** Only a version-2+ file that actually carries a schedule replaces the current one. */
         fun restoresSchedule(snap: Snapshot): Boolean = snap.version >= 2 && snap.registrations.isNotEmpty()
+
+        /**
+         * Columns deliberately left out, per entity. Auto-generated ids are re-created on insert (nothing references
+         * them), audio stays on the device, and import sources (raw imported files) are not backed up.
+         */
+        val NOT_BACKED_UP: Map<Class<*>, Set<String>> = mapOf(
+            ScriptEntity::class.java to setOf("importId"),
+            ScriptRevisionEntity::class.java to setOf("id"),
+            PracticeAttemptEntity::class.java to setOf("id", "audioPath"),
+            ErrorPatternEntity::class.java to setOf("id"),
+            ChunkEntity::class.java to setOf("id"),
+            ExamStatusEventEntity::class.java to setOf("id"),
+        )
+
+        // ---- Entity <-> mirror mapping (pure, unit tested)
+        fun ScriptEntity.toBackup() = BScript(id, topic, title, question, questionType, original, natural, ihTarget, shortVersion, keywords,
+            activeVersion, koreanMeaning, source, masteryState, masteryScore, srsStep, dueEpochDay, storyIds,
+            difficulty, estSeconds, lastReviewedAt, linkedGroupId, createdAt, updatedAt)
+        fun BScript.toEntity() = ScriptEntity(id = id, topic = topic, title = title, question = question, questionType = questionType,
+            original = original, natural = natural, ihTarget = ihTarget, shortVersion = shortVersion, keywords = keywords,
+            activeVersion = activeVersion, koreanMeaning = koreanMeaning, difficulty = difficulty, estSeconds = estSeconds, source = source,
+            masteryState = masteryState, masteryScore = masteryScore, srsStep = srsStep, dueEpochDay = dueEpochDay,
+            lastReviewedAt = lastReviewedAt, linkedGroupId = linkedGroupId, storyIds = storyIds, createdAt = createdAt, updatedAt = updatedAt)
+
+        fun ScriptRevisionEntity.toBackup() = BRevision(scriptId, version, text, reasonKo, origin, status, createdAt)
+        fun BRevision.toEntity() = ScriptRevisionEntity(scriptId = scriptId, version = version, text = text, reasonKo = reasonKo,
+            origin = origin, status = status, createdAt = createdAt)
+
+        fun PracticeAttemptEntity.toBackup() = BAttempt(scriptId, topic, questionText, questionType, mode, transcript, captureMode,
+            durationMs, speechMs, longPauseCount, wordCount, wpm, coverage, score, metricsJson, feedbackJson, feedbackSource, createdAt,
+            trainingSessionId, mockId)
+        fun BAttempt.toEntity() = PracticeAttemptEntity(scriptId = scriptId, topic = topic, questionText = questionText,
+            questionType = questionType, mode = mode, transcript = transcript, captureMode = captureMode, durationMs = durationMs,
+            speechMs = speechMs, longPauseCount = longPauseCount, wordCount = wordCount, wpm = wpm, coverage = coverage, score = score,
+            metricsJson = metricsJson, feedbackJson = feedbackJson, feedbackSource = feedbackSource, mockId = mockId,
+            createdAt = createdAt, trainingSessionId = trainingSessionId)
+
+        fun ErrorPatternEntity.toBackup() = BError(key, category, example, correction, count, lastSeen)
+        fun BError.toEntity() = ErrorPatternEntity(key = key, category = category, example = example, correction = correction,
+            count = count, lastSeen = lastSeen)
+
+        fun ChunkEntity.toBackup() = BChunk(phrase, meaningKo, example, category, srsStep, dueEpochDay, lastResult, failCount,
+            lastReviewedEpochDay, source)
+        fun BChunk.toEntity() = ChunkEntity(phrase = phrase, meaningKo = meaningKo, example = example, category = category,
+            srsStep = srsStep, dueEpochDay = dueEpochDay, lastResult = lastResult, lastReviewedEpochDay = lastReviewedEpochDay,
+            failCount = failCount, source = source)
+
+        fun DailyLogEntity.toBackup() = BLog(epochDay, speakingMs, attempts, scriptsReviewed, chunksReviewed, mockDone, morningDone)
+        fun BLog.toEntity() = DailyLogEntity(epochDay, speakingMs, attempts, scriptsReviewed, chunksReviewed, mockDone, morningDone)
+
+        fun MockTestEntity.toBackup() = BMock(id, startedAt, finishedAt, questionCount, selfLevel, reportJson)
+        fun BMock.toEntity() = MockTestEntity(id = id, startedAt = startedAt, finishedAt = finishedAt, questionCount = questionCount,
+            selfLevel = selfLevel, reportJson = reportJson)
+
+        fun ExamEntity.toBackup() = BExam(id, epochDay, type, resultGrade, note, topicsSeen, stuckPoints, feeling, selfLevelUsed, debriefAt)
+        fun BExam.toEntity() = ExamEntity(id = id, epochDay = epochDay, type = type, resultGrade = resultGrade, note = note,
+            topicsSeen = topicsSeen, stuckPoints = stuckPoints, feeling = feeling, selfLevelUsed = selfLevelUsed, debriefAt = debriefAt)
+
+        fun ExamRegistrationEntity.toBackup() = BRegistration(id, examType, dateLocal, datePrecision, startTimeLocal, endTimeLocal, zoneId,
+            location, status, registrationOpenAt, registrationCloseAt, resultGrade, resultPublishedAt, waiverUsed, memo, sourceType,
+            verifiedAt, needsReview, legacyExamId, createdAt, updatedAt)
+        fun BRegistration.toEntity() = ExamRegistrationEntity(id = id, examType = examType, dateLocal = dateLocal,
+            datePrecision = datePrecision, startTimeLocal = startTimeLocal, endTimeLocal = endTimeLocal, zoneId = zoneId,
+            location = location, status = status, registrationOpenAt = registrationOpenAt, registrationCloseAt = registrationCloseAt,
+            resultGrade = resultGrade, resultPublishedAt = resultPublishedAt, waiverUsed = waiverUsed, memo = memo,
+            sourceType = sourceType, verifiedAt = verifiedAt, needsReview = needsReview, legacyExamId = legacyExamId,
+            createdAt = createdAt, updatedAt = updatedAt)
+
+        fun ExamStatusEventEntity.toBackup() = BStatusEvent(registrationId, fromStatus, toStatus, effectiveDate, note, createdAt)
+        fun BStatusEvent.toEntity() = ExamStatusEventEntity(registrationId = registrationId, fromStatus = fromStatus,
+            toStatus = toStatus, effectiveDate = effectiveDate, note = note, createdAt = createdAt)
+
+        fun ExamTrainingSessionEntity.toBackup() = BTrainingSession(id, examType, kind, startedAt, finishedAt, turnCount, aiCalls, summaryJson)
+        fun BTrainingSession.toEntity() = ExamTrainingSessionEntity(id = id, examType = examType, kind = kind, startedAt = startedAt,
+            finishedAt = finishedAt, turnCount = turnCount, aiCalls = aiCalls, summaryJson = summaryJson)
     }
 
     @Serializable
     data class Snapshot(
-        /** 1 = v2 app (learning data only). 2 = adds exam registrations, status history, training sessions. */
         val version: Int = CURRENT_VERSION,
         val exportedAt: Long = System.currentTimeMillis(),
         val scripts: List<BScript> = emptyList(),
@@ -37,15 +130,33 @@ class BackupManager(private val context: Context, private val db: AppDatabase) {
         val registrations: List<BRegistration> = emptyList(),
         val statusEvents: List<BStatusEvent> = emptyList(),
         val trainingSessions: List<BTrainingSession> = emptyList(),
+        val mocks: List<BMock> = emptyList(),
     )
 
     // Serializable mirrors of the entities (keeps Room entities free of serialization annotations).
-    @Serializable data class BScript(val id: Long, val topic: String, val title: String, val question: String, val questionType: String, val original: String, val natural: String?, val ihTarget: String?, val shortVersion: String?, val keywords: String?, val activeVersion: String, val koreanMeaning: String?, val source: String, val masteryState: String, val masteryScore: Int, val srsStep: Int, val dueEpochDay: Long, val storyIds: String?)
+    // Fields added after version 2 carry the entity default so older files still decode.
+    @Serializable data class BScript(
+        val id: Long, val topic: String, val title: String, val question: String, val questionType: String, val original: String,
+        val natural: String?, val ihTarget: String?, val shortVersion: String?, val keywords: String?, val activeVersion: String,
+        val koreanMeaning: String?, val source: String, val masteryState: String, val masteryScore: Int, val srsStep: Int,
+        val dueEpochDay: Long, val storyIds: String?,
+        val difficulty: Int = 3, val estSeconds: Int = 60, val lastReviewedAt: Long? = null, val linkedGroupId: String? = null,
+        val createdAt: Long = System.currentTimeMillis(), val updatedAt: Long = System.currentTimeMillis(),
+    )
     @Serializable data class BRevision(val scriptId: Long, val version: String, val text: String, val reasonKo: String, val origin: String, val status: String, val createdAt: Long)
-    @Serializable data class BAttempt(val scriptId: Long?, val topic: String, val questionText: String, val questionType: String, val mode: String, val transcript: String, val captureMode: String, val durationMs: Long, val speechMs: Long, val longPauseCount: Int, val wordCount: Int, val wpm: Int, val coverage: Float?, val score: Int, val metricsJson: String, val feedbackJson: String, val feedbackSource: String, val createdAt: Long, val trainingSessionId: Long? = null)
+    @Serializable data class BAttempt(
+        val scriptId: Long?, val topic: String, val questionText: String, val questionType: String, val mode: String, val transcript: String,
+        val captureMode: String, val durationMs: Long, val speechMs: Long, val longPauseCount: Int, val wordCount: Int, val wpm: Int,
+        val coverage: Float?, val score: Int, val metricsJson: String, val feedbackJson: String, val feedbackSource: String,
+        val createdAt: Long, val trainingSessionId: Long? = null, val mockId: Long? = null,
+    )
     @Serializable data class BError(val key: String, val category: String, val example: String, val correction: String, val count: Int, val lastSeen: Long)
-    @Serializable data class BChunk(val phrase: String, val meaningKo: String, val example: String, val category: String, val srsStep: Int, val dueEpochDay: Long, val lastResult: String, val failCount: Int)
+    @Serializable data class BChunk(
+        val phrase: String, val meaningKo: String, val example: String, val category: String, val srsStep: Int, val dueEpochDay: Long,
+        val lastResult: String, val failCount: Int, val lastReviewedEpochDay: Long? = null, val source: String = ContentSource.AI_SAMPLE.name,
+    )
     @Serializable data class BLog(val epochDay: Long, val speakingMs: Long, val attempts: Int, val scriptsReviewed: Int, val chunksReviewed: Int, val mockDone: Boolean, val morningDone: Boolean)
+    @Serializable data class BMock(val id: Long, val startedAt: Long, val finishedAt: Long?, val questionCount: Int, val selfLevel: Int, val reportJson: String?)
     @Serializable data class BExam(val id: Long = 0, val epochDay: Long, val type: String, val resultGrade: String?, val note: String, val topicsSeen: String = "", val stuckPoints: String = "", val feeling: Int = 0, val selfLevelUsed: Int = 0, val debriefAt: Long? = null)
 
     @Serializable data class BRegistration(
@@ -60,22 +171,19 @@ class BackupManager(private val context: Context, private val db: AppDatabase) {
     suspend fun export(uri: Uri) = withContext(Dispatchers.IO) {
         val d = db.dao()
         val snap = Snapshot(
-            scripts = d.scripts().map { BScript(it.id, it.topic, it.title, it.question, it.questionType, it.original, it.natural, it.ihTarget, it.shortVersion, it.keywords, it.activeVersion, it.koreanMeaning, it.source, it.masteryState, it.masteryScore, it.srsStep, it.dueEpochDay, it.storyIds) },
-            revisions = d.revisions().map { BRevision(it.scriptId, it.version, it.text, it.reasonKo, it.origin, it.status, it.createdAt) },
-            attempts = d.attempts().map { BAttempt(it.scriptId, it.topic, it.questionText, it.questionType, it.mode, it.transcript, it.captureMode, it.durationMs, it.speechMs, it.longPauseCount, it.wordCount, it.wpm, it.coverage, it.score, it.metricsJson, it.feedbackJson, it.feedbackSource, it.createdAt, it.trainingSessionId) },
-            errors = d.errors().map { BError(it.key, it.category, it.example, it.correction, it.count, it.lastSeen) },
-            chunks = d.chunks().map { BChunk(it.phrase, it.meaningKo, it.example, it.category, it.srsStep, it.dueEpochDay, it.lastResult, it.failCount) },
-            logs = d.dailyLogs().map { BLog(it.epochDay, it.speakingMs, it.attempts, it.scriptsReviewed, it.chunksReviewed, it.mockDone, it.morningDone) },
-            exams = d.exams().map { BExam(it.id, it.epochDay, it.type, it.resultGrade, it.note, it.topicsSeen, it.stuckPoints, it.feeling, it.selfLevelUsed, it.debriefAt) },
-            registrations = d.registrations().map {
-                BRegistration(it.id, it.examType, it.dateLocal, it.datePrecision, it.startTimeLocal, it.endTimeLocal, it.zoneId, it.location, it.status,
-                    it.registrationOpenAt, it.registrationCloseAt, it.resultGrade, it.resultPublishedAt, it.waiverUsed, it.memo, it.sourceType,
-                    it.verifiedAt, it.needsReview, it.legacyExamId, it.createdAt, it.updatedAt)
-            },
-            statusEvents = d.statusEvents().map { BStatusEvent(it.registrationId, it.fromStatus, it.toStatus, it.effectiveDate, it.note, it.createdAt) },
-            trainingSessions = d.trainingSessions().map { BTrainingSession(it.id, it.examType, it.kind, it.startedAt, it.finishedAt, it.turnCount, it.aiCalls, it.summaryJson) },
+            scripts = d.scripts().map { it.toBackup() },
+            revisions = d.revisions().map { it.toBackup() },
+            attempts = d.attempts().map { it.toBackup() },
+            errors = d.errors().map { it.toBackup() },
+            chunks = d.chunks().map { it.toBackup() },
+            logs = d.dailyLogs().map { it.toBackup() },
+            exams = d.exams().map { it.toBackup() },
+            registrations = d.registrations().map { it.toBackup() },
+            statusEvents = d.statusEvents().map { it.toBackup() },
+            trainingSessions = d.trainingSessions().map { it.toBackup() },
+            mocks = d.mocks().map { it.toBackup() },
         )
-        context.contentResolver.openOutputStream(uri, "wt")?.use { it.write(json.encodeToString(Snapshot.serializer(), snap).toByteArray()) }
+        context.contentResolver.openOutputStream(uri, "wt")?.use { it.write(encode(snap).toByteArray()) }
             ?: error("백업 파일을 만들 수 없습니다.")
         snap.scripts.size
     }
@@ -90,31 +198,20 @@ class BackupManager(private val context: Context, private val db: AppDatabase) {
             // A version-1 file has no exam schedule: keep the current one instead of wiping it.
             val hasSchedule = restoresSchedule(snap)
             if (hasSchedule) { d.clearRegistrations(); d.clearStatusEvents(); d.clearTrainingSessions() }
-            d.insertScriptsRaw(snap.scripts.map {
-                com.opicih.coach.data.db.ScriptEntity(id = it.id, topic = it.topic, title = it.title, question = it.question, questionType = it.questionType, original = it.original, natural = it.natural, ihTarget = it.ihTarget, shortVersion = it.shortVersion, keywords = it.keywords, activeVersion = it.activeVersion, koreanMeaning = it.koreanMeaning, source = it.source, masteryState = it.masteryState, masteryScore = it.masteryScore, srsStep = it.srsStep, dueEpochDay = it.dueEpochDay, storyIds = it.storyIds)
-            })
-            d.insertRevisions(snap.revisions.map { com.opicih.coach.data.db.ScriptRevisionEntity(scriptId = it.scriptId, version = it.version, text = it.text, reasonKo = it.reasonKo, origin = it.origin, status = it.status, createdAt = it.createdAt) })
-            d.insertAttempts(snap.attempts.map { com.opicih.coach.data.db.PracticeAttemptEntity(scriptId = it.scriptId, topic = it.topic, questionText = it.questionText, questionType = it.questionType, mode = it.mode, transcript = it.transcript, captureMode = it.captureMode, durationMs = it.durationMs, speechMs = it.speechMs, longPauseCount = it.longPauseCount, wordCount = it.wordCount, wpm = it.wpm, coverage = it.coverage, score = it.score, metricsJson = it.metricsJson, feedbackJson = it.feedbackJson, feedbackSource = it.feedbackSource, createdAt = it.createdAt, trainingSessionId = it.trainingSessionId) })
-            d.insertErrors(snap.errors.map { com.opicih.coach.data.db.ErrorPatternEntity(key = it.key, category = it.category, example = it.example, correction = it.correction, count = it.count, lastSeen = it.lastSeen) })
-            d.insertChunks(snap.chunks.map { com.opicih.coach.data.db.ChunkEntity(phrase = it.phrase, meaningKo = it.meaningKo, example = it.example, category = it.category, srsStep = it.srsStep, dueEpochDay = it.dueEpochDay, lastResult = it.lastResult, failCount = it.failCount) })
-            d.insertDailyLogs(snap.logs.map { com.opicih.coach.data.db.DailyLogEntity(it.epochDay, it.speakingMs, it.attempts, it.scriptsReviewed, it.chunksReviewed, it.mockDone, it.morningDone) })
-            d.insertExams(snap.exams.map { com.opicih.coach.data.db.ExamEntity(id = it.id, epochDay = it.epochDay, type = it.type, resultGrade = it.resultGrade, note = it.note, topicsSeen = it.topicsSeen, stuckPoints = it.stuckPoints, feeling = it.feeling, selfLevelUsed = it.selfLevelUsed, debriefAt = it.debriefAt) })
+            // Mocks are always replaced: attempts are, and kept mocks would lose their answers (v1/v2 files have none).
+            d.clearMocks()
+            d.insertScriptsRaw(snap.scripts.map { it.toEntity() })
+            d.insertRevisions(snap.revisions.map { it.toEntity() })
+            d.insertAttempts(snap.attempts.map { it.toEntity() })
+            d.insertErrors(snap.errors.map { it.toEntity() })
+            d.insertChunks(snap.chunks.map { it.toEntity() })
+            d.insertDailyLogs(snap.logs.map { it.toEntity() })
+            d.insertExams(snap.exams.map { it.toEntity() })
+            d.insertMocks(snap.mocks.map { it.toEntity() })
             if (hasSchedule) {
-                d.insertRegistrations(snap.registrations.map {
-                    com.opicih.coach.data.db.ExamRegistrationEntity(id = it.id, examType = it.examType, dateLocal = it.dateLocal, datePrecision = it.datePrecision,
-                        startTimeLocal = it.startTimeLocal, endTimeLocal = it.endTimeLocal, zoneId = it.zoneId, location = it.location, status = it.status,
-                        registrationOpenAt = it.registrationOpenAt, registrationCloseAt = it.registrationCloseAt, resultGrade = it.resultGrade,
-                        resultPublishedAt = it.resultPublishedAt, waiverUsed = it.waiverUsed, memo = it.memo, sourceType = it.sourceType,
-                        verifiedAt = it.verifiedAt, needsReview = it.needsReview, legacyExamId = it.legacyExamId, createdAt = it.createdAt, updatedAt = it.updatedAt)
-                })
-                d.insertStatusEvents(snap.statusEvents.map {
-                    com.opicih.coach.data.db.ExamStatusEventEntity(registrationId = it.registrationId, fromStatus = it.fromStatus, toStatus = it.toStatus,
-                        effectiveDate = it.effectiveDate, note = it.note, createdAt = it.createdAt)
-                })
-                d.insertTrainingSessions(snap.trainingSessions.map {
-                    com.opicih.coach.data.db.ExamTrainingSessionEntity(id = it.id, examType = it.examType, kind = it.kind, startedAt = it.startedAt,
-                        finishedAt = it.finishedAt, turnCount = it.turnCount, aiCalls = it.aiCalls, summaryJson = it.summaryJson)
-                })
+                d.insertRegistrations(snap.registrations.map { it.toEntity() })
+                d.insertStatusEvents(snap.statusEvents.map { it.toEntity() })
+                d.insertTrainingSessions(snap.trainingSessions.map { it.toEntity() })
             }
         }
         snap.scripts.size

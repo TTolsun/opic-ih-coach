@@ -28,18 +28,15 @@ interface AppDao {
     fun revisionsFlow(scriptId: Long): Flow<List<ScriptRevisionEntity>>
     @Query("SELECT * FROM script_revisions WHERE status = 'PENDING'") fun pendingRevisionsFlow(): Flow<List<ScriptRevisionEntity>>
     @Query("SELECT * FROM script_revisions") suspend fun revisions(): List<ScriptRevisionEntity>
-    @Insert suspend fun insertRevision(r: ScriptRevisionEntity): Long
     @Insert suspend fun insertRevisions(r: List<ScriptRevisionEntity>)
     @Update suspend fun updateRevision(r: ScriptRevisionEntity)
     @Query("DELETE FROM script_revisions WHERE scriptId = :scriptId") suspend fun deleteRevisionsFor(scriptId: Long)
 
     // ---- Import sources
     @Insert suspend fun insertImport(i: ImportSourceEntity): Long
-    @Query("SELECT * FROM import_sources ORDER BY importedAt DESC") suspend fun imports(): List<ImportSourceEntity>
 
     // ---- Attempts
     @Insert suspend fun insertAttempt(a: PracticeAttemptEntity): Long
-    @Update suspend fun updateAttempt(a: PracticeAttemptEntity)
     @Query("SELECT * FROM attempts ORDER BY createdAt DESC") fun attemptsFlow(): Flow<List<PracticeAttemptEntity>>
     @Query("SELECT * FROM attempts ORDER BY createdAt DESC") suspend fun attempts(): List<PracticeAttemptEntity>
     /** Same question in the same mode only: a memorize-stage read-aloud score is not comparable to a blind answer. */
@@ -58,7 +55,6 @@ interface AppDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun upsertError(e: ErrorPatternEntity)
 
     // ---- Chunks
-    @Query("SELECT * FROM chunks ORDER BY id") fun chunksFlow(): Flow<List<ChunkEntity>>
     @Query("SELECT * FROM chunks ORDER BY id") suspend fun chunks(): List<ChunkEntity>
     @Insert suspend fun insertChunks(c: List<ChunkEntity>)
     @Update suspend fun updateChunk(c: ChunkEntity)
@@ -81,7 +77,6 @@ interface AppDao {
     @Query("SELECT * FROM exams ORDER BY epochDay DESC") suspend fun exams(): List<ExamEntity>
     @Insert suspend fun insertExam(e: ExamEntity): Long
     @Update suspend fun updateExam(e: ExamEntity)
-    @Query("SELECT * FROM exams WHERE epochDay = :day LIMIT 1") suspend fun examOn(day: Long): ExamEntity?
 
     // ---- Exam registrations (v3)
     @Query("SELECT * FROM exam_registrations ORDER BY dateLocal, startTimeLocal") fun registrationsFlow(): Flow<List<ExamRegistrationEntity>>
@@ -92,7 +87,6 @@ interface AppDao {
     @Update suspend fun updateRegistration(r: ExamRegistrationEntity)
     @Query("DELETE FROM exam_registrations WHERE id = :id") suspend fun deleteRegistration(id: Long)
     @Query("SELECT * FROM exam_status_events ORDER BY createdAt") suspend fun statusEvents(): List<ExamStatusEventEntity>
-    @Query("SELECT * FROM exam_status_events WHERE registrationId = :id ORDER BY createdAt") suspend fun statusEventsFor(id: Long): List<ExamStatusEventEntity>
     @Insert suspend fun insertStatusEvent(e: ExamStatusEventEntity): Long
     @Insert suspend fun insertStatusEvents(e: List<ExamStatusEventEntity>)
     @Query("DELETE FROM exam_status_events WHERE registrationId = :id") suspend fun deleteStatusEventsFor(id: Long)

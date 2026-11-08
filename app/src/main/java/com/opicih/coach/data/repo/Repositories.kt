@@ -12,7 +12,9 @@ import com.opicih.coach.analysis.FeedbackComposer
 import com.opicih.coach.analysis.PauseMetrics
 import com.opicih.coach.analysis.ScriptComparator
 import com.opicih.coach.analysis.TextNormalizer
+import androidx.room.withTransaction
 import com.opicih.coach.data.db.AppDao
+import com.opicih.coach.data.db.AppDatabase
 import com.opicih.coach.data.db.ChunkEntity
 import com.opicih.coach.data.db.ContentSource
 import com.opicih.coach.data.db.DailyLogEntity
@@ -117,7 +119,8 @@ class ScriptRepository(private val dao: AppDao) {
     }
 }
 
-class PracticeRepository(private val dao: AppDao) {
+class PracticeRepository(private val db: AppDatabase) {
+    private val dao = db.dao()
 
     data class Request(
         val script: ScriptEntity?,
@@ -141,8 +144,27 @@ class PracticeRepository(private val dao: AppDao) {
         val trainingSessionId: Long? = null,
     )
 
-    /** Local analysis always runs; AI evaluation is attempted only when [ai] is a real AI and falls back on failure. */
+    /** Result of analysing one answer, before anything is written. */
+    private class Evaluation(
+        val discourse: DiscourseMetrics,
+        val compare: CompareResult?,
+        val feedback: Feedback,
+        val metrics: AttemptMetrics,
+        val aiError: String?,
+    )
+
+    /**
+     * Analyses the answer, then saves the attempt, daily log, script mastery/SRS and error notebook in one
+     * transaction so a crash cannot leave a half-written practice record.
+     */
     suspend fun analyzeAndSave(req: Request, ai: AiCoach?, examEpochDay: Long?): AnalyzedAttempt {
+        // The network call stays outside the transaction.
+        val eval = evaluate(req, ai)
+        return db.withTransaction { persist(req, eval, examEpochDay) }
+    }
+
+    /** Local analysis always runs; AI evaluation is attempted only when [ai] is a real AI and falls back on failure. */
+    private suspend fun evaluate(req: Request, ai: AiCoach?): Evaluation {
         val discourse = DiscourseAnalyzer.analyze(req.transcript)
         val target = req.target ?: req.script?.studyText?.takeIf { req.mode.comparesToScript }
         val compare = target?.takeIf { req.transcript.isNotBlank() }?.let { ScriptComparator.compare(it, req.transcript, req.script?.keywordList().orEmpty()) }
@@ -160,17 +182,22 @@ class PracticeRepository(private val dao: AppDao) {
                 .onSuccess { fb -> feedback = fb.copy(limits = local.limits, errors = fb.errors + local.errors) }
                 .onFailure { aiError = it.message }
         }
-        val metrics = AttemptMetrics(discourse, req.pauses, compare)
+        return Evaluation(discourse, compare, feedback, AttemptMetrics(discourse, req.pauses, compare), aiError)
+    }
+
+    private suspend fun persist(req: Request, eval: Evaluation, examEpochDay: Long?): AnalyzedAttempt {
+        val feedback = eval.feedback
+        val compare = eval.compare
         val speechMs = req.pauses?.speechMs ?: 0L
-        val wpm = FeedbackComposer.wpm(discourse.wordCount, speechMs, req.durationMs)
+        val wpm = FeedbackComposer.wpm(eval.discourse.wordCount, speechMs, req.durationMs)
         val previous = dao.recentForQuestion(req.question, req.mode.name).firstOrNull()
 
         val attempt = PracticeAttemptEntity(
             scriptId = req.script?.id, topic = req.topic, questionText = req.question, questionType = req.questionType,
             mode = req.mode.name, transcript = req.transcript, captureMode = req.captureMode, audioPath = req.audioPath,
             durationMs = req.durationMs, speechMs = speechMs, longPauseCount = req.pauses?.longPauseCount ?: 0,
-            wordCount = discourse.wordCount, wpm = wpm, coverage = compare?.coverage, score = feedback.score,
-            metricsJson = appJson.encodeToString(AttemptMetrics.serializer(), metrics),
+            wordCount = eval.discourse.wordCount, wpm = wpm, coverage = compare?.coverage, score = feedback.score,
+            metricsJson = appJson.encodeToString(AttemptMetrics.serializer(), eval.metrics),
             feedbackJson = appJson.encodeToString(Feedback.serializer(), feedback),
             feedbackSource = feedback.source, mockId = req.mockId, trainingSessionId = req.trainingSessionId,
         )
@@ -181,7 +208,7 @@ class PracticeRepository(private val dao: AppDao) {
         val log = dao.dailyLog(today) ?: DailyLogEntity(today)
         dao.upsertDailyLog(
             log.copy(
-                speakingMs = log.speakingMs + (if (speechMs > 0) speechMs else req.durationMs),
+                speakingMs = log.speakingMs + attempt.effectiveSpeechMs,
                 attempts = log.attempts + 1,
                 scriptsReviewed = log.scriptsReviewed + if (req.script != null) 1 else 0,
                 mockDone = log.mockDone || req.mode == PracticeMode.MOCK,
@@ -204,7 +231,7 @@ class PracticeRepository(private val dao: AppDao) {
                     ?: ErrorPatternEntity(key = key, category = e.category.ifBlank { "GRAMMAR" }, example = e.example, correction = e.correction)
             )
         }
-        return AnalyzedAttempt(attempt.copy(id = id), feedback, metrics, previous, aiError)
+        return AnalyzedAttempt(attempt.copy(id = id), feedback, eval.metrics, previous, eval.aiError)
     }
 
     suspend fun reviewChunk(c: ChunkEntity, ok: Boolean, examEpochDay: Long?) {
@@ -231,11 +258,5 @@ class PracticeRepository(private val dao: AppDao) {
         val log = dao.dailyLog(today) ?: DailyLogEntity(today)
         dao.upsertDailyLog(log.copy(morningDone = true))
     }
-
-    fun decodeFeedback(a: PracticeAttemptEntity): Feedback = runCatching { appJson.decodeFromString(Feedback.serializer(), a.feedbackJson) }.getOrDefault(Feedback())
     fun decodeMetrics(a: PracticeAttemptEntity): AttemptMetrics? = runCatching { appJson.decodeFromString(AttemptMetrics.serializer(), a.metricsJson) }.getOrNull()
-
-    companion object {
-        fun masteryLabel(s: ScriptEntity) = MasteryState.entries.firstOrNull { it.name == s.masteryState }?.label ?: ""
-    }
 }

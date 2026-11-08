@@ -9,16 +9,16 @@ OPIc **IM2 → IH** 목표를 위한 개인용 Android 말하기 훈련 앱입�
 
 ## 1. 빠른 시작
 
-### 설치 (Debug APK)
+### 설치 (Release APK)
 
-1. GitHub Releases의 `app-debug.apk`를 휴대폰으로 받습니다.
+1. GitHub Releases의 `app-release.apk`를 휴대폰으로 받습니다. 기존 Debug 설치본과 같은 키로 서명되어 있어서, 지우지 않고 덮어 설치하면 학습 기록이 유지됩니다.
 2. 설치 시 "출처를 알 수 없는 앱" 허용을 요청하면 허용합니다.
 3. 앱을 열면 사용자 스크립트 23문항과 개선안(승인 대기), 표현 41개, 질문 은행 81문항이 자동으로 들어갑니다.
 
 ### 직접 빌드
 
 ```bash
-./gradlew :app:assembleDebug
+./gradlew :app:assembleRelease
 ```
 
 ```bash
@@ -27,12 +27,12 @@ OPIc **IM2 → IH** 목표를 위한 개인용 Android 말하기 훈련 앱입�
 
 - 필요 환경: JDK 17, Android SDK (compileSdk 36), Gradle wrapper 8.13 (자동 다운로드)
 - `local.properties`에 `sdk.dir=C\:/Users/<you>/AppData/Local/Android/Sdk` 형식으로 SDK 경로를 넣습니다. 역슬래시(`\U...`)는 Java properties에서 이스케이프로 해석되므로 슬래시를 쓰세요.
-- 결과물: `app/build/outputs/apk/debug/app-debug.apk`
+- 결과물: `app/build/outputs/apk/release/app-release.apk` (debug 키로 서명됨, 개인 설치용)
 
 ### 실기기 설치
 
 ```bash
-adb install -r app/build/outputs/apk/debug/app-debug.apk
+adb install -r app/build/outputs/apk/release/app-release.apk
 ```
 
 ---

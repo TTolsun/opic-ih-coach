@@ -40,7 +40,7 @@ class AppContainer(context: Context) {
     val tts by lazy { TtsManager(ctx) }
     val player = AudioPlayer()
     val scripts = ScriptRepository(dao)
-    val practice = PracticeRepository(dao)
+    val practice = PracticeRepository(db)
     val importer = ImportService(ctx)
     val backup = BackupManager(ctx, db)
     val exams = ExamRepository(db, settings)
@@ -80,9 +80,7 @@ class App : Application() {
             runCatching { container.seed.seedIfNeeded() }
             runCatching { container.exams.bootstrapIfNeeded() }
             val s = container.settings.current()
-            if (s.alarmEnabled) AlarmScheduler.schedule(this@App, s.alarmHour, s.alarmMinute, s.useExactAlarm)
-            ReminderWorker.ensure(this@App, s.eveningReminder)
-            runCatching { com.opicih.coach.alarm.StudyBlockScheduler.sync(this@App, s) }
+            com.opicih.coach.alarm.AlarmCoordinator.applyAll(this@App, s)
             runCatching { container.backup.purgeAudio(s.audioRetentionDays) }
         }
         // Voice and pitch follow the settings (also re-applied once the engine becomes ready).

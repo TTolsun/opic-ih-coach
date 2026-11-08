@@ -172,7 +172,7 @@ fun AppNav(startRoute: String?, onRouteConsumed: () -> Unit) {
             ) { e ->
                 val id = e.arguments?.getLong("scriptId")?.takeIf { it > 0 }
                 val mode = e.arguments?.getString("mode")?.let { PracticeMode.of(it) }
-                SpeakingScreen(id, mode, onOpenSettings = { nav.navigate("settings") })
+                SpeakingScreen(id, mode)
             }
             composable("mock") { MockScreen() }
             composable("progress") { ProgressScreen(onNextExam = { nav.navigate("nextExam") }) }

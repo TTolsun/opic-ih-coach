@@ -1,5 +1,6 @@
 package com.opicih.coach.ui.screens
 
+import com.opicih.coach.learning.lastExamDate
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -42,7 +43,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.ui.Alignment
 import com.opicih.coach.data.prefs.Settings
 import com.opicih.coach.learning.ProgressCalculator
-import com.opicih.coach.learning.RetestCalculator
+import com.opicih.coach.learning.ExamPolicy
 import com.opicih.coach.ui.LocalContainer
 import com.opicih.coach.ui.components.Banner
 import com.opicih.coach.ui.components.Bullet
@@ -72,7 +73,7 @@ fun ProgressScreen(onNextExam: () -> Unit = {}) {
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
         Text("기록", style = MaterialTheme.typography.headlineMedium)
 
-        val totalSpeak = attempts.sumOf { if (it.speechMs > 0) it.speechMs else it.durationMs }
+        val totalSpeak = attempts.sumOf { it.effectiveSpeechMs }
         val withText = attempts.filter { it.wordCount > 0 }
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             MetricTile("누적 발화", "${totalSpeak / 60000}분")
@@ -144,9 +145,11 @@ fun ProgressScreen(onNextExam: () -> Unit = {}) {
 
         SectionCard(title = "시험 결과와 재응시") {
             exams.forEach { e -> Bullet("${LocalDate.ofEpochDay(e.epochDay)} · ${e.resultGrade ?: "결과 대기"} ${e.note}") }
-            val last = lastExamDate(s, exams, LocalDate.now(), regs)
+            val last = lastExamDate(exams, LocalDate.now(), regs)
             Spacer(Modifier.height(6.dp))
-            Text("OPIc 다음 응시 가능: ${last.plusDays(s.retakeDays + 1L)} (응시일 제외 ${s.retakeDays}일 제한, 공식 시험관리규정 기준)", style = MaterialTheme.typography.bodyMedium)
+            // OPIc's official rule, not the user-editable SAIL limit (s.retakeDays).
+            val opic = ExamPolicy.opic()
+            Text("OPIc 다음 응시 가능: ${opic.earliestWithoutWaiver(last)} (응시일 제외 ${opic.blockedDays}일 제한, 공식 시험관리규정 기준)", style = MaterialTheme.typography.bodyMedium)
             Spacer(Modifier.height(6.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Button(onClick = onNextExam) { Text("다음 시험 추천") }

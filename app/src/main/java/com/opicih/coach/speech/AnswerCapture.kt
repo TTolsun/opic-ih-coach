@@ -32,10 +32,6 @@ class AnswerCapture(private val context: Context, private val audioDir: File) {
     private val recorder = PcmRecorder()
     private var mode: CaptureMode = CaptureMode.LIVE_STT
     private var startedAt = 0L
-    private var file: File? = null
-
-    private val _level = MutableStateFlow(0f)
-    val level: StateFlow<Float> = _level
     val liveState get() = live.state
     val recorderLevel get() = recorder.level
 
@@ -47,7 +43,6 @@ class AnswerCapture(private val context: Context, private val audioDir: File) {
             CaptureMode.LIVE_STT -> { live.start(); live.state.value.error }
             CaptureMode.RECORD_ONLY -> {
                 val f = File(audioDir, "ans_${System.currentTimeMillis()}.wav")
-                file = f
                 if (recorder.start(scope, f)) null else "녹음을 시작하지 못했습니다. 다른 앱이 마이크를 사용 중인지 확인하세요."
             }
         }

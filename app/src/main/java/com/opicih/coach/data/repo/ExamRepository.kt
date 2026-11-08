@@ -18,8 +18,6 @@ class ExamRepository(private val db: AppDatabase, private val settings: Settings
 
     val flow: Flow<List<ExamRegistrationEntity>> = dao.registrationsFlow()
 
-    suspend fun all(): List<ExamRegistrationEntity> = dao.registrations()
-
     /** Nearest registered exam that has not ended (KST wall clock). */
     suspend fun focus(now: ZonedDateTime = nowKst()): ExamRegistrationEntity? = ExamSchedule.focus(dao.registrations(), now)
 

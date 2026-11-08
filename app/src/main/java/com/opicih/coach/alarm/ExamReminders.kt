@@ -44,15 +44,34 @@ object ExamReminders {
             }
             .filter { it.at.isAfter(now) }
 
-    /** Schedules [planned] and cancels reminders of exams that are no longer registered or already passed. */
+    /** Every request code this object can hand out. */
+    private val ALL_CODES: Set<Int> = (BASE until BASE + 900 * SLOTS).toSet()
+
+    /**
+     * Pure: request codes to cancel. [previous] is what the last sync scheduled (null = never recorded,
+     * so the whole range is swept once). It matters for deleted registrations, which are no longer in [regs].
+     */
+    fun staleCodes(previous: Set<Int>?, regs: List<ExamRegistrationEntity>, keepCodes: Set<Int>): Set<Int> {
+        val known = previous ?: ALL_CODES
+        val current = regs.flatMap { r -> (0 until SLOTS).map { requestCode(r.id, it) } }
+        return (known + current) - keepCodes
+    }
+
+    /** Schedules [planned] and cancels reminders of exams that were deleted, are no longer registered, or already passed. */
     fun sync(context: Context, regs: List<ExamRegistrationEntity>, now: ZonedDateTime) {
         val am = context.getSystemService(AlarmManager::class.java)
+        val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val previous = prefs.getStringSet(KEY_SCHEDULED, null)?.mapNotNull { it.toIntOrNull() }?.toSet()
         val keep = planned(regs, now)
         val keepCodes = keep.map { it.requestCode }.toSet()
-        regs.flatMap { r -> (0 until SLOTS).map { requestCode(r.id, it) } }.filter { it !in keepCodes }.forEach { code ->
+        staleCodes(previous, regs, keepCodes).forEach { code ->
             PendingIntent.getBroadcast(context, code, Intent(context, AlarmReceiver::class.java).setAction(AlarmScheduler.ACTION_REMIND),
                 PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_NO_CREATE)?.let { am.cancel(it); it.cancel() }
         }
         keep.forEach { AlarmScheduler.scheduleReminderAt(context, it.at.toInstant().toEpochMilli(), it.title, it.text, it.requestCode, route = "home") }
+        prefs.edit().putStringSet(KEY_SCHEDULED, keepCodes.map { it.toString() }.toSet()).apply()
     }
+
+    private const val PREFS = "exam_reminders"
+    private const val KEY_SCHEDULED = "scheduled_codes"
 }
