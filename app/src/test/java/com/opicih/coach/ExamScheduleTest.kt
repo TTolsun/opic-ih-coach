@@ -292,6 +292,7 @@ class BackupCoverageTest {
             ExamRegistrationEntity::class.java to BackupManager.BRegistration::class.java,
             ExamStatusEventEntity::class.java to BackupManager.BStatusEvent::class.java,
             ExamTrainingSessionEntity::class.java to BackupManager.BTrainingSession::class.java,
+            com.opicih.coach.data.db.WordLookupEntity::class.java to BackupManager.BLookup::class.java,
         )
         pairs.forEach { (entity, mirror) ->
             val missing = fields(entity) - fields(mirror) - BackupManager.NOT_BACKED_UP[entity].orEmpty()
