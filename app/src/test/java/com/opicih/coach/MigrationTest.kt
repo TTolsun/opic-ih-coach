@@ -121,6 +121,19 @@ class MigrationTest {
         assertEquals(1, count("exam_registrations", "dateLocal = '2026-11-14' AND status = 'PLANNED'"))
     }
 
+    @Test fun divergedDevelopmentV5DatabaseIsHealedByV5ToV6() {
+        // 개발 중 빌드가 v5로 sentence_frames 대신 script_segments를 만들었던 기기: v4까지 올린 뒤 그 v5 상태를 흉내 낸다.
+        MigrationSql.V1_TO_V2.forEach(::exec)
+        MigrationSql.V2_TO_V3.forEach(::exec)
+        MigrationSql.V3_TO_V4.forEach(::exec)
+        MigrationSql.V5_TO_V6.filter { it.contains("script_segments") }.forEach(::exec)
+        assertEquals(0, count("sqlite_master", "name = 'sentence_frames'"))
+        MigrationSql.V5_TO_V6.forEach(::exec)
+        assertEquals(1, count("sqlite_master", "name = 'sentence_frames'"))
+        assertEquals(1, count("sqlite_master", "name = 'script_segments'"))
+        assertEquals(23, count("scripts"))
+    }
+
     @Test fun emptyExamsTableMigrates() {
         exec("DELETE FROM exams")
         migrateToV3()
