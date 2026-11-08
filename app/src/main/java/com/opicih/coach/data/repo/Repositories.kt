@@ -7,6 +7,8 @@ import com.opicih.coach.analysis.AnalysisInput
 import com.opicih.coach.analysis.CompareResult
 import com.opicih.coach.analysis.DiscourseAnalyzer
 import com.opicih.coach.analysis.DiscourseMetrics
+import com.opicih.coach.analysis.ErrorCounts
+import com.opicih.coach.analysis.VerbatimMarkup
 import com.opicih.coach.analysis.Feedback
 import com.opicih.coach.analysis.FeedbackComposer
 import com.opicih.coach.analysis.PauseMetrics
@@ -30,6 +32,7 @@ import com.opicih.coach.data.db.ScriptRevisionEntity
 import com.opicih.coach.data.db.ScriptVersion
 import com.opicih.coach.importer.DuplicateLinker
 import com.opicih.coach.importer.ParsedScript
+import com.opicih.coach.learning.CAPTURE_CLOUD_STT
 import com.opicih.coach.learning.MasteryRules
 import com.opicih.coach.learning.ScoreKind
 import com.opicih.coach.learning.SrsScheduler
@@ -38,7 +41,13 @@ import kotlinx.serialization.json.Json
 import java.time.LocalDate
 
 @Serializable
-data class AttemptMetrics(val discourse: DiscourseMetrics, val pauses: PauseMetrics? = null, val compare: CompareResult? = null)
+data class AttemptMetrics(
+    val discourse: DiscourseMetrics,
+    val pauses: PauseMetrics? = null,
+    val compare: CompareResult? = null,
+    /** Tense errors, abandoned sentences and self-corrections (#25). Null in rows saved before this field existed. */
+    val errorCounts: ErrorCounts? = null,
+)
 
 data class AnalyzedAttempt(
     val attempt: PracticeAttemptEntity,
@@ -143,6 +152,8 @@ class PracticeRepository(private val db: AppDatabase) {
         val target: String? = null,
         /** v3: turn of an exam training session (SAIL conversation). */
         val trainingSessionId: Long? = null,
+        /** Why the verbatim transcript was not used for an answer that should have had one (#25). Shown as a limit. */
+        val captureNote: String? = null,
     )
 
     /** Result of analysing one answer, before anything is written. */
@@ -166,16 +177,21 @@ class PracticeRepository(private val db: AppDatabase) {
 
     /** Local analysis always runs; AI evaluation is attempted only when [ai] is a real AI and falls back on failure. */
     private suspend fun evaluate(req: Request, ai: AiCoach?): Evaluation {
-        val discourse = DiscourseAnalyzer.analyze(req.transcript)
+        // A verbatim transcript carries [self-correction]/[abandoned] marks. Word counts, tenses and script comparison
+        // use the text without them; the stored transcript and the AI keep the marks.
+        val text = VerbatimMarkup.parse(req.transcript).clean
+        val verbatim = req.captureMode == CAPTURE_CLOUD_STT
+        val discourse = DiscourseAnalyzer.analyze(text)
         val target = req.target ?: req.script?.studyText?.takeIf { req.mode.comparesToScript }
-        val compare = target?.takeIf { req.transcript.isNotBlank() }?.let { ScriptComparator.compare(it, req.transcript, req.script?.keywordList().orEmpty()) }
-        val local = if (req.transcript.isBlank() && req.pauses != null && !req.transcriptFromDeviceStt) {
+        val compare = target?.takeIf { text.isNotBlank() }?.let { ScriptComparator.compare(it, text, req.script?.keywordList().orEmpty()) }
+        val composed = if (text.isBlank() && req.pauses != null && !req.transcriptFromDeviceStt) {
             FeedbackComposer.acousticOnly(req.pauses)
         } else {
             FeedbackComposer.compose(
-                AnalysisInput(req.questionType, target != null, req.transcript, discourse, req.pauses, compare, req.transcriptFromDeviceStt, req.requiredTense, ScoreKind.of(req.mode))
+                AnalysisInput(req.questionType, target != null, text, discourse, req.pauses, compare, req.transcriptFromDeviceStt, req.requiredTense, ScoreKind.of(req.mode))
             )
         }
+        val local = composed.copy(limits = composed.limits + listOfNotNull(req.captureNote))
         var feedback = local
         var aiError: String? = null
         if (ai != null && ai.isRealAi && discourse.wordCount >= 5) {
@@ -185,7 +201,10 @@ class PracticeRepository(private val db: AppDatabase) {
                 .onSuccess { fb -> feedback = fb.copy(limits = local.limits, errors = fb.errors + local.errors) }
                 .onFailure { aiError = it.message }
         }
-        return Evaluation(discourse, compare, feedback, AttemptMetrics(discourse, req.pauses, compare), aiError)
+        val counts = ErrorCounts.from(req.transcript, verbatim, feedback)
+        // The error notebook is built from the same counts: tense slips and abandoned sentences found in this answer.
+        feedback = feedback.copy(errors = feedback.errors + ErrorCounts.notebookItems(req.transcript, verbatim, feedback.errors))
+        return Evaluation(discourse, compare, feedback, AttemptMetrics(discourse, req.pauses, compare, counts), aiError)
     }
 
     private suspend fun persist(req: Request, eval: Evaluation, examEpochDay: Long?): AnalyzedAttempt {

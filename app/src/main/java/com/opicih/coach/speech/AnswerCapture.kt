@@ -6,6 +6,7 @@ import com.opicih.coach.ai.Transcriber
 import com.opicih.coach.analysis.PauseAnalyzer
 import com.opicih.coach.analysis.PauseMetrics
 import com.opicih.coach.data.prefs.CaptureMode
+import com.opicih.coach.learning.CAPTURE_CLOUD_STT
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -74,7 +75,7 @@ class AnswerCapture(private val context: Context, private val audioDir: File) {
                 val text = if (transcriber != null) {
                     transcriber.transcribe(r.file).getOrElse { warning = it.message; "" }
                 } else ""
-                CaptureResult(text, pauses, r.durationMs, r.file.absolutePath, if (transcriber != null) "CLOUD_STT" else CaptureMode.RECORD_ONLY.name, false, warning)
+                CaptureResult(text, pauses, r.durationMs, r.file.absolutePath, if (transcriber != null) CAPTURE_CLOUD_STT else CaptureMode.RECORD_ONLY.name, false, warning)
             }
         }
     }

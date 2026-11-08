@@ -27,6 +27,10 @@ data class Feedback(
     val errors: List<ErrorItem> = emptyList(),
     /** What could not be measured with the current capture mode. */
     val limits: List<String> = emptyList(),
+    /** AI-counted tense errors in past-time context; null when the AI did not report it. */
+    val tenseErrors: Int? = null,
+    val abandonedSentences: Int? = null,
+    val selfCorrections: Int? = null,
 )
 
 data class AnalysisInput(

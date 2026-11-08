@@ -42,6 +42,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.ui.Alignment
 import com.opicih.coach.data.prefs.Settings
+import com.opicih.coach.learning.ErrorTrend
 import com.opicih.coach.learning.ProgressCalculator
 import com.opicih.coach.learning.ScoreKind
 import com.opicih.coach.learning.ExamPolicy
@@ -101,6 +102,21 @@ fun ProgressScreen(onNextExam: () -> Unit = {}) {
                 Spacer(Modifier.height(8.dp))
                 Text("2초 이상 무음 (회)", style = MaterialTheme.typography.labelMedium)
                 BarChart(recent.map { it.longPauseCount.toFloat() }, MaterialTheme.colorScheme.tertiary, MaterialTheme.colorScheme.surfaceContainerHighest)
+            }
+        }
+
+        SectionCard(title = "시제 오류·중단·자기 수정 (최대 12회)") {
+            val trend = remember(attempts) { ErrorTrend.points(attempts) }
+            if (trend.isEmpty()) Text("원문 그대로 전사한 답변이 아직 없습니다.", style = MaterialTheme.typography.bodyMedium)
+            else {
+                Text("과거 맥락 시제 오류 (회)", style = MaterialTheme.typography.labelMedium)
+                BarChart(trend.map { it.tense.toFloat() }, MaterialTheme.colorScheme.error, MaterialTheme.colorScheme.surfaceContainerHighest)
+                Spacer(Modifier.height(8.dp))
+                Text("끝맺지 못한 문장 (회)", style = MaterialTheme.typography.labelMedium)
+                BarChart(trend.map { it.abandoned.toFloat() }, MaterialTheme.colorScheme.tertiary, MaterialTheme.colorScheme.surfaceContainerHighest)
+                Spacer(Modifier.height(8.dp))
+                Text("자기 수정 (회)", style = MaterialTheme.typography.labelMedium)
+                BarChart(trend.map { it.selfCorrection.toFloat() }, MaterialTheme.colorScheme.secondary, MaterialTheme.colorScheme.surfaceContainerHighest)
             }
         }
 

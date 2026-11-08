@@ -13,6 +13,10 @@ import com.opicih.coach.data.db.ScriptEntity
 import com.opicih.coach.data.prefs.CaptureMode
 import com.opicih.coach.data.repo.AnalyzedAttempt
 import com.opicih.coach.data.repo.PracticeRepository
+import com.opicih.coach.analysis.VerbatimMarkup
+import com.opicih.coach.data.prefs.Settings
+import com.opicih.coach.learning.CaptureChoice
+import com.opicih.coach.learning.CapturePolicy
 import com.opicih.coach.learning.FrameMatcher
 import com.opicih.coach.learning.LadderLevel
 import com.opicih.coach.learning.LadderResult
@@ -92,9 +96,17 @@ class SpeakingViewModel(app: Application) : AndroidViewModel(app) {
             }
         }
         viewModelScope.launch {
-            c.settings.flow.collect { s -> _ui.update { it.copy(captureMode = s.captureMode) } }
+            c.settings.flow.collect { s ->
+                latestSettings = s
+                _ui.update { it.copy(captureMode = s.captureMode) }
+            }
         }
     }
+
+    private var latestSettings = Settings()
+
+    /** How the answer being recorded is captured (see [CapturePolicy]); null before the first recording. */
+    private var activeChoice: CaptureChoice? = null
 
     /** Called once from navigation arguments. */
     fun configure(scriptId: Long?, mode: PracticeMode?) {
@@ -255,16 +267,20 @@ class SpeakingViewModel(app: Application) : AndroidViewModel(app) {
 
     private fun start() {
         c.tts.stop(); c.player.stop()
-        val err = capture.start(viewModelScope, _ui.value.captureMode)
+        // Free-speaking answers are recorded and transcribed verbatim when the learner allowed it; otherwise the
+        // chosen capture mode is kept and the reason is shown with the result.
+        val choice = CapturePolicy.choose(_ui.value.mode, latestSettings, c.hasGeminiKey())
+        activeChoice = choice
+        val err = capture.start(viewModelScope, choice.mode)
         if (err != null) { _ui.update { it.copy(error = err, showTypedFallback = true) }; return }
         _ui.update { it.copy(phase = Phase.RECORDING, error = null, liveText = "", elapsedMs = 0, result = null, showTypedFallback = false) }
         tick?.cancel()
         tick = viewModelScope.launch {
             while (isActive && _ui.value.phase == Phase.RECORDING) {
                 val live = capture.liveState.value
-                val lvl = if (_ui.value.captureMode == CaptureMode.LIVE_STT) ((live.level + 2f) / 12f) else (capture.recorderLevel.value / 6000f)
+                val lvl = if (choice.mode == CaptureMode.LIVE_STT) ((live.level + 2f) / 12f) else (capture.recorderLevel.value / 6000f)
                 _ui.update { it.copy(elapsedMs = capture.elapsedMs, level = lvl.coerceIn(0f, 1f), liveText = live.fullText) }
-                if (live.error != null && !live.active && _ui.value.captureMode == CaptureMode.LIVE_STT) { stop(); break }
+                if (live.error != null && !live.active && choice.mode == CaptureMode.LIVE_STT) { stop(); break }
                 if (capture.elapsedMs > MAX_ANSWER_MS) { stop(); break }
                 delay(100)
             }
@@ -282,7 +298,7 @@ class SpeakingViewModel(app: Application) : AndroidViewModel(app) {
                 _ui.update { it.copy(phase = Phase.IDLE, error = r.warning ?: "인식된 영어 문장이 없습니다. 다시 말하거나, 말한 내용을 직접 입력하세요.", showTypedFallback = true) }
                 return@launch
             }
-            analyze(r.transcript, r.captureMode, r.audioPath, r.durationMs, r.pauses, r.fromDeviceStt, r.warning)
+            analyze(r.transcript, r.captureMode, r.audioPath, r.durationMs, r.pauses, r.fromDeviceStt, r.warning, activeChoice?.note)
         }
     }
 
@@ -290,10 +306,10 @@ class SpeakingViewModel(app: Application) : AndroidViewModel(app) {
     fun submitTyped(text: String) {
         if (text.isBlank()) return
         _ui.update { it.copy(phase = Phase.PROCESSING, showTypedFallback = false, error = null) }
-        viewModelScope.launch { analyze(text.trim(), "TYPED", null, 0, null, false, null) }
+        viewModelScope.launch { analyze(text.trim(), "TYPED", null, 0, null, false, null, null) }
     }
 
-    private suspend fun analyze(transcript: String, captureMode: String, audio: String?, duration: Long, pauses: com.opicih.coach.analysis.PauseMetrics?, fromStt: Boolean, warning: String?) {
+    private suspend fun analyze(transcript: String, captureMode: String, audio: String?, duration: Long, pauses: com.opicih.coach.analysis.PauseMetrics?, fromStt: Boolean, warning: String?, captureNote: String?) {
         val st = c.settings.current()
         val u = _ui.value
         val q = u.question ?: return
@@ -303,7 +319,7 @@ class SpeakingViewModel(app: Application) : AndroidViewModel(app) {
                 PracticeRepository.Request(
                     script = q.script, topic = q.topic, question = q.text, questionType = q.type, mode = u.mode,
                     transcript = transcript, captureMode = captureMode, audioPath = audio, durationMs = duration,
-                    pauses = pauses, transcriptFromDeviceStt = fromStt, requiredTense = q.requiredTense, mission = q.mission, target = target,
+                    pauses = pauses, transcriptFromDeviceStt = fromStt, requiredTense = q.requiredTense, mission = q.mission, target = target, captureNote = captureNote,
                 ),
                 ai = c.realAi(st), examEpochDay = c.exams.focusEpochDay(),
             )
@@ -317,12 +333,16 @@ class SpeakingViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /** The mode's own goal: which frames were used, and whether the ladder level was reached. Null for other modes. */
-    private fun checkFor(u: SpeakingUi, q: QuestionItem, transcript: String, a: AnalyzedAttempt): PracticeCheck? = when {
-        u.mode == PracticeMode.FRAME_ATTACH && q.frames.isNotEmpty() ->
-            PracticeCheck(frameUsage = q.frames.map { it to FrameMatcher.used(it.pattern, transcript) })
-        u.mode == PracticeMode.PARAGRAPH_LADDER && u.ladder != null ->
-            PracticeCheck(ladder = ParagraphLadder.judge(u.ladder, a.metrics.discourse, SENTENCE_PUNCTUATION.containsMatchIn(transcript)))
-        else -> null
+    private fun checkFor(u: SpeakingUi, q: QuestionItem, rawTranscript: String, a: AnalyzedAttempt): PracticeCheck? {
+        // A verbatim transcript carries [self-correction]/[abandoned] marks that are not part of what was said.
+        val transcript = VerbatimMarkup.parse(rawTranscript).clean
+        return when {
+            u.mode == PracticeMode.FRAME_ATTACH && q.frames.isNotEmpty() ->
+                PracticeCheck(frameUsage = q.frames.map { it to FrameMatcher.used(it.pattern, transcript) })
+            u.mode == PracticeMode.PARAGRAPH_LADDER && u.ladder != null ->
+                PracticeCheck(ladder = ParagraphLadder.judge(u.ladder, a.metrics.discourse, SENTENCE_PUNCTUATION.containsMatchIn(transcript)))
+            else -> null
+        }
     }
 
     fun playRecording(speed: Float) {

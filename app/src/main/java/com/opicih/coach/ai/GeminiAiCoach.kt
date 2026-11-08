@@ -43,7 +43,8 @@ class GeminiAiCoach(
     override suspend fun evaluate(input: EvalInput): Result<Feedback> = call {
         val text = send(Prompts.evalSystem(profile), listOf(ChatTurn(true, Prompts.evalUser(input))), json = true)
         val fb = AiJson.json.decodeFromString(Feedback.serializer(), AiJson.extractObject(text))
-        fb.copy(source = "AI", engine = engineName, strengths = fb.strengths.take(2), fixes = fb.fixes.take(3), score = fb.score.coerceIn(0, 100))
+        fb.copy(source = "AI", engine = engineName, strengths = fb.strengths.take(2), fixes = fb.fixes.take(3), score = fb.score.coerceIn(0, 100),
+            tenseErrors = fb.tenseErrors?.coerceAtLeast(0), abandonedSentences = fb.abandonedSentences?.coerceAtLeast(0), selfCorrections = fb.selfCorrections?.coerceAtLeast(0))
     }
 
     override suspend fun chat(history: List<ChatTurn>, context: CoachContext): Result<String> = call {

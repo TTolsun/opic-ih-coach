@@ -62,6 +62,8 @@ class AppContainer(context: Context) {
 
     fun coach(s: Settings): AiCoach = realAi(s) ?: localCoach
 
+    fun hasGeminiKey(): Boolean = keys.get(ApiKeyStore.Provider.GEMINI) != null
+
     fun transcriber(s: Settings): Transcriber? {
         if (!s.cloudSttEnabled || !s.audioUploadConsent) return null
         val key = keys.get(ApiKeyStore.Provider.GEMINI) ?: return null
