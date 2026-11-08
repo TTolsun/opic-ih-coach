@@ -67,7 +67,7 @@ object ProgressCalculator {
 
     /** Pure: the daily log after removing one attempt that was recorded on that day. Never goes below zero. */
     fun withoutAttempt(log: DailyLogEntity, a: PracticeAttemptEntity): DailyLogEntity = log.copy(
-        speakingMs = (log.speakingMs - (if (a.speechMs > 0) a.speechMs else a.durationMs)).coerceAtLeast(0),
+        speakingMs = (log.speakingMs - a.effectiveSpeechMs).coerceAtLeast(0),
         attempts = (log.attempts - 1).coerceAtLeast(0),
         scriptsReviewed = (log.scriptsReviewed - if (a.scriptId != null) 1 else 0).coerceAtLeast(0),
     )
