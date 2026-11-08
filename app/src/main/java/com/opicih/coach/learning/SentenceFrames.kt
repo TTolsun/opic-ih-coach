@@ -67,10 +67,12 @@ object FrameExtractor {
     fun extract(scripts: List<ScriptText>, existing: Set<String> = emptySet(), max: Int = MAX_TOTAL): List<FrameCandidate> {
         val taken = existing.toMutableSet()
         val out = mutableListOf<FrameCandidate>()
+        // 문장 분리와 소문자 변환은 스크립트마다 한 번만 합니다.
+        val prepared = scripts.map { s -> s to TextNormalizer.sentences(s.text).map { it to it.lowercase().replace('’', '\'') } }
         for (frame in FrameBank.ALL) {
             if (frame.pattern in taken || out.size >= max) continue
-            val hit = scripts.firstNotNullOfOrNull { s ->
-                TextNormalizer.sentences(s.text).firstOrNull { frame.starter.containsMatchIn(it.lowercase().replace('’', '\'')) }?.let { s to it }
+            val hit = prepared.firstNotNullOfOrNull { (s, sentences) ->
+                sentences.firstOrNull { (_, lower) -> frame.starter.containsMatchIn(lower) }?.let { s to it.first }
             } ?: continue
             out += FrameCandidate(frame.pattern, frame.hintKo, FrameOrigin.SCRIPT, example = hit.second.trim(), sourceScriptId = hit.first.id)
             taken += frame.pattern
@@ -90,26 +92,40 @@ object FrameExtractor {
 /** 답변에 틀이 쓰였는지 판정합니다. 빈칸 사이의 고정 문구가 순서대로 모두 나오면 쓴 것으로 봅니다. */
 object FrameMatcher {
     private val CONTRACTIONS = listOf("i'm" to "i am", "i've" to "i have", "i'd" to "i would", "it's" to "it is", "i'll" to "i will")
+    private val NOT_LETTERS = Regex("[^a-z' ]")
+    private val SPACES = Regex("\\s+")
 
     private fun norm(s: String): String {
-        var t = s.lowercase().replace('’', '\'').replace(Regex("[^a-z' ]"), " ")
+        var t = s.lowercase().replace('’', '\'').replace(NOT_LETTERS, " ")
         CONTRACTIONS.forEach { (a, b) -> t = t.replace(a, b) }
-        return t.replace('\'', ' ').replace(Regex("\\s+"), " ").trim()
+        return t.replace('\'', ' ').replace(SPACES, " ").trim()
     }
 
     /** 틀에서 빈칸을 뺀 고정 문구 조각들(정규화됨). */
     fun fixedParts(pattern: String): List<String> = pattern.split(FRAME_BLANK).map { norm(it) }.filter { it.isNotEmpty() }
 
+    /**
+     * 고정 문구가 순서대로 모두 나오고, 그 사이와 틀의 앞뒤 빈칸 자리에 단어가 하나 이상 채워져 있어야 쓴 것으로 봅니다.
+     * 빈칸을 비운 채 고정 문구만 이어 말한 문장은 쓴 것으로 치지 않습니다.
+     */
     fun used(pattern: String, transcript: String): Boolean {
-        val parts = fixedParts(pattern)
+        val segments = pattern.split(FRAME_BLANK).map { norm(it) }
+        val parts = segments.filter { it.isNotEmpty() }
         if (parts.isEmpty()) return false
         val text = " " + norm(transcript) + " "
-        var from = 0
-        for (p in parts) {
+        var end = -1
+        for ((i, p) in parts.withIndex()) {
+            // 앞 조각 바로 뒤의 공백을 다음 조각이 같이 쓰면 사이에 단어가 없는 것이므로 그 다음 칸부터 찾습니다.
+            val from = when {
+                i > 0 -> end + 1
+                segments.first().isEmpty() -> 1
+                else -> 0
+            }
             val at = text.indexOf(" $p ", from)
             if (at < 0) return false
-            from = at + p.length + 1
+            end = at + p.length + 1
         }
+        if (segments.last().isEmpty() && text.substring(end + 1).isBlank()) return false
         return true
     }
 }

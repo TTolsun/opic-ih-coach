@@ -35,7 +35,7 @@ data class Weakness(val competency: SharedSpeakingCompetency, val evidence: Stri
 object WeaknessAnalyzer {
     const val MIN_SAMPLES = 3
     // 외운 스크립트를 암송하는 모드(Blind 등)는 즉석 말하기 약점의 근거로 쓰지 않습니다.
-    private val FREE_MODES = ScoreKind.SPEAKING_MODES
+    private val FREE_MODES = ScoreKind.READINESS_MODES
 
     fun analyze(
         attempts: List<PracticeAttemptEntity>,

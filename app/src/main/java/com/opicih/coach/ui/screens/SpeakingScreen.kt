@@ -74,7 +74,6 @@ import com.opicih.coach.data.db.PracticeMode
 import com.opicih.coach.data.db.QuestionType
 import com.opicih.coach.data.prefs.CaptureMode
 import com.opicih.coach.data.repo.AnalyzedAttempt
-import com.opicih.coach.learning.LadderLevel
 import com.opicih.coach.ui.components.Banner
 import com.opicih.coach.ui.components.Bullet
 import com.opicih.coach.ui.components.LevelBar
@@ -98,7 +97,10 @@ fun SpeakingScreen(scriptId: Long?, mode: PracticeMode?, onOpenFrames: () -> Uni
     // Stop the mic when the app goes to background (call, home button, screen off).
     val owner = LocalLifecycleOwner.current
     DisposableEffect(owner) {
-        val obs = LifecycleEventObserver { _, e -> if (e == Lifecycle.Event.ON_STOP) { vm.onBackground(); vm.stopAudio() } }
+        val obs = LifecycleEventObserver { _, e ->
+            if (e == Lifecycle.Event.ON_STOP) { vm.onBackground(); vm.stopAudio() }
+            if (e == Lifecycle.Event.ON_RESUME) vm.refreshFrames()
+        }
         owner.lifecycle.addObserver(obs)
         onDispose { owner.lifecycle.removeObserver(obs) }
     }
@@ -153,8 +155,8 @@ fun SpeakingScreen(scriptId: Long?, mode: PracticeMode?, onOpenFrames: () -> Uni
             } else {
                 Text(q.text, style = EnglishReading)
             }
-            // 틀 붙이기와 문단 사다리는 아래 전용 카드에 같은 내용을 보여 주므로 미션 배너를 따로 띄우지 않습니다.
-            q.mission?.takeIf { ui.mode != PracticeMode.FRAME_ATTACH && ui.mode != PracticeMode.PARAGRAPH_LADDER }?.let {
+            // 틀 붙이기는 아래 틀 카드에 같은 내용을 보여 주므로 미션 배너를 따로 띄우지 않습니다.
+            q.mission?.takeIf { ui.mode != PracticeMode.FRAME_ATTACH }?.let {
                 Spacer(Modifier.height(8.dp))
                 Banner("미션: $it", tone = MaterialTheme.colorScheme.secondary)
             }
@@ -257,23 +259,18 @@ fun SpeakingScreen(scriptId: Long?, mode: PracticeMode?, onOpenFrames: () -> Uni
 /** First listen plus one replay, as in the exam. */
 private const val EXAM_PLAYS = 2
 
-/** 틀 붙이기: 오늘 쓸 틀. 문단 사다리: 지금 단계와 조건. 다른 모드에서는 아무것도 그리지 않습니다. */
+/** 틀 붙이기에서 오늘 쓸 틀을 보여 줍니다. 틀 자체를 보여 주는 카드이고, 다른 모드에서는 아무것도 그리지 않습니다. */
 @Composable
 private fun PracticePanel(ui: SpeakingUi, onOpenFrames: () -> Unit) {
     val q = ui.question ?: return
-    when (ui.mode) {
-        PracticeMode.FRAME_ATTACH -> SectionCard(title = "이 틀로 답하기") {
-            if (q.frames.isEmpty()) Banner("승인한 문장 틀이 없습니다.", "틀 고르기") { onOpenFrames() }
-            q.frames.forEach { f ->
-                Text(f.pattern, style = EnglishReading)
-                Text(f.hintKo, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Spacer(Modifier.height(6.dp))
-            }
+    if (ui.mode != PracticeMode.FRAME_ATTACH) return
+    SectionCard(title = "이 틀로 답하기") {
+        if (q.frames.isEmpty()) Banner("승인한 문장 틀이 없습니다.", "틀 고르기") { onOpenFrames() }
+        q.frames.forEach { f ->
+            Text(f.pattern, style = EnglishReading)
+            Text(f.hintKo, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Spacer(Modifier.height(6.dp))
         }
-        PracticeMode.PARAGRAPH_LADDER -> ui.ladder?.let { l ->
-            SectionCard(title = "${l.ordinal + 1} / ${LadderLevel.entries.size} 단계") { Text(l.missionKo) }
-        }
-        else -> Unit
     }
 }
 

@@ -154,9 +154,33 @@ class SpeakingViewModel(app: Application) : AndroidViewModel(app) {
 
     /** A new question plus one or two approved frames to use in the answer (none when the learner has approved none). */
     private suspend fun frameQuestion(b: QuestionEntity, label: String): QuestionItem {
-        val chips = c.frames.approved().shuffled().take(FRAMES_PER_QUESTION).map { FrameChip(it.pattern, it.hintKo) }
-        val mission = chips.takeIf { it.isNotEmpty() }?.joinToString(" / ") { it.pattern }?.let { "문장 틀을 써서 답하세요: $it" }
-        return QuestionItem(b.topic, b.text, b.type, label, mission = mission, frames = chips)
+        val chips = pickFrames()
+        return QuestionItem(b.topic, b.text, b.type, label, mission = frameMission(chips), frames = chips)
+    }
+
+    private suspend fun pickFrames(): List<FrameChip> =
+        c.frames.approved().shuffled().take(FRAMES_PER_QUESTION).map { FrameChip(it.pattern, it.hintKo) }
+
+    private fun frameMission(chips: List<FrameChip>): String? =
+        chips.takeIf { it.isNotEmpty() }?.joinToString(" / ") { it.pattern }?.let { "문장 틀을 써서 답하세요: $it" }
+
+    /**
+     * The frames screen can approve frames while this question is open. When the current question was built with none,
+     * pick them now instead of making the learner skip the question to see them.
+     */
+    fun refreshFrames() {
+        val u = _ui.value
+        val q = u.question ?: return
+        if (u.mode != PracticeMode.FRAME_ATTACH || q.frames.isNotEmpty() || u.phase == Phase.RECORDING || u.phase == Phase.PROCESSING) return
+        viewModelScope.launch {
+            val chips = pickFrames()
+            if (chips.isEmpty()) return@launch
+            _ui.update { cur ->
+                val now = cur.question
+                if (now == null || now.text != q.text || now.frames.isNotEmpty()) cur
+                else cur.copy(question = now.copy(frames = chips, mission = frameMission(chips)))
+            }
+        }
     }
 
     /** Ladder: keep the same question and try the next level after passing one. */

@@ -42,6 +42,8 @@ fun FramesScreen() {
     var message by remember { mutableStateOf<String?>(null) }
     val pending = frames.filter { it.status == FrameStatus.PENDING.name }
     val approved = frames.filter { it.status == FrameStatus.APPROVED.name }
+    val rejected = frames.filter { it.status == FrameStatus.REJECTED.name }
+    var showRejected by remember { mutableStateOf(false) }
 
     LazyColumn(Modifier.fillMaxSize().padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         item {
@@ -71,6 +73,14 @@ fun FramesScreen() {
         if (approved.isEmpty()) item { Text("승인한 틀이 없습니다.", style = MaterialTheme.typography.bodyMedium) }
         items(approved, key = { it.id }) { f ->
             FrameCard(f) { TextButton(onClick = { scope.launch { c.frames.setStatus(f.id, FrameStatus.REJECTED) } }) { Text("삭제") } }
+        }
+        if (rejected.isNotEmpty()) {
+            item {
+                TextButton(onClick = { showRejected = !showRejected }) { Text("삭제한 틀 ${rejected.size}개 ${if (showRejected) "접기" else "보기"}") }
+            }
+            if (showRejected) items(rejected, key = { it.id }) { f ->
+                FrameCard(f) { TextButton(onClick = { scope.launch { c.frames.setStatus(f.id, FrameStatus.PENDING) } }) { Text("되살리기") } }
+            }
         }
         item { Spacer(Modifier.height(24.dp)) }
     }

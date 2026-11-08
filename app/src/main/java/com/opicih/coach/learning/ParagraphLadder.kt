@@ -29,12 +29,20 @@ object ParagraphLadder {
     /** 문장 부호가 없는 인식 결과에서 한 문장으로 치는 평균 단어 수(추정값). */
     const val WORDS_PER_SENTENCE = 10
 
+    /** 문장 부호가 있어도 한 문장이 이보다 길면 부호가 제대로 찍히지 않은 것으로 보고 단어 수로 추정합니다. */
+    const val MAX_WORDS_PER_PUNCTUATED_SENTENCE = 25
+
     /**
-     * 문장 수. 기기 음성 인식은 마침표를 넣지 않는 경우가 많아서, 문장 부호가 하나도 없으면 단어 수로 추정합니다.
-     * 그렇지 않으면 인식 결과가 항상 1문장으로 계산되어 3단계 이상을 통과할 수 없습니다.
+     * 문장 수. 기기 음성 인식은 마침표를 넣지 않거나 끝에 하나만 찍는 경우가 많습니다. 부호가 없거나, 부호는 있어도
+     * 한 문장이 지나치게 길면 단어 수로 추정합니다. 그렇지 않으면 긴 답변도 1문장으로 계산되어 3단계 이상을
+     * 통과할 수 없습니다.
      */
-    fun sentenceCount(d: DiscourseMetrics, hasSentencePunctuation: Boolean): Int =
-        if (hasSentencePunctuation) d.sentenceCount else maxOf(d.sentenceCount, d.wordCount / WORDS_PER_SENTENCE)
+    fun sentenceCount(d: DiscourseMetrics, hasSentencePunctuation: Boolean): Int {
+        val estimate = d.wordCount / WORDS_PER_SENTENCE
+        val wordsPerSentence = if (d.sentenceCount > 0) d.wordCount / d.sentenceCount else d.wordCount
+        val trustPunctuation = hasSentencePunctuation && wordsPerSentence <= MAX_WORDS_PER_PUNCTUATED_SENTENCE
+        return if (trustPunctuation) d.sentenceCount else maxOf(d.sentenceCount, estimate)
+    }
 
     /** 답변의 담화 지표로 [level] 통과 여부와 부족한 조건을 판정합니다. */
     fun judge(level: LadderLevel, d: DiscourseMetrics, hasSentencePunctuation: Boolean = true): LadderResult {

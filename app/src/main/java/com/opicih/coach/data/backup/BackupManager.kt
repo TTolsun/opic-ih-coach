@@ -42,6 +42,8 @@ class BackupManager(private val context: Context, private val db: AppDatabase) {
         fun decode(text: String): Snapshot = json.decodeFromString(Snapshot.serializer(), text)
         /** Only a version-2+ file that actually carries a schedule replaces the current one. */
         fun restoresSchedule(snap: Snapshot): Boolean = snap.version >= 2 && snap.registrations.isNotEmpty()
+        /** A file older than version 5 has no frames: the current ones are kept instead of being wiped. */
+        fun restoresFrames(snap: Snapshot): Boolean = snap.version >= 5
 
         /**
          * Columns deliberately left out, per entity. Auto-generated ids are re-created on insert (nothing references
@@ -230,9 +232,8 @@ class BackupManager(private val context: Context, private val db: AppDatabase) {
             // Always replaced: lookups point at script ids, and the scripts were just replaced too.
             d.clearLookups()
             d.insertLookups(snap.lookups.map { it.toEntity() })
-            // A file older than version 5 has no frames: keep the current ones instead of wiping them (frames do not
-            // point at script ids, so they stay valid after the scripts are replaced).
-            if (snap.version >= 5) { d.clearFrames(); d.insertFrames(snap.frames.map { it.toEntity() }) }
+            // Frames do not point at script ids, so the current ones stay valid when an older file has none.
+            if (restoresFrames(snap)) { d.clearFrames(); d.insertFrames(snap.frames.map { it.toEntity() }) }
             if (hasSchedule) {
                 d.insertRegistrations(snap.registrations.map { it.toEntity() })
                 d.insertStatusEvents(snap.statusEvents.map { it.toEntity() })

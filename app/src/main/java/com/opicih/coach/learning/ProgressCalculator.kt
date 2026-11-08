@@ -33,7 +33,7 @@ object ProgressCalculator {
      */
     fun ihReadiness(scripts: List<ScriptEntity>, attempts: List<PracticeAttemptEntity>): Int {
         val mastery = if (scripts.isEmpty()) 0f else scripts.map { it.masteryScore }.average().toFloat()
-        val free = attempts.filter { it.mode in ScoreKind.SPEAKING_MODES }.take(10)
+        val free = attempts.filter { it.mode in ScoreKind.READINESS_MODES }.take(10)
         val freeScore = if (free.isEmpty()) 0f else free.map { it.score }.average().toFloat()
         val topics = attempts.map { it.topic }.toSet().size
         val breadth = (topics / 8f).coerceAtMost(1f) * 100f
@@ -76,7 +76,7 @@ object ProgressCalculator {
     /** Readiness signals since [sinceEpochMs] (normally the last exam), for RetestAdvisor. */
     fun readiness(attempts: List<PracticeAttemptEntity>, logs: List<DailyLogEntity>, sinceEpochDay: Long, sinceEpochMs: Long): RetestAdvisor.Readiness {
         val after = attempts.filter { it.createdAt >= sinceEpochMs }
-        val noScript = after.filter { it.mode in ScoreKind.SPEAKING_MODES && it.wordCount > 0 }.take(15)
+        val noScript = after.filter { it.mode in ScoreKind.READINESS_MODES && it.wordCount > 0 }.take(15)
         val withPauses = noScript.filter { it.captureMode != "TYPED" }
         val mocks = after.filter { it.mockId != null }.groupBy { it.mockId }
             .filter { (_, l) -> l.size >= 5 }.mapValues { (_, l) -> l.map { it.score }.average().toInt() }

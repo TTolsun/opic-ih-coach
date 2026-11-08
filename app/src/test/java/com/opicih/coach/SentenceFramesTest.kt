@@ -49,6 +49,16 @@ class SentenceFramesTest {
         assertFalse(FrameMatcher.used(like, ""))
     }
 
+    @Test fun matcherRequiresTheBlanksToBeFilled() {
+        // 고정 문구만 이어 말하고 빈칸을 비운 문장
+        assertFalse(FrameMatcher.used(like, "The thing I like most about is because it"))
+        assertFalse(FrameMatcher.used(like, "The thing I like most about hiking is because"))
+        assertFalse(FrameMatcher.used(planning, "I am planning to next month"))
+        // 끝 빈칸에 단어가 없는 경우
+        assertFalse(FrameMatcher.used("To be honest, I $FRAME_BLANK.", "To be honest I"))
+        assertTrue(FrameMatcher.used("To be honest, I $FRAME_BLANK.", "To be honest I love cooking"))
+    }
+
     @Test fun matcherDoesNotMatchInsideLongerWords() {
         assertFalse(FrameMatcher.used("It was a $FRAME_BLANK experience because $FRAME_BLANK.", "It wasn't a fun experience because of rain"))
     }
@@ -115,7 +125,19 @@ class SentenceFramesTest {
         assertEquals(1, m.sentenceCount)
         assertEquals(m.wordCount / ParagraphLadder.WORDS_PER_SENTENCE, ParagraphLadder.sentenceCount(m, hasSentencePunctuation = false))
         assertTrue(ParagraphLadder.judge(LadderLevel.THREE, m, hasSentencePunctuation = false).passed)
-        assertFalse(ParagraphLadder.judge(LadderLevel.THREE, m, hasSentencePunctuation = true).passed)
+    }
+
+    @Test fun aSingleTrailingPeriodOnALongAnswerIsStillEstimated() {
+        val text = "last summer i went to jeju with my friends and it was great because the sea was clear so we swam every day then we ate seafood and relaxed and then we went home happy."
+        val m = d(text)
+        assertEquals(1, m.sentenceCount)
+        assertTrue(ParagraphLadder.judge(LadderLevel.THREE, m, hasSentencePunctuation = true).passed)
+    }
+
+    @Test fun properlyPunctuatedShortSentencesKeepTheirRealCount() {
+        val two = d("I went to Jeju last summer. It was great because the sea was clear.")
+        assertEquals(2, ParagraphLadder.sentenceCount(two, hasSentencePunctuation = true))
+        assertFalse(ParagraphLadder.judge(LadderLevel.THREE, two, hasSentencePunctuation = true).passed)
     }
 
     @Test fun ladderStepsAreOrderedAndEndAtFive() {
@@ -123,6 +145,31 @@ class SentenceFramesTest {
         assertEquals(LadderLevel.FIVE, LadderLevel.THREE.next())
         assertNull(LadderLevel.FIVE.next())
         assertTrue(LadderLevel.FIVE.missionKo.contains("연결어 2개") && LadderLevel.FIVE.missionKo.contains("과거형"))
+    }
+
+    // ---- 준비도와 백업 규칙
+    @Test fun ladderAttemptsAreExcludedFromReadinessButNotFromSpeakingScore() {
+        assertTrue("PARAGRAPH_LADDER" in ScoreKind.SPEAKING_MODES)
+        assertFalse("PARAGRAPH_LADDER" in ScoreKind.READINESS_MODES)
+        assertTrue("FRAME_ATTACH" in ScoreKind.READINESS_MODES && "FREE" in ScoreKind.READINESS_MODES)
+        assertFalse("BLIND" in ScoreKind.READINESS_MODES)
+    }
+
+    @Test fun shortLadderAnswersDoNotLowerReadiness() {
+        fun a(mode: String, words: Int, score: Int) =
+            com.opicih.coach.data.db.PracticeAttemptEntity(topic = "T", questionText = "q", mode = mode, wordCount = words, score = score, createdAt = 2_000_000_000_000L)
+        val attempts = List(3) { a("FREE", 100, 70) } + List(10) { a("PARAGRAPH_LADDER", 10, 20) }
+        val r = com.opicih.coach.learning.ProgressCalculator.readiness(attempts, emptyList(), 0, 0)
+        assertEquals(3, r.recentAnswers)
+        assertEquals(100, r.avgWords)
+        assertEquals(70, r.avgScore)
+    }
+
+    @Test fun olderBackupsKeepTheCurrentFrames() {
+        val v4 = com.opicih.coach.data.backup.BackupManager.Snapshot(version = 4)
+        val v5 = com.opicih.coach.data.backup.BackupManager.Snapshot(version = 5)
+        assertFalse(com.opicih.coach.data.backup.BackupManager.restoresFrames(v4))
+        assertTrue(com.opicih.coach.data.backup.BackupManager.restoresFrames(v5))
     }
 
     // ---- 점수 종류 (#24 연결)

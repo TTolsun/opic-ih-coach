@@ -115,8 +115,8 @@ interface AppDao {
     @Query("SELECT COUNT(*) FROM chunks WHERE lower(phrase) IN (:phrases)") suspend fun chunkCount(phrases: List<String>): Int
 
     // ---- Sentence frames (v5)
-    /** Pending first. REJECTED rows stay in the table so a rejected frame is not suggested again, but are not listed. */
-    @Query("SELECT * FROM sentence_frames WHERE status != 'REJECTED' ORDER BY status DESC, id") fun framesFlow(): Flow<List<SentenceFrameEntity>>
+    /** All frames, pending first. REJECTED rows stay so a rejected frame is not suggested again; the screen can restore them. */
+    @Query("SELECT * FROM sentence_frames ORDER BY status DESC, id") fun framesFlow(): Flow<List<SentenceFrameEntity>>
     @Query("SELECT * FROM sentence_frames ORDER BY id") suspend fun frames(): List<SentenceFrameEntity>
     @Query("SELECT * FROM sentence_frames WHERE status = 'APPROVED' ORDER BY id") suspend fun approvedFrames(): List<SentenceFrameEntity>
     /** IGNORE: the unique pattern index makes a repeated extraction a no-op for frames that already exist. */

@@ -28,5 +28,11 @@ enum class ScoreKind(val label: String) {
         /** 말하기 점수로 집계하는 mode 이름. 준비도와 추세 계산이 이 집합을 씁니다. */
         val SPEAKING_MODES: Set<String> =
             PracticeMode.entries.filter { of(it) == SPEAKING }.map { it.name }.toSet()
+
+        /**
+         * 준비도와 약점 분석에 쓰는 답변. 문단 사다리는 1문장 답에서 시작하도록 만든 단계별 연습이라, 일부러 짧은 답이
+         * 길이·점수 기준을 깎지 않도록 제외합니다. 사다리 기록은 말하기 점수 추세에는 그대로 나타납니다.
+         */
+        val READINESS_MODES: Set<String> = SPEAKING_MODES - PracticeMode.PARAGRAPH_LADDER.name
     }
 }
