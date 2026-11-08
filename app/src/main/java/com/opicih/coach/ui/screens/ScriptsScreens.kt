@@ -31,6 +31,7 @@ import androidx.compose.material.icons.filled.FileOpen
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -54,6 +55,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -82,9 +84,11 @@ import java.time.LocalDate
 @Composable
 fun ScriptsScreen(onOpen: (Long) -> Unit, onNew: () -> Unit, onImport: () -> Unit) {
     val c = LocalContainer.current
-    val scripts by c.dao.scriptsFlow().collectAsState(initial = emptyList())
+    // null = 아직 로딩 전. 빈 목록으로 먼저 그리면 복원된 스크롤 위치가 0으로 초기화된다.
+    val loadedScripts by c.dao.scriptsFlow().collectAsState(initial = null)
     val pending by c.dao.pendingRevisionsFlow().collectAsState(initial = emptyList())
-    var query by remember { mutableStateOf("") }
+    var query by rememberSaveable { mutableStateOf("") }
+    val scripts = loadedScripts ?: return
     val pendingIds = pending.map { it.scriptId }.toSet()
     val filtered = scripts.filter { query.isBlank() || (it.title + it.topic + it.question + it.original).contains(query, true) }
 
@@ -117,7 +121,7 @@ fun ScriptsScreen(onOpen: (Long) -> Unit, onNew: () -> Unit, onImport: () -> Uni
                         Spacer(Modifier.height(6.dp))
                         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                             SourceTag(s.mastery.label)
-                            SourceTag("학습본: ${s.active.label}")
+                            if (s.active != ScriptVersion.ORIGINAL) SourceTag("학습본: ${s.active.label}")
                             if (s.linkedGroupId != null) SourceTag("유사 문항 연결")
                         }
                     }
@@ -136,12 +140,13 @@ fun ScriptDetailScreen(id: Long, onPractice: (Long, PracticeMode) -> Unit, onEdi
     val script by c.dao.scriptFlow(id).collectAsState(initial = null)
     val revisions by c.dao.revisionsFlow(id).collectAsState(initial = emptyList())
     val settings by c.settings.flow.collectAsState(initial = Settings())
-    var tab by remember { mutableStateOf(ScriptVersion.ORIGINAL) }
+    // 사용자가 직접 고른 탭만 저장한다. 고르지 않았으면 학습본을 보여 준다.
+    var pickedTab by rememberSaveable { mutableStateOf<ScriptVersion?>(null) }
     var busy by remember { mutableStateOf(false) }
-    var message by remember { mutableStateOf<String?>(null) }
-    var confirmDelete by remember { mutableStateOf(false) }
+    var message by rememberSaveable { mutableStateOf<String?>(null) }
+    var confirmDelete by rememberSaveable { mutableStateOf(false) }
     val s = script ?: run { Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }; return }
-    LaunchedEffect(s.id) { tab = s.active }
+    val tab = pickedTab ?: s.active
 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
         Column {
@@ -158,7 +163,7 @@ fun ScriptDetailScreen(id: Long, onPractice: (Long, PracticeMode) -> Unit, onEdi
         }
 
         // Practice entry points
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             listOf(PracticeMode.READ_LISTEN, PracticeMode.SHADOWING, PracticeMode.FILL_BLANK, PracticeMode.KEYWORD, PracticeMode.BLIND, PracticeMode.RANDOM, PracticeMode.VARIATION).forEach { m ->
                 Pill(m.label, false) { onPractice(s.id, m) }
             }
@@ -167,7 +172,7 @@ fun ScriptDetailScreen(id: Long, onPractice: (Long, PracticeMode) -> Unit, onEdi
         // Versions
         SectionCard(title = "버전") {
             Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                ScriptVersion.entries.forEach { v -> Pill(v.label + if (s.active == v) " ✓" else "", tab == v) { tab = v } }
+                ScriptVersion.entries.forEach { v -> Pill(v.label + if (s.active == v) " ✓" else "", tab == v) { pickedTab = v } }
             }
             Spacer(Modifier.height(10.dp))
             val text = when (tab) {
@@ -178,7 +183,12 @@ fun ScriptDetailScreen(id: Long, onPractice: (Long, PracticeMode) -> Unit, onEdi
                 ScriptVersion.KEYWORDS -> s.keywords
             }
             if (text.isNullOrBlank()) {
-                Text("승인된 ${tab.label} 버전이 없습니다.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                val waiting = revisions.any { it.status == RevisionStatus.PENDING.name && it.version == tab.name }
+                Text(
+                    if (waiting) "승인 대기 중인 ${tab.label} 개선안이 아래에 있습니다." else "${tab.label} 버전이 아직 없습니다.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = if (waiting) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             } else {
                 Text(text, style = EnglishReading)
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -210,7 +220,7 @@ fun ScriptDetailScreen(id: Long, onPractice: (Long, PracticeMode) -> Unit, onEdi
                         Text(r.reasonKo, style = MaterialTheme.typography.bodySmall)
                     }
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Button(onClick = { scope.launch { c.scripts.approve(r); tab = ScriptVersion.of(r.version) } }) { Text("승인") }
+                        Button(onClick = { scope.launch { c.scripts.approve(r); pickedTab = ScriptVersion.of(r.version) } }) { Text("승인") }
                         OutlinedButton(onClick = { scope.launch { c.scripts.reject(r) } }) { Text("거절") }
                         IconButton(onClick = { c.tts.speak(r.text, 0.95f) }) { Icon(Icons.AutoMirrored.Filled.VolumeUp, "듣기") }
                     }
@@ -221,8 +231,8 @@ fun ScriptDetailScreen(id: Long, onPractice: (Long, PracticeMode) -> Unit, onEdi
         SectionCard(title = "AI 개선") {
             val ai = c.realAi(settings)
             Text(
-                if (ai != null) "${ai.engineName}가 Natural / IH Target / Short / Keywords와 변경 이유를 만듭니다. 결과는 승인 대기로 저장됩니다. (API 비용 발생)"
-                else "AI가 꺼져 있습니다. 지금은 로컬 규칙으로 Short/Keywords만 만들 수 있습니다. 설정 > AI에서 키를 입력하고 동의하면 전체 개선을 쓸 수 있습니다.",
+                if (ai != null) "${ai.engineName} · 결과는 승인 대기로 저장됩니다. API 비용이 발생합니다."
+                else "AI가 꺼져 있어 Short/Keywords만 만들 수 있습니다. 전체 개선은 설정에서 AI를 켜야 합니다.",
                 style = MaterialTheme.typography.bodySmall,
             )
             Spacer(Modifier.height(8.dp))
@@ -243,8 +253,10 @@ fun ScriptDetailScreen(id: Long, onPractice: (Long, PracticeMode) -> Unit, onEdi
         }
 
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedButton(onClick = { onEdit(s.id) }) { Icon(Icons.Filled.Edit, null); Text("편집") }
-            OutlinedButton(onClick = { confirmDelete = true }) { Icon(Icons.Filled.Delete, null); Text("삭제") }
+            OutlinedButton(onClick = { onEdit(s.id) }) { Icon(Icons.Filled.Edit, null); Spacer(Modifier.width(6.dp)); Text("편집") }
+            OutlinedButton(onClick = { confirmDelete = true }, colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)) {
+                Icon(Icons.Filled.Delete, null); Spacer(Modifier.width(6.dp)); Text("삭제")
+            }
         }
         Spacer(Modifier.height(24.dp))
     }
@@ -252,8 +264,8 @@ fun ScriptDetailScreen(id: Long, onPractice: (Long, PracticeMode) -> Unit, onEdi
     if (confirmDelete) AlertDialog(
         onDismissRequest = { confirmDelete = false },
         title = { Text("스크립트 삭제") },
-        text = { Text("'${s.title}'와 개선안을 삭제합니다. 연습 기록은 남습니다. 되돌릴 수 없습니다.") },
-        confirmButton = { TextButton(onClick = { confirmDelete = false; scope.launch { c.scripts.delete(s); onDeleted() } }) { Text("삭제") } },
+        text = { Text("${s.title}\n개선안도 함께 삭제되며 되돌릴 수 없습니다. 연습 기록은 남습니다.") },
+        confirmButton = { TextButton(onClick = { confirmDelete = false; scope.launch { c.scripts.delete(s); onDeleted() } }) { Text("삭제", color = MaterialTheme.colorScheme.error) } },
         dismissButton = { TextButton(onClick = { confirmDelete = false }) { Text("취소") } },
     )
 }
@@ -264,17 +276,21 @@ fun ScriptEditScreen(id: Long, onDone: (Long) -> Unit) {
     val c = LocalContainer.current
     val scope = rememberCoroutineScope()
     var loaded by remember { mutableStateOf<ScriptEntity?>(null) }
-    var topic by remember { mutableStateOf("") }
-    var title by remember { mutableStateOf("") }
-    var question by remember { mutableStateOf("") }
-    var original by remember { mutableStateOf("") }
-    var korean by remember { mutableStateOf("") }
-    var type by remember { mutableStateOf(QuestionType.DESCRIPTION) }
+    var topic by rememberSaveable { mutableStateOf("") }
+    var title by rememberSaveable { mutableStateOf("") }
+    var question by rememberSaveable { mutableStateOf("") }
+    var original by rememberSaveable { mutableStateOf("") }
+    var korean by rememberSaveable { mutableStateOf("") }
+    var type by rememberSaveable { mutableStateOf(QuestionType.DESCRIPTION) }
     var typeOpen by remember { mutableStateOf(false) }
+    // 복원된 입력값을 DB 값으로 덮어쓰지 않도록, 처음 한 번만 채운다.
+    var filled by rememberSaveable { mutableStateOf(false) }
     LaunchedEffect(id) {
         if (id > 0) c.dao.script(id)?.let { s ->
-            loaded = s; topic = s.topic; title = s.title; question = s.question; original = s.studyText; korean = s.koreanMeaning.orEmpty(); type = s.type
+            loaded = s
+            if (!filled) { topic = s.topic; title = s.title; question = s.question; original = s.studyText; korean = s.koreanMeaning.orEmpty(); type = s.type }
         }
+        filled = true
     }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         if (loaded != null && loaded!!.active != ScriptVersion.ORIGINAL) {
@@ -319,9 +335,9 @@ fun ScriptEditScreen(id: Long, onDone: (Long) -> Unit) {
 fun ImportScreen(onDone: () -> Unit) {
     val c = LocalContainer.current
     val scope = rememberCoroutineScope()
-    var raw by remember { mutableStateOf("") }
-    var fileName by remember { mutableStateOf("붙여넣기") }
-    var mime by remember { mutableStateOf("text/plain") }
+    var raw by rememberSaveable { mutableStateOf("") }
+    var fileName by rememberSaveable { mutableStateOf("붙여넣기") }
+    var mime by rememberSaveable { mutableStateOf("text/plain") }
     var parsed by remember { mutableStateOf<List<ParsedScript>>(emptyList()) }
     var error by remember { mutableStateOf<String?>(null) }
     var busy by remember { mutableStateOf(false) }
@@ -355,7 +371,7 @@ fun ImportScreen(onDone: () -> Unit) {
             }
             Button(onClick = {
                 scope.launch { c.scripts.importParsed(fileName, mime, raw, parsed); onDone() }
-            }, modifier = Modifier.fillMaxWidth()) { Icon(Icons.Filled.Add, null); Text("${parsed.size}개 가져오기") }
+            }, modifier = Modifier.fillMaxWidth()) { Icon(Icons.Filled.Add, null); Spacer(Modifier.width(6.dp)); Text("${parsed.size}개 가져오기") }
         }
     }
 }
