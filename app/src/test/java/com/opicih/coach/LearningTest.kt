@@ -15,7 +15,6 @@ import com.opicih.coach.learning.MorningStep
 import com.opicih.coach.learning.PlanGenerator
 import com.opicih.coach.learning.ProgressCalculator
 import com.opicih.coach.learning.QuestionSource
-import com.opicih.coach.learning.RetestCalculator
 import com.opicih.coach.learning.SrsScheduler
 import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals
@@ -107,9 +106,6 @@ class PlanGeneratorTest {
         assertTrue("intense=$intense", intense in 50..70)
     }
 
-    @Test fun retest() {
-        assertEquals(LocalDate.of(2026, 12, 10), RetestCalculator.nextEligible(exam)) // 11/14 + 26 (exam day excluded)
-    }
 }
 
 class AlarmSchedulerTest {

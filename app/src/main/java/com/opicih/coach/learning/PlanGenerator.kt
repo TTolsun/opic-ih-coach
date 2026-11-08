@@ -132,12 +132,6 @@ object PlanGenerator {
         daysLeft <= 7 -> if (daysLeft % 2 == 0) Focus.SAIL_QUICK else Focus.SAIL_FOLLOWUP
         else -> if (daysLeft % 2 == 0) Focus.CORE else Focus.FREE
     }
-
-    fun upcoming(today: LocalDate, exam: LocalDate, mockDone: Boolean): List<Pair<LocalDate, Focus>> {
-        val daysLeft = ChronoUnit.DAYS.between(today, exam).toInt()
-        return sprintFocuses(daysLeft, mockDone).mapIndexed { i, f -> today.plusDays(i.toLong()) to f }
-    }
-
     fun tasksFor(focus: Focus, minutes: Int, dueScripts: Int): List<PlanTask> {
         sailTasks(focus, minutes)?.let { return it }
         val morning = PlanTask(TaskType.MORNING, "아침 표현 루틴", if (minutes <= 10) 4 else 8)
@@ -207,12 +201,3 @@ object PlanGenerator {
     private const val MODE_SAIL = "SAIL_CONVERSATION"
 }
 
-/** OPIc retake rule as provided by the user (25 days, waiver exception). Must be verified on opic.or.kr. */
-object RetestCalculator {
-    const val WAIT_DAYS = 25L
-    const val NOTICE = "재응시 제한은 OPIc 시험관리규정 제5조 기준입니다(응시일 제외 25일, D+26부터 응시 가능). 실제 회차와 Waiver 적용은 접수 화면에서 확인하세요."
-
-    /** Official counting: the exam day is D+0, D+1..D+25 are blocked, D+26 is the first allowed day. */
-    fun nextEligible(lastExam: LocalDate, waiver: Boolean = false): LocalDate =
-        if (waiver) lastExam.plusDays(1) else lastExam.plusDays(WAIT_DAYS + 1)
-}

@@ -231,11 +231,5 @@ class PracticeRepository(private val dao: AppDao) {
         val log = dao.dailyLog(today) ?: DailyLogEntity(today)
         dao.upsertDailyLog(log.copy(morningDone = true))
     }
-
-    fun decodeFeedback(a: PracticeAttemptEntity): Feedback = runCatching { appJson.decodeFromString(Feedback.serializer(), a.feedbackJson) }.getOrDefault(Feedback())
     fun decodeMetrics(a: PracticeAttemptEntity): AttemptMetrics? = runCatching { appJson.decodeFromString(AttemptMetrics.serializer(), a.metricsJson) }.getOrNull()
-
-    companion object {
-        fun masteryLabel(s: ScriptEntity) = MasteryState.entries.firstOrNull { it.name == s.masteryState }?.label ?: ""
-    }
 }

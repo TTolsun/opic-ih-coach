@@ -11,7 +11,6 @@ data class PauseMetrics(
     /** Silence before the first speech frame (hesitation before starting). */
     val leadingSilenceMs: Long,
 ) {
-    val speechRatio: Float get() = if (totalMs == 0L) 0f else speechMs.toFloat() / totalMs
 }
 
 /**

@@ -65,8 +65,6 @@ object ProgressCalculator {
         return ok / 7f
     }
 
-    fun chunkDueCount(chunks: List<ChunkEntity>, today: Long) = chunks.count { it.dueEpochDay <= today }
-
     /** Pure: the daily log after removing one attempt that was recorded on that day. Never goes below zero. */
     fun withoutAttempt(log: DailyLogEntity, a: PracticeAttemptEntity): DailyLogEntity = log.copy(
         speakingMs = (log.speakingMs - (if (a.speechMs > 0) a.speechMs else a.durationMs)).coerceAtLeast(0),
