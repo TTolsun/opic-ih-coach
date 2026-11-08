@@ -19,6 +19,8 @@ class ReminderWorker(context: Context, params: WorkerParameters) : CoroutineWork
         val app = applicationContext as App
         val s = app.container.settings.current()
         if (!s.eveningReminder) return Result.success()
+        // Study blocks replace the evening reminder to avoid double nagging.
+        if (s.studyBlocksEnabled) return Result.success()
         val hour = LocalDateTime.now().hour
         if (hour < 19 || hour > 22) return Result.success()
         val log = app.container.dao.dailyLog(LocalDate.now().toEpochDay())

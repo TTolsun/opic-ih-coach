@@ -85,6 +85,9 @@ data class Settings(
     val aiDailyCap: Int = 30,
     val aiCallDay: Long = 0,
     val aiCallCount: Int = 0,
+    /** Study block contract (see alarm/StudyBlocks.kt). Encoded as "startMinute:minutes,...". */
+    val studyBlocksEnabled: Boolean = true,
+    val studyBlocks: String = "450:40,1140:20,1440:60",
 ) {
     fun aiCallsToday(todayEpochDay: Long): Int = if (aiCallDay == todayEpochDay) aiCallCount else 0
 
@@ -135,6 +138,8 @@ class SettingsRepository(private val context: Context) {
         val aiCap = intPreferencesKey("ai_daily_cap")
         val aiDay = longPreferencesKey("ai_call_day")
         val aiCount = intPreferencesKey("ai_call_count")
+        val blocksOn = booleanPreferencesKey("study_blocks_on")
+        val blocks = stringPreferencesKey("study_blocks")
     }
 
     val flow: Flow<Settings> = context.dataStore.data.map { it.toSettings() }
@@ -181,6 +186,8 @@ class SettingsRepository(private val context: Context) {
             p[K.aiCap] = s.aiDailyCap
             p[K.aiDay] = s.aiCallDay
             p[K.aiCount] = s.aiCallCount
+            p[K.blocksOn] = s.studyBlocksEnabled
+            p[K.blocks] = s.studyBlocks
         }
     }
 
@@ -224,6 +231,8 @@ class SettingsRepository(private val context: Context) {
             aiDailyCap = this[K.aiCap] ?: d.aiDailyCap,
             aiCallDay = this[K.aiDay] ?: d.aiCallDay,
             aiCallCount = this[K.aiCount] ?: d.aiCallCount,
+            studyBlocksEnabled = this[K.blocksOn] ?: d.studyBlocksEnabled,
+            studyBlocks = this[K.blocks] ?: d.studyBlocks,
         )
     }
 }

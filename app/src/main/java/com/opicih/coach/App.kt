@@ -35,6 +35,7 @@ class AppContainer(context: Context) {
     val db = AppDatabase.create(ctx)
     val dao = db.dao()
     val settings = SettingsRepository(ctx)
+    val studyTime = com.opicih.coach.data.prefs.StudyTimeTracker(ctx)
     val keys = ApiKeyStore(ctx)
     val tts by lazy { TtsManager(ctx) }
     val player = AudioPlayer()
@@ -81,6 +82,7 @@ class App : Application() {
             val s = container.settings.current()
             if (s.alarmEnabled) AlarmScheduler.schedule(this@App, s.alarmHour, s.alarmMinute, s.useExactAlarm)
             ReminderWorker.ensure(this@App, s.eveningReminder)
+            runCatching { com.opicih.coach.alarm.StudyBlockScheduler.sync(this@App, s) }
             runCatching { container.backup.purgeAudio(s.audioRetentionDays) }
         }
         // Voice and pitch follow the settings (also re-applied once the engine becomes ready).
