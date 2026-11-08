@@ -18,7 +18,7 @@ import java.sql.DriverManager
 
 /**
  * Runs the production migration SQL (MigrationSql) against a real SQLite database built from Room's exported
- * v1 schema, then checks the result against Room's exported v3 schema and that no user data was lost.
+ * v1 schema, then checks the result against Room's exported v4 schema and that no user data was lost.
  * This replaces an instrumented MigrationTestHelper run, which needs a device.
  */
 class MigrationTest {
@@ -68,11 +68,12 @@ class MigrationTest {
     private fun migrateToV3() {
         MigrationSql.V1_TO_V2.forEach(::exec)
         MigrationSql.V2_TO_V3.forEach(::exec)
+        MigrationSql.V3_TO_V4.forEach(::exec)
     }
 
-    @Test fun v1ToV3MatchesRoomSchema() {
+    @Test fun v1ToV4MatchesRoomSchema() {
         migrateToV3()
-        for (e in entities(3)) {
+        for (e in entities(4)) {
             val table = e["tableName"]!!.jsonPrimitive.content
             val expected = e["fields"]!!.jsonArray.associate { f ->
                 val o = f.jsonObject
@@ -102,6 +103,7 @@ class MigrationTest {
         assertEquals(1, count("error_patterns", "count = 4"))
         assertEquals(1, count("chunks", "srsStep = 3 AND dueEpochDay = 20410"))
         assertEquals(2, count("exams"))
+        assertEquals(0, count("word_lookups"))
         // SRS progress of every script is unchanged.
         assertEquals(23, count("scripts", "srsStep = (id - 1) % 5 AND dueEpochDay = 20400 + id - 1"))
     }

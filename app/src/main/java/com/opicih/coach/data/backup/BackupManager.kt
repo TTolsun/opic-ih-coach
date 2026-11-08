@@ -16,6 +16,7 @@ import com.opicih.coach.data.db.MockTestEntity
 import com.opicih.coach.data.db.PracticeAttemptEntity
 import com.opicih.coach.data.db.ScriptEntity
 import com.opicih.coach.data.db.ScriptRevisionEntity
+import com.opicih.coach.data.db.WordLookupEntity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
@@ -31,11 +32,12 @@ import java.io.File
  */
 class BackupManager(private val context: Context, private val db: AppDatabase) {
     companion object {
-        /** 1 = learning data only. 2 = adds the exam schedule. 3 = adds mock tests and the columns v2 dropped. */
-        const val CURRENT_VERSION = 3
+        /** 1 = learning data only. 2 = adds the exam schedule. 3 = adds mock tests and the columns v2 dropped.
+         *  4 = adds script glossary lookups. */
+        const val CURRENT_VERSION = 4
         private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
         fun encode(snap: Snapshot): String = json.encodeToString(Snapshot.serializer(), snap)
-        /** Reads version-1, 2 and 3 files: columns missing from older files fall back to the entity defaults. */
+        /** Reads version-1 to 4 files: columns missing from older files fall back to the entity defaults. */
         fun decode(text: String): Snapshot = json.decodeFromString(Snapshot.serializer(), text)
         /** Only a version-2+ file that actually carries a schedule replaces the current one. */
         fun restoresSchedule(snap: Snapshot): Boolean = snap.version >= 2 && snap.registrations.isNotEmpty()
@@ -51,6 +53,7 @@ class BackupManager(private val context: Context, private val db: AppDatabase) {
             ErrorPatternEntity::class.java to setOf("id"),
             ChunkEntity::class.java to setOf("id"),
             ExamStatusEventEntity::class.java to setOf("id"),
+            WordLookupEntity::class.java to setOf("id"),
         )
 
         // ---- Entity <-> mirror mapping (pure, unit tested)
@@ -111,6 +114,10 @@ class BackupManager(private val context: Context, private val db: AppDatabase) {
         fun BStatusEvent.toEntity() = ExamStatusEventEntity(registrationId = registrationId, fromStatus = fromStatus,
             toStatus = toStatus, effectiveDate = effectiveDate, note = note, createdAt = createdAt)
 
+        fun WordLookupEntity.toBackup() = BLookup(phrase, scriptId, surface, sentence, count, firstAt, lastAt)
+        fun BLookup.toEntity() = WordLookupEntity(phrase = phrase, scriptId = scriptId, surface = surface, sentence = sentence,
+            count = count, firstAt = firstAt, lastAt = lastAt)
+
         fun ExamTrainingSessionEntity.toBackup() = BTrainingSession(id, examType, kind, startedAt, finishedAt, turnCount, aiCalls, summaryJson)
         fun BTrainingSession.toEntity() = ExamTrainingSessionEntity(id = id, examType = examType, kind = kind, startedAt = startedAt,
             finishedAt = finishedAt, turnCount = turnCount, aiCalls = aiCalls, summaryJson = summaryJson)
@@ -131,6 +138,7 @@ class BackupManager(private val context: Context, private val db: AppDatabase) {
         val statusEvents: List<BStatusEvent> = emptyList(),
         val trainingSessions: List<BTrainingSession> = emptyList(),
         val mocks: List<BMock> = emptyList(),
+        val lookups: List<BLookup> = emptyList(),
     )
 
     // Serializable mirrors of the entities (keeps Room entities free of serialization annotations).
@@ -166,6 +174,7 @@ class BackupManager(private val context: Context, private val db: AppDatabase) {
         val verifiedAt: Long?, val needsReview: Boolean, val legacyExamId: Long?, val createdAt: Long, val updatedAt: Long,
     )
     @Serializable data class BStatusEvent(val registrationId: Long, val fromStatus: String?, val toStatus: String, val effectiveDate: String?, val note: String, val createdAt: Long)
+    @Serializable data class BLookup(val phrase: String, val scriptId: Long, val surface: String, val sentence: String, val count: Int, val firstAt: Long, val lastAt: Long)
     @Serializable data class BTrainingSession(val id: Long, val examType: String, val kind: String, val startedAt: Long, val finishedAt: Long?, val turnCount: Int, val aiCalls: Int, val summaryJson: String?)
 
     suspend fun export(uri: Uri) = withContext(Dispatchers.IO) {
@@ -182,6 +191,7 @@ class BackupManager(private val context: Context, private val db: AppDatabase) {
             statusEvents = d.statusEvents().map { it.toBackup() },
             trainingSessions = d.trainingSessions().map { it.toBackup() },
             mocks = d.mocks().map { it.toBackup() },
+            lookups = d.lookups().map { it.toBackup() },
         )
         context.contentResolver.openOutputStream(uri, "wt")?.use { it.write(encode(snap).toByteArray()) }
             ?: error("백업 파일을 만들 수 없습니다.")
@@ -208,6 +218,9 @@ class BackupManager(private val context: Context, private val db: AppDatabase) {
             d.insertDailyLogs(snap.logs.map { it.toEntity() })
             d.insertExams(snap.exams.map { it.toEntity() })
             d.insertMocks(snap.mocks.map { it.toEntity() })
+            // Always replaced: lookups point at script ids, and the scripts were just replaced too.
+            d.clearLookups()
+            d.insertLookups(snap.lookups.map { it.toEntity() })
             if (hasSchedule) {
                 d.insertRegistrations(snap.registrations.map { it.toEntity() })
                 d.insertStatusEvents(snap.statusEvents.map { it.toEntity() })

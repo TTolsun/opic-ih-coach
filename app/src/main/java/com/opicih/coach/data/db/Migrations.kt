@@ -42,4 +42,12 @@ object MigrationSql {
             "'이전 버전 시험 기록에서 옮김. 시험 유형을 확인하세요.', 'MIGRATED', NULL, 1, id, " +
             "CAST(strftime('%s','now') AS INTEGER) * 1000, CAST(strftime('%s','now') AS INTEGER) * 1000 FROM exams",
     )
+
+    /** v4: script glossary lookups. Adds one table only. */
+    val V3_TO_V4 = listOf(
+        "CREATE TABLE IF NOT EXISTS `word_lookups` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `phrase` TEXT NOT NULL, " +
+            "`scriptId` INTEGER NOT NULL, `surface` TEXT NOT NULL, `sentence` TEXT NOT NULL, `count` INTEGER NOT NULL, " +
+            "`firstAt` INTEGER NOT NULL, `lastAt` INTEGER NOT NULL)",
+        "CREATE UNIQUE INDEX IF NOT EXISTS `index_word_lookups_phrase_scriptId` ON `word_lookups` (`phrase`, `scriptId`)",
+    )
 }

@@ -102,6 +102,18 @@ interface AppDao {
     @Query("SELECT * FROM questions ORDER BY topic, id") suspend fun questions(): List<QuestionEntity>
     @Insert suspend fun insertQuestions(q: List<QuestionEntity>)
 
+    // ---- Glossary lookups (v4)
+    @Query("SELECT * FROM word_lookups WHERE phrase = :phrase AND scriptId = :scriptId") suspend fun lookup(phrase: String, scriptId: Long): WordLookupEntity?
+    /** IGNORE: a second insert for the same (phrase, script) after a cancelled write must not crash. */
+    @Insert(onConflict = OnConflictStrategy.IGNORE) suspend fun insertLookup(l: WordLookupEntity)
+    @Query("SELECT MAX(lastAt) FROM word_lookups WHERE phrase = :phrase") suspend fun lastLookupAt(phrase: String): Long?
+    @Update suspend fun updateLookup(l: WordLookupEntity)
+    @Query("SELECT COALESCE(SUM(count), 0) FROM word_lookups WHERE phrase = :phrase") suspend fun lookupDays(phrase: String): Int
+    @Query("SELECT * FROM word_lookups WHERE scriptId = :scriptId ORDER BY count DESC, lastAt DESC") fun lookupsFlow(scriptId: Long): Flow<List<WordLookupEntity>>
+    @Query("SELECT * FROM word_lookups ORDER BY id") suspend fun lookups(): List<WordLookupEntity>
+    @Insert suspend fun insertLookups(l: List<WordLookupEntity>)
+    @Query("SELECT COUNT(*) FROM chunks WHERE lower(phrase) IN (:phrases)") suspend fun chunkCount(phrases: List<String>): Int
+
     // ---- Wipe / restore
     @Query("DELETE FROM scripts") suspend fun clearScripts()
     @Query("DELETE FROM script_revisions") suspend fun clearRevisions()
@@ -117,6 +129,7 @@ interface AppDao {
     @Query("DELETE FROM exam_registrations") suspend fun clearRegistrations()
     @Query("DELETE FROM exam_status_events") suspend fun clearStatusEvents()
     @Query("DELETE FROM exam_training_sessions") suspend fun clearTrainingSessions()
+    @Query("DELETE FROM word_lookups") suspend fun clearLookups()
 
     @Insert suspend fun insertScriptsRaw(s: List<ScriptEntity>)
     @Insert suspend fun insertAttempts(a: List<PracticeAttemptEntity>)
@@ -129,6 +142,6 @@ interface AppDao {
     suspend fun wipeAll() {
         clearScripts(); clearRevisions(); clearImports(); clearAttempts(); clearErrors(); clearChunks()
         clearDailyLogs(); clearMocks(); clearExams(); clearStories(); clearQuestions()
-        clearRegistrations(); clearStatusEvents(); clearTrainingSessions()
+        clearRegistrations(); clearStatusEvents(); clearTrainingSessions(); clearLookups()
     }
 }

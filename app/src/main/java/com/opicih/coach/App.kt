@@ -40,6 +40,7 @@ class AppContainer(context: Context) {
     val tts by lazy { TtsManager(ctx) }
     val player = AudioPlayer()
     val scripts = ScriptRepository(dao)
+    val glossary = com.opicih.coach.data.repo.GlossaryRepository(ctx, dao)
     val practice = PracticeRepository(db)
     val importer = ImportService(ctx)
     val backup = BackupManager(ctx, db)

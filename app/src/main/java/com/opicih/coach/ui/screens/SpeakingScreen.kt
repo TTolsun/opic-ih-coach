@@ -84,6 +84,7 @@ import com.opicih.coach.ui.components.SectionCard
 import com.opicih.coach.ui.components.SourceTag
 import com.opicih.coach.ui.components.formatMs
 import com.opicih.coach.ui.theme.EnglishReading
+import com.opicih.coach.ui.components.GlossaryText
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -259,14 +260,14 @@ private fun ModePanel(ui: SpeakingUi, vm: SpeakingViewModel) {
     val text = s.studyText
     when (ui.mode) {
         PracticeMode.READ_LISTEN -> SectionCard(title = "학습본 (${s.active.label})", trailing = { ModelButtons(vm, text) }) {
-            Text(text, style = EnglishReading)
+            GlossaryText(text, s.id)
             s.koreanMeaning?.let { Spacer(Modifier.height(8.dp)); Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
         }
         PracticeMode.SHADOWING -> {
             val sentences = vm.shadowSentences()
             val cur = sentences.getOrNull(ui.shadowIndex).orEmpty()
             SectionCard(title = "${ui.shadowIndex + 1} / ${sentences.size}") {
-                Text(cur, style = EnglishReading)
+                GlossaryText(cur, s.id)
                 Spacer(Modifier.height(8.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     IconButton(onClick = { vm.shadowMove(-1) }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "이전 문장") }

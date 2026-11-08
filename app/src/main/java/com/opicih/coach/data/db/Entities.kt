@@ -41,7 +41,9 @@ enum class ScriptVersion(val label: String) {
 enum class ContentSource(val label: String) {
     SEED_USER("내 스크립트 (Drive)"),
     USER_IMPORT("가져오기/직접 작성"),
-    AI_SAMPLE("AI 생성 예제");
+    AI_SAMPLE("AI 생성 예제"),
+    /** A phrase the learner looked up in a script and kept as a review card (v4). */
+    SCRIPT_LOOKUP("스크립트에서 찾은 표현");
 
     companion object {
         fun of(name: String?): ContentSource = entries.firstOrNull { it.name == name } ?: USER_IMPORT
@@ -210,6 +212,25 @@ data class ChunkEntity(
     val lastReviewedEpochDay: Long? = null,
     val failCount: Int = 0,
     val source: String = ContentSource.AI_SAMPLE.name,
+)
+
+/**
+ * v4: one row per glossary phrase per script. [count] is the number of different days it was looked up, so a
+ * phrase that keeps coming back is one the learner has not memorized yet.
+ */
+@Entity(tableName = "word_lookups", indices = [Index(value = ["phrase", "scriptId"], unique = true)])
+data class WordLookupEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    /** Glossary entry phrase (its key). */
+    val phrase: String,
+    /** 0 = looked up outside a script. */
+    val scriptId: Long = 0,
+    /** The text as it appeared in the script, e.g. "relieving my fatigue". */
+    val surface: String,
+    val sentence: String,
+    val count: Int = 1,
+    val firstAt: Long = System.currentTimeMillis(),
+    val lastAt: Long = System.currentTimeMillis(),
 )
 
 @Entity(tableName = "daily_logs")

@@ -74,6 +74,8 @@ import com.opicih.coach.importer.ParsedScript
 import com.opicih.coach.importer.QuestionClassifier
 import com.opicih.coach.ui.LocalContainer
 import com.opicih.coach.ui.components.Banner
+import com.opicih.coach.ui.components.GlossaryText
+import com.opicih.coach.ui.components.LookedUpList
 import com.opicih.coach.ui.components.Pill
 import com.opicih.coach.ui.components.SectionCard
 import com.opicih.coach.ui.components.SourceTag
@@ -190,7 +192,7 @@ fun ScriptDetailScreen(id: Long, onPractice: (Long, PracticeMode) -> Unit, onEdi
                     color = if (waiting) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             } else {
-                Text(text, style = EnglishReading)
+                if (tab == ScriptVersion.KEYWORDS) Text(text, style = EnglishReading) else GlossaryText(text, s.id)
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     IconButton(onClick = { c.tts.speak(text, 0.95f) }) { Icon(Icons.AutoMirrored.Filled.VolumeUp, "듣기") }
                     TextButton(onClick = { c.tts.speak(text, 0.75f) }) { Text("0.75x") }
@@ -200,6 +202,8 @@ fun ScriptDetailScreen(id: Long, onPractice: (Long, PracticeMode) -> Unit, onEdi
             }
             s.koreanMeaning?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
         }
+
+        LookedUpList(s.id)
 
         // Pending improvements: original vs proposal, with Korean reasons, approve/reject
         val pending = revisions.filter { it.status == RevisionStatus.PENDING.name }
@@ -213,7 +217,8 @@ fun ScriptDetailScreen(id: Long, onPractice: (Long, PracticeMode) -> Unit, onEdi
                         HorizontalDivider(Modifier.padding(vertical = 8.dp))
                         Text("개선안", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
                     }
-                    Text(r.text, style = MaterialTheme.typography.bodyMedium)
+                    if (r.version == ScriptVersion.KEYWORDS.name) Text(r.text, style = MaterialTheme.typography.bodyMedium)
+                    else GlossaryText(r.text, s.id, style = MaterialTheme.typography.bodyMedium)
                     if (r.reasonKo.isNotBlank()) {
                         Spacer(Modifier.height(8.dp))
                         Text("변경 이유", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
