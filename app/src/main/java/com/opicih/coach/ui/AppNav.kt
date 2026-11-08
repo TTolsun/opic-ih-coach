@@ -22,6 +22,12 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.repeatOnLifecycle
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -74,6 +80,27 @@ fun AppNav(startRoute: String?, onRouteConsumed: () -> Unit) {
     val entry by nav.currentBackStackEntryAsState()
     val route = entry?.destination?.route
     val isTab = tabs.any { route?.startsWith(it.route) == true && !route.startsWith("scripts/") }
+
+    // Study time: only counted while the app is RESUMED on a study screen.
+    val container = LocalContainer.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+    val studyRoute = isStudyRoute(route)
+    LaunchedEffect(studyRoute) {
+        if (!studyRoute) return@LaunchedEffect
+        lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+            var last = android.os.SystemClock.elapsedRealtime()
+            try {
+                while (true) {
+                    delay(15_000)
+                    val t = android.os.SystemClock.elapsedRealtime()
+                    container.studyTime.add(t - last)
+                    last = t
+                }
+            } finally {
+                withContext(NonCancellable) { container.studyTime.add(android.os.SystemClock.elapsedRealtime() - last) }
+            }
+        }
+    }
 
     LaunchedEffect(startRoute) {
         if (startRoute != null) {
@@ -175,6 +202,12 @@ fun AppNav(startRoute: String?, onRouteConsumed: () -> Unit) {
         }
     }
 }
+
+/** Routes whose open time counts as study (not home / progress / settings / exams / nextExam / import / scriptEdit). */
+internal fun isStudyRoute(route: String?): Boolean = route != null && (
+    route == "scripts" || route == "script/{id}" ||
+        listOf("speaking", "mock", "sail", "coach", "morning").any { route.startsWith(it) }
+    )
 
 private fun NavHostController.goTab(route: String) {
     navigate(route) {

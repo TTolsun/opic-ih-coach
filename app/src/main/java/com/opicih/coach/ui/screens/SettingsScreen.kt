@@ -51,6 +51,9 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import com.opicih.coach.alarm.AlarmScheduler
 import com.opicih.coach.alarm.ReminderWorker
+import com.opicih.coach.alarm.StudyBlock
+import com.opicih.coach.alarm.StudyBlockScheduler
+import com.opicih.coach.alarm.StudyBlocks
 import com.opicih.coach.data.prefs.CaptureMode
 import com.opicih.coach.data.prefs.Settings
 import com.opicih.coach.data.prefs.StudyLevel
@@ -75,6 +78,8 @@ fun SettingsScreen(onExams: () -> Unit = {}) {
     val scope = rememberCoroutineScope()
     val s by c.settings.flow.collectAsState(initial = Settings())
     var showTime by remember { mutableStateOf(false) }
+    var editBlock by remember { mutableStateOf<Int?>(null) }
+    val studiedMs by c.studyTime.flow.collectAsState(initial = 0L)
     var message by remember { mutableStateOf<String?>(null) }
     var confirmWipe by remember { mutableStateOf(false) }
     var refresh by remember { mutableIntStateOf(0) }
@@ -87,6 +92,7 @@ fun SettingsScreen(onExams: () -> Unit = {}) {
             if (n.useExactAlarm && mode == AlarmScheduler.Mode.INEXACT) message = "정확한 알람 권한이 없어 일반 알림 방식으로 예약했습니다. 몇 분 늦을 수 있습니다."
         } else AlarmScheduler.cancel(context)
         ReminderWorker.ensure(context, n.eveningReminder)
+        StudyBlockScheduler.sync(context, n)
     }
 
     val exportLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri: Uri? ->
@@ -177,6 +183,33 @@ fun SettingsScreen(onExams: () -> Unit = {}) {
             OutlinedButton(onClick = { scope.launch { AlarmScheduler.snooze(context, 1); message = "1분 뒤 테스트 알람을 예약했습니다." } }) { Text("1분 뒤 테스트 알람") }
         }
 
+        SectionCard(title = "학습 블록 알람 (하루 강제 학습)") {
+            val blocks = StudyBlocks.parse(s.studyBlocks)
+            fun saveBlocks(list: List<StudyBlock>) = save { it.copy(studyBlocks = StudyBlocks.encode(list.sortedBy { b -> b.startMinute })) }
+            ToggleRow("블록 알람 사용 (켜면 저녁 리마인더는 쉽니다)", s.studyBlocksEnabled) { v -> save { it.copy(studyBlocksEnabled = v) } }
+            Text("오늘 ${(studiedMs / 60_000L).toInt()}/${StudyBlocks.dailyGoalMinutes(blocks)}분", style = MaterialTheme.typography.titleMedium)
+            blocks.forEachIndexed { i, b ->
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        "${i + 1}. ${StudyBlocks.label(b.startMinute)}" + if (b.startMinute >= 1440) " (익일 ${StudyBlocks.label(b.startMinute - 1440)})" else "",
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.weight(1f).clickable { editBlock = i }.padding(vertical = 8.dp),
+                    )
+                    TextButton(onClick = { saveBlocks(blocks.toMutableList().also { it[i] = b.copy(minutes = (b.minutes - 5).coerceAtLeast(StudyBlocks.MIN_MINUTES)) }) }) { Text("−") }
+                    Text("${b.minutes}분", style = MaterialTheme.typography.titleMedium)
+                    TextButton(onClick = { saveBlocks(blocks.toMutableList().also { it[i] = b.copy(minutes = (b.minutes + 5).coerceAtMost(StudyBlocks.MAX_MINUTES)) }) }) { Text("+") }
+                    TextButton(onClick = { saveBlocks(blocks.filterIndexed { j, _ -> j != i }) }) { Text("삭제") }
+                }
+            }
+            if (blocks.size < StudyBlocks.MAX_BLOCKS) OutlinedButton(onClick = {
+                val last = blocks.lastOrNull()
+                val start = ((last?.let { it.startMinute + it.minutes + 60 } ?: 600)).coerceAtMost(StudyBlocks.MAX_START_MINUTE)
+                saveBlocks(blocks + StudyBlock(start, 30))
+            }) { Text("블록 추가") }
+            Text("시간을 누르면 바꿉니다. 04:00 이전 시각은 같은 날의 연장(24:00 이후)으로 저장됩니다.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("앱의 학습 화면(스크립트·말하기·모의시험·SAIL·코치·아침 표현)을 열어 둔 시간만 셉니다.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+
         SectionCard(title = "음성") {
             Text("캡처 방식", style = MaterialTheme.typography.labelLarge)
             CaptureMode.entries.forEach { m ->
@@ -260,6 +293,25 @@ fun SettingsScreen(onExams: () -> Unit = {}) {
             dismissButton = { TextButton(onClick = { showTime = false }) { Text("취소") } },
             text = { TimePicker(st) },
         )
+    }
+    editBlock?.let { idx ->
+        val blocks = StudyBlocks.parse(s.studyBlocks)
+        val cur = blocks.getOrNull(idx)
+        if (cur == null) editBlock = null else {
+            val st = androidx.compose.runtime.key(idx) { rememberTimePickerState((cur.startMinute / 60) % 24, cur.startMinute % 60, is24Hour = true) }
+            AlertDialog(
+                onDismissRequest = { editBlock = null },
+                confirmButton = { TextButton(onClick = {
+                    var m = st.hour * 60 + st.minute
+                    if (m < StudyBlocks.DAY_BOUNDARY_HOUR * 60) m += 1440
+                    val list = blocks.toMutableList().also { it[idx] = cur.copy(startMinute = m) }
+                    save { it.copy(studyBlocks = StudyBlocks.encode(list)) }
+                    editBlock = null
+                }) { Text("확인") } },
+                dismissButton = { TextButton(onClick = { editBlock = null }) { Text("취소") } },
+                text = { TimePicker(st) },
+            )
+        }
     }
     if (confirmWipe) AlertDialog(
         onDismissRequest = { confirmWipe = false },

@@ -20,8 +20,10 @@ object Notifications {
     const val CH_ALARM_SOUND = "morning_alarm_sound"
     const val CH_ALARM_SILENT = "morning_alarm_silent"
     const val CH_REMINDER = "study_reminder"
+    const val CH_STUDY_BLOCK = "study_block_alarm"
     const val ID_MORNING = 1001
     const val ID_REMINDER = 1002
+    const val ID_STUDY_BLOCK = 1010
 
     fun createChannels(context: Context) {
         val nm = context.getSystemService(NotificationManager::class.java)
@@ -38,6 +40,13 @@ object Notifications {
             description = "소리 없이 진동/알림만"
             setSound(null, null)
             enableVibration(true)
+            lockscreenVisibility = android.app.Notification.VISIBILITY_PUBLIC
+        })
+        nm.createNotificationChannel(NotificationChannel(CH_STUDY_BLOCK, "학습 블록 알람", NotificationManager.IMPORTANCE_HIGH).apply {
+            description = "정해 둔 학습 블록 시작과 미달 재알림"
+            setSound(alarmSound, attrs)
+            enableVibration(true)
+            vibrationPattern = longArrayOf(0, 600, 300, 600)
             lockscreenVisibility = android.app.Notification.VISIBILITY_PUBLIC
         })
         nm.createNotificationChannel(NotificationChannel(CH_REMINDER, "학습 리마인더", NotificationManager.IMPORTANCE_DEFAULT).apply {
@@ -98,6 +107,25 @@ object Notifications {
             .setAutoCancel(true)
             .build()
         runCatching { NotificationManagerCompat.from(context).notify(if (route == "speaking") ID_REMINDER else ID_REMINDER + 1, n) }
+    }
+
+    fun showStudyBlock(context: Context, title: String, text: String, loud: Boolean, route: String) {
+        if (!canPost(context)) return
+        val open = PendingIntent.getActivity(
+            context, if (route == "morning") 320 else 321, Intent(context, MainActivity::class.java).putExtra(MainActivity.EXTRA_ROUTE, route)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP),
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+        )
+        val b = NotificationCompat.Builder(context, if (loud) CH_STUDY_BLOCK else CH_REMINDER)
+            .setSmallIcon(R.drawable.ic_stat_mic)
+            .setContentTitle(title)
+            .setContentText(text)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(text))
+            .setContentIntent(open)
+            .setAutoCancel(true)
+        if (loud) b.setCategory(NotificationCompat.CATEGORY_ALARM).setPriority(NotificationCompat.PRIORITY_MAX).setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            .addAction(0, "지금 시작", open)
+        runCatching { NotificationManagerCompat.from(context).notify(ID_STUDY_BLOCK, b.build()) }
     }
 
     fun cancelMorning(context: Context) = NotificationManagerCompat.from(context).cancel(ID_MORNING)

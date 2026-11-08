@@ -24,6 +24,19 @@ class AlarmReceiver : BroadcastReceiver() {
                         intent.getStringExtra(AlarmScheduler.EXTRA_TITLE) ?: "OPIc IH Coach",
                         route = intent.getStringExtra(AlarmScheduler.EXTRA_ROUTE) ?: "nextExam",
                     )
+                    StudyBlockScheduler.ACTION_BLOCK -> {
+                        try {
+                            val event = StudyBlockScheduler.eventFromIntent(intent)
+                            if (event != null && s.studyBlocksEnabled) {
+                                val snap = app.container.studyTime.snapshot()
+                                val studied = snap.msFor(event.studyDate.toEpochDay())
+                                val d = StudyBlocks.decide(event, StudyBlockScheduler.blocksOf(s), studied, snap.lastActiveAt, System.currentTimeMillis())
+                                if (d is Decision.Notify) Notifications.showStudyBlock(context, d.title, d.text, d.loud, d.route)
+                            }
+                        } finally {
+                            StudyBlockScheduler.sync(context, s)
+                        }
+                    }
                     AlarmScheduler.ACTION_SNOOZE -> {
                         Notifications.cancelMorning(context)
                         AlarmScheduler.snooze(context, 10)
@@ -60,6 +73,7 @@ class BootReceiver : BroadcastReceiver() {
                 val s = app.container.settings.current()
                 if (s.alarmEnabled) AlarmScheduler.schedule(context, s.alarmHour, s.alarmMinute, s.useExactAlarm)
                 ReminderWorker.ensure(context, s.eveningReminder)
+                StudyBlockScheduler.sync(context, s)
             } finally {
                 pending.finish()
             }
