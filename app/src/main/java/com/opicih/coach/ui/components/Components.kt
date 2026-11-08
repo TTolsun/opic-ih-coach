@@ -17,6 +17,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.Icon
@@ -25,6 +27,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -41,8 +47,13 @@ fun SectionCard(
     modifier: Modifier = Modifier,
     title: String? = null,
     trailing: @Composable (() -> Unit)? = null,
+    /** When true the card can be folded by tapping its header (needs a [title]). */
+    collapsible: Boolean = false,
+    initiallyExpanded: Boolean = true,
     content: @Composable ColumnScope.() -> Unit,
 ) {
+    var expanded by rememberSaveable(title) { mutableStateOf(initiallyExpanded) }
+    val open = !collapsible || title == null || expanded
     Surface(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
@@ -51,13 +62,20 @@ fun SectionCard(
     ) {
         Column(Modifier.padding(18.dp)) {
             if (title != null || trailing != null) {
-                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                val headerMod = if (collapsible && title != null) Modifier.fillMaxWidth().clickable { expanded = !expanded } else Modifier.fillMaxWidth()
+                Row(headerMod, verticalAlignment = Alignment.CenterVertically) {
                     if (title != null) Text(title, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
                     trailing?.invoke()
+                    if (collapsible && title != null) {
+                        Icon(
+                            if (open) Icons.Filled.KeyboardArrowUp else Icons.Filled.KeyboardArrowDown,
+                            contentDescription = if (open) "접기" else "펼치기",
+                        )
+                    }
                 }
-                Spacer(Modifier.height(10.dp))
+                if (open) Spacer(Modifier.height(10.dp))
             }
-            content()
+            if (open) content()
         }
     }
 }

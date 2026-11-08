@@ -101,7 +101,7 @@ fun SettingsScreen(onExams: () -> Unit = {}) {
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
         message?.let { Banner(it, "닫기") { message = null } }
 
-        SectionCard(title = "시험과 학습량") {
+        SectionCard(title = "시험과 학습량", collapsible = true) {
             Row(Modifier.fillMaxWidth().clickable(onClick = onExams).padding(vertical = 6.dp)) {
                 Text("시험 일정 관리 (OPIc·SAIL)", modifier = Modifier.weight(1f)); Text("열기", color = MaterialTheme.colorScheme.primary)
             }
@@ -109,7 +109,7 @@ fun SettingsScreen(onExams: () -> Unit = {}) {
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) { StudyLevel.entries.forEach { l -> Pill(l.label, s.studyLevel == l) { save { it.copy(studyLevel = l) } } } }
         }
 
-        SectionCard(title = "재응시 규칙 (다음 시험 추천에 사용)") {
+        SectionCard(title = "재응시 규칙 (다음 시험 추천에 사용)", collapsible = true, initiallyExpanded = false) {
             Text("OPIc은 공식 시험관리규정 제5조를 씁니다: 응시일 다음 날부터 25일 제한, D+26부터 응시 가능, Waiver 150일마다 1회.",
                 style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             NumberRow("OPIc Waiver 보유 수 (${s.opicWaiverDeclaredOn} 기준)", s.opicWaivers.coerceAtLeast(0)) { v ->
@@ -139,7 +139,7 @@ fun SettingsScreen(onExams: () -> Unit = {}) {
             }) { Text("회차 저장") }
         }
 
-        SectionCard(title = "Background Survey 주제") {
+        SectionCard(title = "Background Survey 주제", collapsible = true, initiallyExpanded = false) {
             Spacer(Modifier.height(6.dp))
             FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 SURVEY_CHOICES.forEach { t ->
@@ -151,7 +151,7 @@ fun SettingsScreen(onExams: () -> Unit = {}) {
             Slider(s.selfLevel.toFloat(), { v -> save { it.copy(selfLevel = v.toInt()) } }, valueRange = 1f..6f, steps = 4)
         }
 
-        SectionCard(title = "아침 알람") {
+        SectionCard(title = "아침 알람", collapsible = true) {
             refresh.let { }
             ToggleRow("매일 아침 알람", s.alarmEnabled) { v -> save { it.copy(alarmEnabled = v) } }
             Row(Modifier.fillMaxWidth().clickable { showTime = true }.padding(vertical = 6.dp)) {
@@ -177,7 +177,7 @@ fun SettingsScreen(onExams: () -> Unit = {}) {
             OutlinedButton(onClick = { scope.launch { AlarmScheduler.snooze(context, 1); message = "1분 뒤 테스트 알람을 예약했습니다." } }) { Text("1분 뒤 테스트 알람") }
         }
 
-        SectionCard(title = "음성") {
+        SectionCard(title = "음성", collapsible = true, initiallyExpanded = false) {
             Text("캡처 방식", style = MaterialTheme.typography.labelLarge)
             CaptureMode.entries.forEach { m ->
                 Row(Modifier.fillMaxWidth().clickable { save { it.copy(captureMode = m) } }.padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -188,15 +188,36 @@ fun SettingsScreen(onExams: () -> Unit = {}) {
             }
             Text("TTS 속도 ${"%.2f".format(s.ttsRate)}", style = MaterialTheme.typography.labelLarge)
             Slider(s.ttsRate, { v -> save { it.copy(ttsRate = v) } }, valueRange = 0.6f..1.2f)
+            Text("TTS 음높이 ${"%.2f".format(s.ttsPitch)} (낮을수록 차분합니다)", style = MaterialTheme.typography.labelLarge)
+            Slider(s.ttsPitch, { v -> save { it.copy(ttsPitch = v) } }, valueRange = 0.6f..1.2f)
             val cap = remember { SpeechCapabilities.detect(context) }
             val tts by c.tts.state.collectAsState()
+            val voices = remember(tts) { c.tts.englishVoices() }
+            Text("영어 음성 선택", style = MaterialTheme.typography.labelLarge)
+            if (voices.isEmpty()) {
+                Text("선택할 수 있는 영어 음성이 없습니다. 기기의 TTS 설정에서 음성 데이터를 설치하세요.", style = MaterialTheme.typography.bodySmall)
+            } else {
+                @OptIn(ExperimentalLayoutApi::class)
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Pill("자동", s.ttsVoice.isBlank()) { save { it.copy(ttsVoice = "") } }
+                    voices.forEachIndexed { i, v ->
+                        val label = "${i + 1}. ${v.locale.displayCountry.ifBlank { v.locale.country }} ${if (v.isNetworkConnectionRequired) "온라인" else "오프라인"}"
+                        Pill(label, s.ttsVoice == v.name) {
+                            save { it.copy(ttsVoice = v.name) }
+                            c.tts.configure(v.name, s.ttsPitch)
+                            c.tts.speak("Hello. Let's begin the interview. Please answer calmly and clearly.", s.ttsRate)
+                        }
+                    }
+                }
+                Text("음성을 누르면 바로 들어볼 수 있습니다.", style = MaterialTheme.typography.labelSmall)
+            }
             Text("음성 진단", style = MaterialTheme.typography.labelLarge)
             Text("음성 인식: ${if (cap.recognitionAvailable) "사용 가능" else "없음"} · 온디바이스: ${when (cap.onDeviceAvailable) { true -> "가능"; false -> "불가"; null -> "확인 불가(Android 12 미만)" }}", style = MaterialTheme.typography.bodySmall)
             Text("인식 서비스: ${cap.recognizerPackages.joinToString().ifBlank { "-" }}", style = MaterialTheme.typography.bodySmall)
             Text("TTS: ${c.tts.stateMessage()} (${tts.name})", style = MaterialTheme.typography.bodySmall)
         }
 
-        SectionCard(title = "AI · Gemini (선택, 비용 발생)") {
+        SectionCard(title = "AI · Gemini (선택, 비용 발생)", collapsible = true, initiallyExpanded = false) {
             Text("키는 이 기기에만 암호화해 저장합니다. 무료 등급은 입력 내용이 Google 제품 개선에 쓰일 수 있고, 유료 등급은 쓰이지 않습니다.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             KeyField(c.keys, ApiKeyStore.Provider.GEMINI) { message = it }
             var model by remember(s.geminiModel) { mutableStateOf(s.geminiModel) }
@@ -234,7 +255,7 @@ fun SettingsScreen(onExams: () -> Unit = {}) {
             }
         }
 
-        SectionCard(title = "데이터") {
+        SectionCard(title = "데이터", collapsible = true, initiallyExpanded = false) {
             val usage = remember(refresh) { c.backup.audioUsageBytes() }
             Text("녹음 저장 용량: ${usage / 1024 / 1024}MB · 보관 ${s.audioRetentionDays}일", style = MaterialTheme.typography.bodyMedium)
             Slider(s.audioRetentionDays.toFloat(), { v -> save { it.copy(audioRetentionDays = v.toInt()) } }, valueRange = 1f..60f)
