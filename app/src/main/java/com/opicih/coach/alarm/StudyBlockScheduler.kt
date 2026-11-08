@@ -51,18 +51,10 @@ object StudyBlockScheduler {
         if (!s.studyBlocksEnabled) return
         val event = StudyBlocks.nextEvent(now, blocksOf(s)) ?: return
         val at = event.at.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
-        val am = context.getSystemService(AlarmManager::class.java)
-        val pi = pending(context, event)
-        try {
-            if (AlarmScheduler.canExact(context)) {
-                val show = PendingIntent.getActivity(
-                    context, REQ_SHOW, Intent(context, MainActivity::class.java).putExtra(MainActivity.EXTRA_ROUTE, "speaking"),
-                    PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
-                )
-                am.setAlarmClock(AlarmManager.AlarmClockInfo(at, show), pi)
-            } else am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, pi)
-        } catch (e: SecurityException) {
-            am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, pi)
-        }
+        val show = PendingIntent.getActivity(
+            context, REQ_SHOW, Intent(context, MainActivity::class.java).putExtra(MainActivity.EXTRA_ROUTE, "speaking"),
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+        )
+        AlarmTrigger.set(context, at, pending(context, event), show = show)
     }
 }

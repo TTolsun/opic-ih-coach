@@ -71,13 +71,7 @@ object AlarmScheduler {
                 .putExtra(EXTRA_TITLE, title).putExtra(EXTRA_TEXT, text).putExtra(EXTRA_ROUTE, route),
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
-        val am = context.getSystemService(AlarmManager::class.java)
-        try {
-            if (canExact(context)) am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, pi)
-            else am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, pi)
-        } catch (e: SecurityException) {
-            am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, pi)
-        }
+        AlarmTrigger.set(context, at, pi)
         return true
     }
 
@@ -88,24 +82,11 @@ object AlarmScheduler {
     }
 
     private fun scheduleAt(context: Context, at: Long, preferExact: Boolean, req: Int): Mode {
-        val am = context.getSystemService(AlarmManager::class.java)
-        val pi = firePending(context, req)
-        return try {
-            if (preferExact && canExact(context)) {
-                val show = PendingIntent.getActivity(
-                    context, 200, Intent(context, MainActivity::class.java).putExtra(MainActivity.EXTRA_ROUTE, "morning"),
-                    PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
-                )
-                am.setAlarmClock(AlarmManager.AlarmClockInfo(at, show), pi)
-                Mode.EXACT
-            } else {
-                am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, pi)
-                Mode.INEXACT
-            }
-        } catch (e: SecurityException) {
-            am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, pi)
-            Mode.INEXACT
-        }
+        val show = PendingIntent.getActivity(
+            context, 200, Intent(context, MainActivity::class.java).putExtra(MainActivity.EXTRA_ROUTE, "morning"),
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+        )
+        return AlarmTrigger.set(context, at, firePending(context, req), preferExact, show)
     }
 
     private fun firePending(context: Context, req: Int): PendingIntent =
