@@ -95,18 +95,34 @@ class VerbatimTest {
     private fun ai(tense: Int?, abandoned: Int? = null, self: Int? = null) =
         Feedback(source = "AI", engine = "Gemini", tenseErrors = tense, abandonedSentences = abandoned, selfCorrections = self)
 
+    private fun counts(raw: String, verbatim: Boolean, ai: Feedback? = null) = ErrorCounts.analyze(raw, verbatim, ai).counts
+
     @Test fun verbatimTranscriptCountsMarksAndFallsBackToTheLocalTenseCount() {
-        val raw = "Last weekend I go to the park [self-correction] I go to the park. Then I [abandoned] It was fun."
-        val c = ErrorCounts.from(raw, verbatimSource = true, ai = null)
-        assertEquals(2, c.tense)
+        val raw = "Last weekend I go to the park. Then I [abandoned] It was fun. And I [self-correction] we went home."
+        val c = counts(raw, verbatim = true)
+        assertEquals(1, c.tense)
         assertEquals("LOCAL", c.tenseSource)
         assertEquals(1, c.abandoned)
         assertEquals(1, c.selfCorrection)
         assertTrue(c.verbatim)
     }
 
+    @Test fun anErrorTheLearnerCorrectedHerselfIsNotCounted() {
+        val corrected = "Last weekend I go to the park [self-correction] I went to the park."
+        assertEquals(0, counts(corrected, verbatim = true).tense)
+        assertEquals(1, counts(corrected, verbatim = true).selfCorrection)
+        // 같은 오류를 고치지 않으면 센다.
+        assertEquals(1, counts("Last weekend I go to the park.", verbatim = true).tense)
+        // 고치기 전 문장이 아닌 앞선 문장의 오류는 센다.
+        assertEquals(1, counts("Yesterday I eat pizza. Then I went home [self-correction] I went home.", verbatim = true).tense)
+    }
+
+    @Test fun aYearIsAPastMarker() {
+        assertEquals(1, TenseErrorDetector.count("In 2019 I go to Jeju."))
+    }
+
     @Test fun aiTenseCountWinsAndLargerMarkCountIsKept() {
-        val c = ErrorCounts.from("I went [abandoned] there [self-correction] here.", verbatimSource = true, ai = ai(tense = 3, abandoned = 2, self = 0))
+        val c = counts("I went [abandoned] there [self-correction] here.", verbatim = true, ai = ai(tense = 3, abandoned = 2, self = 0))
         assertEquals(3, c.tense)
         assertEquals("AI", c.tenseSource)
         assertEquals(2, c.abandoned)
@@ -114,7 +130,7 @@ class VerbatimTest {
     }
 
     @Test fun deviceRecognizerTextDoesNotClaimToMeasureSelfCorrectionsOrAbandoned() {
-        val c = ErrorCounts.from("Last weekend I go to the park.", verbatimSource = false, ai = null)
+        val c = counts("Last weekend I go to the park.", verbatim = false)
         assertEquals(1, c.tense)
         assertNull(c.abandoned)
         assertNull(c.selfCorrection)
@@ -123,19 +139,41 @@ class VerbatimTest {
 
     @Test fun aLocalFeedbackDoesNotProvideTenseCounts() {
         val local = Feedback(source = "LOCAL", tenseErrors = 9)
-        assertEquals("LOCAL", ErrorCounts.from("Fine.", verbatimSource = true, ai = local).tenseSource)
+        assertEquals("LOCAL", counts("Fine.", verbatim = true, ai = local).tenseSource)
     }
 
     @Test fun notebookGetsTenseSlipsAndAbandonedFragmentsOnceEach() {
         val raw = "Last weekend I go to the park. Then I want [abandoned] We ate."
-        val items = ErrorCounts.notebookItems(raw, verbatimSource = true, existing = emptyList())
+        val items = ErrorCounts.analyze(raw, verbatimSource = true, ai = null).notebook
         assertEquals(listOf("tense_in_past_context", "abandoned_sentence"), items.map { it.key })
         assertEquals("Then I want", items.last().example)
-        // AI가 같은 key를 이미 냈으면 중복으로 넣지 않는다.
-        val withAi = ErrorCounts.notebookItems(raw, true, listOf(ErrorItem("tense_in_past_context", "GRAMMAR", "x", "y")))
-        assertEquals(listOf("abandoned_sentence"), withAi.map { it.key })
         // 기기 음성 인식 텍스트는 중단 문장을 근거로 삼지 않는다.
-        assertTrue(ErrorCounts.notebookItems(raw, verbatimSource = false, existing = emptyList()).none { it.key == "abandoned_sentence" })
+        assertTrue(ErrorCounts.analyze(raw, verbatimSource = false, ai = null).notebook.none { it.key == "abandoned_sentence" })
+    }
+
+    @Test fun whenTheAiCountedTensesItsNotebookItemIsTheOnlyOne() {
+        val raw = "Last weekend I go to the park."
+        // AI가 0이라고 했으면 규칙 탐지 항목을 노트에 넣지 않는다(횟수와 노트가 어긋나지 않게).
+        val zero = ErrorCounts.analyze(raw, verbatimSource = true, ai = ai(tense = 0))
+        assertEquals(0, zero.counts.tense)
+        assertTrue(zero.notebook.isEmpty())
+        // AI가 센 경우에도 AI가 항목을 낸다고 보고 중복해서 넣지 않는다.
+        val counted = ErrorCounts.analyze(raw, verbatimSource = true, ai = ai(tense = 1))
+        assertTrue(counted.notebook.none { it.key == "tense_in_past_context" })
+        // AI 응답이 아닌 로컬 평가는 규칙 탐지 항목을 쓴다.
+        assertEquals(listOf("tense_in_past_context"), ErrorCounts.analyze(raw, true, Feedback(source = "LOCAL")).notebook.map { it.key })
+    }
+
+    @Test fun anItemTheAiAlreadyListedIsNotAddedTwice() {
+        val raw = "Then I want [abandoned] We ate."
+        val have = Feedback(source = "AI", errors = listOf(ErrorItem("abandoned_sentence", "FLUENCY", "x", "y")))
+        assertTrue(ErrorCounts.analyze(raw, verbatimSource = true, ai = have).notebook.isEmpty())
+    }
+
+    @Test fun uncorrectedTextDropsOnlyTheUnfinishedAttemptBeforeACorrection() {
+        val p = VerbatimMarkup.parse("We ate lunch. I go there [self-correction] I went there.")
+        assertEquals("We ate lunch. I went there.", p.uncorrected)
+        assertEquals("We ate lunch. I go there I went there.", p.clean)
     }
 
     // ---- AI 응답 파싱 (GeminiParseTest 방식)
@@ -215,6 +253,12 @@ class VerbatimTest {
         assertEquals(listOf(3, 1), t.map { it.tense })
         assertEquals(listOf(1, 0), t.map { it.abandoned })
         assertEquals(listOf(0, 2), t.map { it.selfCorrection })
+    }
+
+    @Test fun trendOnlyScansTheMostRecentAttempts() {
+        val old = attempt(ErrorCounts(tense = 9, verbatim = true), 1)
+        val recentWithoutCounts = List(ErrorTrend.MAX_SCAN) { attempt(null, 100L + it) }
+        assertTrue(ErrorTrend.points(recentWithoutCounts + old).isEmpty())
     }
 
     @Test fun trendKeepsTheNewestAttemptsAndIgnoresBrokenJson() {

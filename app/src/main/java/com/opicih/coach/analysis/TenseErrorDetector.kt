@@ -31,7 +31,8 @@ object TenseErrorDetector {
     ).joinToString("|")
 
     private val HIT = Regex("\\b($SUBJECT) $ADVERB($PRESENT_VERBS)\\b(?! (?:been|had)\\b)")
-    private val NOT_LETTERS = Regex("[^a-z' ]")
+    // 숫자는 남깁니다: "in 2019" 같은 과거 표지가 사라지면 안 됩니다.
+    private val NOT_LETTERS = Regex("[^a-z0-9' ]")
     private val SPACES = Regex("\\s+")
     private const val CHUNK_WORDS = 12
     private const val LONG_SEGMENT_WORDS = 25

@@ -1,11 +1,15 @@
 package com.opicih.coach.analysis
 
-/** [clean]은 표기를 뺀 본문입니다. 단어 수와 시제 분석은 이 본문으로 합니다. */
+/**
+ * [clean]은 표기를 뺀 본문으로 단어 수와 시제 분석에 씁니다.
+ * [uncorrected]는 거기서 스스로 고친 첫 시도까지 뺀 본문으로, 시제 오류 탐지에 씁니다.
+ */
 data class VerbatimParse(
     val clean: String,
+    val uncorrected: String,
     val selfCorrections: Int,
     val abandoned: Int,
-    /** 끝맺지 못한 문장의 앞부분(오류 노트 예시용). 길면 뒤쪽 [MAX_FRAGMENT]자만 남깁니다. */
+    /** 끝맺지 못한 문장의 앞부분(오류 노트 예시용). 길면 뒤쪽 [VerbatimMarkup.MAX_FRAGMENT]자만 남깁니다. */
     val abandonedFragments: List<String>,
 )
 
@@ -23,25 +27,34 @@ object VerbatimMarkup {
     private val ANY_BRACKET = Regex("\\[[^\\]]{1,30}]")
     private val SPACES = Regex("\\s+")
 
+    private fun tidy(s: String) = ANY_BRACKET.replace(s, " ").replace(SPACES, " ").trim()
+
+    /** 마지막 문장 부호까지를 남기고 그 뒤(아직 끝나지 않은 부분)를 버립니다. 부호가 없으면 전부 버립니다. */
+    private fun dropUnfinishedTail(s: String): String = s.substring(0, s.indexOfLast { it == '.' || it == '!' || it == '?' } + 1)
+
     fun parse(text: String): VerbatimParse {
         var selfCorrections = 0
+        var abandoned = 0
         val fragments = mutableListOf<String>()
-        var boundary = 0
+        val uncorrected = StringBuilder()
+        var cursor = 0
         for (m in TAG.findAll(text)) {
+            val before = text.substring(cursor, m.range.first)
             if (m.groupValues[1].equals("abandoned", ignoreCase = true)) {
-                val before = text.substring(boundary, m.range.first)
-                // 같은 줄에서 마지막 문장 부호 뒤부터가 끝맺지 못한 부분입니다.
-                val start = before.indexOfLast { it == '.' || it == '!' || it == '?' } + 1
-                val fragment = ANY_BRACKET.replace(before.substring(start), "").replace(SPACES, " ").trim()
+                abandoned++
+                // 같은 문장에서 마지막 문장 부호 뒤부터가 끝맺지 못한 부분입니다.
+                val fragment = tidy(before.substring(before.indexOfLast { it == '.' || it == '!' || it == '?' } + 1))
                 if (fragment.isNotEmpty()) fragments += fragment.takeLast(MAX_FRAGMENT)
-                // 위 판단은 이 태그의 앞부분만 보므로, 다음 문장 후보 계산은 태그 뒤에서 다시 시작합니다.
-                boundary = m.range.last + 1
-                continue
+                uncorrected.append(before)
+            } else {
+                selfCorrections++
+                // 고치기 전의 첫 시도는 학습자가 스스로 바로잡은 것이므로 시제 오류로 세지 않습니다.
+                uncorrected.append(dropUnfinishedTail(before))
             }
-            selfCorrections++
+            uncorrected.append(' ')
+            cursor = m.range.last + 1
         }
-        val abandoned = TAG.findAll(text).count { it.groupValues[1].equals("abandoned", ignoreCase = true) }
-        val clean = ANY_BRACKET.replace(text, " ").replace(SPACES, " ").trim()
-        return VerbatimParse(clean, selfCorrections, abandoned, fragments)
+        uncorrected.append(text.substring(cursor))
+        return VerbatimParse(tidy(text), tidy(uncorrected.toString()), selfCorrections, abandoned, fragments)
     }
 }

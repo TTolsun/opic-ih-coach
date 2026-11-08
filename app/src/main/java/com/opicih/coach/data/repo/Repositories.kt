@@ -201,10 +201,10 @@ class PracticeRepository(private val db: AppDatabase) {
                 .onSuccess { fb -> feedback = fb.copy(limits = local.limits, errors = fb.errors + local.errors) }
                 .onFailure { aiError = it.message }
         }
-        val counts = ErrorCounts.from(req.transcript, verbatim, feedback)
-        // The error notebook is built from the same counts: tense slips and abandoned sentences found in this answer.
-        feedback = feedback.copy(errors = feedback.errors + ErrorCounts.notebookItems(req.transcript, verbatim, feedback.errors))
-        return Evaluation(discourse, compare, feedback, AttemptMetrics(discourse, req.pauses, compare, counts), aiError)
+        // The error notebook is built from the same read of the transcript as the counts.
+        val errorAnalysis = ErrorCounts.analyze(req.transcript, verbatim, feedback)
+        feedback = feedback.copy(errors = feedback.errors + errorAnalysis.notebook)
+        return Evaluation(discourse, compare, feedback, AttemptMetrics(discourse, req.pauses, compare, errorAnalysis.counts), aiError)
     }
 
     private suspend fun persist(req: Request, eval: Evaluation, examEpochDay: Long?): AnalyzedAttempt {

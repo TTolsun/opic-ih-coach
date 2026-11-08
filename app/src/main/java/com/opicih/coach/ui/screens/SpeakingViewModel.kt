@@ -294,7 +294,9 @@ class SpeakingViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             val st = c.settings.current()
             val r = capture.stop(c.transcriber(st))
-            if (r.transcript.isBlank() && r.audioPath == null) {
+            // A verbatim transcription that failed (network, quota) leaves a recording but no text. Offer the typed
+            // fallback instead of saving a score-less answer, as for a failed live recognizer.
+            if (r.transcript.isBlank() && (r.audioPath == null || activeChoice?.verbatim == true)) {
                 _ui.update { it.copy(phase = Phase.IDLE, error = r.warning ?: "인식된 영어 문장이 없습니다. 다시 말하거나, 말한 내용을 직접 입력하세요.", showTypedFallback = true) }
                 return@launch
             }
