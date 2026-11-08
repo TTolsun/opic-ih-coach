@@ -1,8 +1,18 @@
 package com.opicih.coach
 
 import com.opicih.coach.data.backup.BackupManager
+import com.opicih.coach.data.db.ChunkEntity
+import com.opicih.coach.data.db.DailyLogEntity
 import com.opicih.coach.data.db.DatePrecision
+import com.opicih.coach.data.db.ErrorPatternEntity
+import com.opicih.coach.data.db.ExamEntity
 import com.opicih.coach.data.db.ExamRegistrationEntity
+import com.opicih.coach.data.db.ExamStatusEventEntity
+import com.opicih.coach.data.db.ExamTrainingSessionEntity
+import com.opicih.coach.data.db.MockTestEntity
+import com.opicih.coach.data.db.PracticeAttemptEntity
+import com.opicih.coach.data.db.ScriptEntity
+import com.opicih.coach.data.db.ScriptRevisionEntity
 import com.opicih.coach.data.db.ExamType
 import com.opicih.coach.data.db.RegistrationSource
 import com.opicih.coach.data.db.RegistrationStatus
@@ -247,9 +257,58 @@ class BackupCompatTest {
             null, null, null, null, null, "memo", "EMAIL_IMPORT", 1L, false, null, 1, 1)
         val snap = BackupManager.Snapshot(registrations = listOf(r), statusEvents = listOf(BackupManager.BStatusEvent(1, null, "REGISTERED", null, "메일", 1)))
         val back = BackupManager.decode(BackupManager.encode(snap))
-        assertEquals(2, back.version)
+        assertEquals(BackupManager.CURRENT_VERSION, back.version)
         assertEquals(r, back.registrations.single())
         assertEquals(1, back.statusEvents.size)
         assertTrue(BackupManager.restoresSchedule(back))
+    }
+
+    @Test fun version2FileKeepsCurrentMocksAndUsesDefaults() {
+        val v2 = """{"version":2,"scripts":[{"id":7,"topic":"T","title":"t","question":"q","questionType":"OTHER","original":"o",
+            "natural":null,"ihTarget":null,"shortVersion":null,"keywords":null,"activeVersion":"ORIGINAL","koreanMeaning":null,
+            "source":"USER_IMPORT","masteryState":"NEW","masteryScore":0,"srsStep":0,"dueEpochDay":0,"storyIds":null}]}"""
+        val snap = BackupManager.decode(v2)
+        assertFalse(BackupManager.restoresMocks(snap))
+        assertEquals(60, snap.scripts.single().estSeconds)
+        assertNull(snap.scripts.single().linkedGroupId)
+    }
+}
+
+/** Guards against a new entity column silently dropping out of backups (the v2 format lost several). */
+class BackupCoverageTest {
+    private fun fields(c: Class<*>) = c.declaredFields
+        .filter { !java.lang.reflect.Modifier.isStatic(it.modifiers) && !it.isSynthetic }
+        .map { it.name }.toSet()
+
+    @Test fun everyEntityColumnIsMirroredOrExplicitlyExcluded() {
+        val pairs = listOf(
+            ScriptEntity::class.java to BackupManager.BScript::class.java,
+            ScriptRevisionEntity::class.java to BackupManager.BRevision::class.java,
+            PracticeAttemptEntity::class.java to BackupManager.BAttempt::class.java,
+            ErrorPatternEntity::class.java to BackupManager.BError::class.java,
+            ChunkEntity::class.java to BackupManager.BChunk::class.java,
+            DailyLogEntity::class.java to BackupManager.BLog::class.java,
+            MockTestEntity::class.java to BackupManager.BMock::class.java,
+            ExamEntity::class.java to BackupManager.BExam::class.java,
+            ExamRegistrationEntity::class.java to BackupManager.BRegistration::class.java,
+            ExamStatusEventEntity::class.java to BackupManager.BStatusEvent::class.java,
+            ExamTrainingSessionEntity::class.java to BackupManager.BTrainingSession::class.java,
+        )
+        pairs.forEach { (entity, mirror) ->
+            val missing = fields(entity) - fields(mirror) - BackupManager.NOT_BACKED_UP[entity].orEmpty()
+            assertTrue("${entity.simpleName} columns not in backup: $missing", missing.isEmpty())
+        }
+    }
+
+    @Test fun roundTripKeepsColumnsThatV2Dropped() = with(BackupManager.Companion) {
+        val script = ScriptEntity(id = 3, topic = "T", title = "t", question = "q", original = "o", difficulty = 5, estSeconds = 95,
+            lastReviewedAt = 11, linkedGroupId = "G1", createdAt = 1, updatedAt = 2)
+        assertEquals(script, script.toBackup().toEntity())
+        val chunk = ChunkEntity(phrase = "p", meaningKo = "m", example = "e", category = "c", lastReviewedEpochDay = 9, source = "USER_IMPORT")
+        assertEquals(chunk, chunk.toBackup().toEntity())
+        val attempt = PracticeAttemptEntity(topic = "T", questionText = "Q", mode = "MOCK", mockId = 4, trainingSessionId = 2, createdAt = 1)
+        assertEquals(attempt, attempt.toBackup().toEntity())
+        val mock = MockTestEntity(id = 4, startedAt = 1, finishedAt = 2, questionCount = 12, selfLevel = 5, reportJson = "{}")
+        assertEquals(mock, mock.toBackup().toEntity())
     }
 }

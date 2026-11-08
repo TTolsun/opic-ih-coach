@@ -42,7 +42,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.ui.Alignment
 import com.opicih.coach.data.prefs.Settings
 import com.opicih.coach.learning.ProgressCalculator
-import com.opicih.coach.learning.RetestCalculator
+import com.opicih.coach.learning.ExamPolicy
 import com.opicih.coach.ui.LocalContainer
 import com.opicih.coach.ui.components.Banner
 import com.opicih.coach.ui.components.Bullet
@@ -146,7 +146,9 @@ fun ProgressScreen(onNextExam: () -> Unit = {}) {
             exams.forEach { e -> Bullet("${LocalDate.ofEpochDay(e.epochDay)} · ${e.resultGrade ?: "결과 대기"} ${e.note}") }
             val last = lastExamDate(s, exams, LocalDate.now(), regs)
             Spacer(Modifier.height(6.dp))
-            Text("OPIc 다음 응시 가능: ${last.plusDays(s.retakeDays + 1L)} (응시일 제외 ${s.retakeDays}일 제한, 공식 시험관리규정 기준)", style = MaterialTheme.typography.bodyMedium)
+            // OPIc's official rule, not the user-editable SAIL limit (s.retakeDays).
+            val opic = ExamPolicy.opic()
+            Text("OPIc 다음 응시 가능: ${opic.earliestWithoutWaiver(last)} (응시일 제외 ${opic.blockedDays}일 제한, 공식 시험관리규정 기준)", style = MaterialTheme.typography.bodyMedium)
             Spacer(Modifier.height(6.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Button(onClick = onNextExam) { Text("다음 시험 추천") }

@@ -14,6 +14,9 @@ import java.nio.charset.CodingErrorAction
 
 data class ImportResult(val fileName: String, val mime: String, val rawText: String, val scripts: List<ParsedScript>)
 
+/** UTF-8 byte-order mark that some Windows editors put at the start of text files. */
+private val BOM = 0xFEFF.toChar().toString()
+
 /** Reads TXT / MD / PDF / DOCX from a SAF Uri and parses scripts. Errors become Korean ImportException messages. */
 class ImportService(private val context: Context) {
 
@@ -44,7 +47,7 @@ class ImportService(private val context: Context) {
         } catch (e: CharacterCodingException) {
             // Korean Windows text files are often CP949/EUC-KR.
             String(bytes, charset("MS949"))
-        }.removePrefix("﻿")
+        }.removePrefix(BOM)
     }
 
     private fun readPdf(uri: Uri): String {

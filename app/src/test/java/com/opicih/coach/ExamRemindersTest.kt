@@ -38,6 +38,23 @@ class ExamRemindersTest {
         assertTrue(ExamReminders.planned(regs, at(11, 8, 9)).isEmpty())
     }
 
+    @Test fun deletedRegistrationRemindersAreCancelled() {
+        // Last sync scheduled reminders for registration 1; it was then deleted, so regs is empty.
+        val previous = setOf(ExamReminders.requestCode(1, 0), ExamReminders.requestCode(1, 1))
+        assertEquals(previous, ExamReminders.staleCodes(previous, emptyList(), emptySet()))
+    }
+
+    @Test fun keptRemindersAreNotCancelled() {
+        val keep = ExamReminders.planned(listOf(sail), at(11, 8, 9)).map { it.requestCode }.toSet()
+        assertTrue(ExamReminders.staleCodes(keep, listOf(sail), keep).isEmpty())
+    }
+
+    @Test fun firstSyncSweepsWholeRange() {
+        val stale = ExamReminders.staleCodes(null, emptyList(), emptySet())
+        assertTrue(ExamReminders.requestCode(899, 1) in stale)
+        assertEquals(1800, stale.size)
+    }
+
     @Test fun opicDoesNotInventAnEntryRule() {
         val opic = sail.copy(id = 5, examType = ExamType.OPIC.name, dateLocal = "2026-11-29", startTimeLocal = "10:00", endTimeLocal = null)
         val r = ExamReminders.planned(listOf(opic), at(11, 8, 9))
