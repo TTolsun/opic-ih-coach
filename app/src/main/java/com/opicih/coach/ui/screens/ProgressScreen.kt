@@ -73,7 +73,7 @@ fun ProgressScreen(onNextExam: () -> Unit = {}) {
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
         Text("기록", style = MaterialTheme.typography.headlineMedium)
 
-        val totalSpeak = attempts.sumOf { if (it.speechMs > 0) it.speechMs else it.durationMs }
+        val totalSpeak = attempts.sumOf { it.effectiveSpeechMs }
         val withText = attempts.filter { it.wordCount > 0 }
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             MetricTile("누적 발화", "${totalSpeak / 60000}분")

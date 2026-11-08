@@ -125,7 +125,7 @@ fun buildHomeState(
         completion = ProgressCalculator.todayCompletion(log, s.studyLevel.minutes, TodayProgress.reviewGoal(plan)),
         streak = ProgressCalculator.streak(logs, day),
         readiness = ProgressCalculator.ihReadiness(scripts, attempts),
-        totalSpeakingMin = attempts.sumOf { if (it.speechMs > 0) it.speechMs else it.durationMs } / 60_000,
+        totalSpeakingMin = attempts.sumOf { it.effectiveSpeechMs } / 60_000,
         due = due,
         weak = weak,
         pendingRevisions = pendingRevisions,

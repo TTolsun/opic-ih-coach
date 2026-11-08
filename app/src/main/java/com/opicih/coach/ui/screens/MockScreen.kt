@@ -227,7 +227,7 @@ class MockViewModel(app: Application) : AndroidViewModel(app) {
             "Day 3: ${focus.getOrNull(1) ?: "돌발 주제"} 응용 챌린지 + 미니 모의시험 7문항",
         )
         return MockReport(
-            totalSpeechMs = a.sumOf { if (it.speechMs > 0) it.speechMs else it.durationMs }, totalDurationMs = elapsed,
+            totalSpeechMs = a.sumOf { it.effectiveSpeechMs }, totalDurationMs = elapsed,
             longPauses = a.sumOf { it.longPauseCount }, answered = a.size, byType = byType,
             avgWords = if (a.isEmpty()) 0 else a.map { it.wordCount }.average().toInt(),
             timeFrames = mapOf("과거" to past, "현재" to present, "미래" to future), avgConnectors = avgConn,
