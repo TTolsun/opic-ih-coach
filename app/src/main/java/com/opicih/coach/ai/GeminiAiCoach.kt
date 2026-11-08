@@ -1,6 +1,7 @@
 package com.opicih.coach.ai
 
 import com.opicih.coach.analysis.Feedback
+import com.opicih.coach.data.prefs.LearnerProfile
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonArray
@@ -24,14 +25,18 @@ import java.util.concurrent.TimeUnit
  * Prompts and the JSON contract live in Prompts / AiJson, so another provider can be added behind AiCoach later.
  * The key comes from the user's Keystore-encrypted settings and is sent in the x-goog-api-key header, never in the URL.
  */
-class GeminiAiCoach(private val apiKey: String, private val model: String) : AiCoach {
+class GeminiAiCoach(
+    private val apiKey: String,
+    private val model: String,
+    private val profile: LearnerProfile = LearnerProfile.DEFAULT,
+) : AiCoach {
     override val isRealAi = true
     override val engineName: String get() = "Gemini"
 
     private val http = OkHttpClient.Builder().callTimeout(90, TimeUnit.SECONDS).build()
 
     override suspend fun improveScript(input: ScriptInput): Result<ScriptVersions> = call {
-        val text = send(Prompts.IMPROVE_SYSTEM, listOf(ChatTurn(true, Prompts.improveUser(input))), json = true)
+        val text = send(Prompts.improveSystem(profile), listOf(ChatTurn(true, Prompts.improveUser(input))), json = true)
         AiJson.json.decodeFromString(ScriptVersions.serializer(), AiJson.extractObject(text))
     }
 
@@ -42,7 +47,7 @@ class GeminiAiCoach(private val apiKey: String, private val model: String) : AiC
     }
 
     override suspend fun chat(history: List<ChatTurn>, context: CoachContext): Result<String> = call {
-        send(Prompts.CHAT_SYSTEM + "\n\n" + Prompts.contextBlock(context), history.takeLast(16), json = false)
+        send(Prompts.chatSystem(profile) +"\n\n" + Prompts.contextBlock(context), history.takeLast(16), json = false)
     }
 
     override suspend fun followUp(history: List<ConvExchange>): Result<String> = call {
@@ -52,7 +57,7 @@ class GeminiAiCoach(private val apiKey: String, private val model: String) : AiC
     }
 
     override suspend fun summarizeConversation(history: List<ConvExchange>, localFindings: String): Result<String> = call {
-        send(Prompts.CONV_SUMMARY_SYSTEM, listOf(ChatTurn(true, Prompts.convSummaryUser(history, localFindings))), json = false, maxTokens = 2048)
+        send(Prompts.convSummarySystem(profile), listOf(ChatTurn(true, Prompts.convSummaryUser(history, localFindings))), json = false, maxTokens = 2048)
     }
 
     private suspend fun send(system: String, turns: List<ChatTurn>, json: Boolean, maxTokens: Int = 8192): String = withContext(Dispatchers.IO) {

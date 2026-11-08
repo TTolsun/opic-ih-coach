@@ -69,6 +69,7 @@ import com.opicih.coach.data.db.RevisionStatus
 import com.opicih.coach.data.db.ScriptEntity
 import com.opicih.coach.data.db.ScriptVersion
 import com.opicih.coach.data.prefs.Settings
+import com.opicih.coach.learning.GradeTargets
 import com.opicih.coach.importer.ImportService
 import com.opicih.coach.importer.ParsedScript
 import com.opicih.coach.importer.QuestionClassifier
@@ -193,6 +194,10 @@ fun ScriptDetailScreen(id: Long, onPractice: (Long, PracticeMode) -> Unit, onEdi
                 )
             } else {
                 if (tab == ScriptVersion.KEYWORDS) Text(text, style = EnglishReading) else GlossaryText(text, s.id)
+                if (tab == ScriptVersion.IH_TARGET) {
+                    val words = text.trim().split(Regex("\\s+")).count { it.isNotEmpty() }
+                    Text(GradeTargets.fitLabel(words, settings.targetGrade), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     IconButton(onClick = { c.tts.speak(text, 0.95f) }) { Icon(Icons.AutoMirrored.Filled.VolumeUp, "듣기") }
                     TextButton(onClick = { c.tts.speak(text, 0.75f) }) { Text("0.75x") }

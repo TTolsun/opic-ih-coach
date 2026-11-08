@@ -3,6 +3,7 @@ package com.opicih.coach
 import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.mutablePreferencesOf
 import com.opicih.coach.data.prefs.CaptureMode
+import com.opicih.coach.data.prefs.LearnerGrade
 import com.opicih.coach.data.prefs.SETTINGS_FIELDS
 import com.opicih.coach.data.prefs.Settings
 import com.opicih.coach.data.prefs.StudyLevel
@@ -44,6 +45,7 @@ class SettingsFieldsTest {
             alarmEnabled = false, alarmHour = 5, alarmMinute = 45,
             alarmSound = false, alarmVibrate = false, useExactAlarm = false, eveningReminder = false,
             surveyTopics = setOf("A", "B"), selfLevel = 6,
+            currentGrade = LearnerGrade.IM2, targetGrade = LearnerGrade.IH,
             captureMode = CaptureMode.RECORD_ONLY,
             ttsRate = 1.2f, ttsVoice = "voice-x", ttsPitch = 1.1f,
             aiEnabled = true, geminiModel = "m", aiTextConsent = true, cloudSttEnabled = true,

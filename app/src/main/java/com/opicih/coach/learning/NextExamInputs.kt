@@ -5,6 +5,7 @@ import com.opicih.coach.data.db.ExamRegistrationEntity
 import com.opicih.coach.data.db.ExamTrainingSessionEntity
 import com.opicih.coach.data.db.ExamType
 import com.opicih.coach.data.db.RegistrationStatus
+import com.opicih.coach.data.prefs.LearnerGrade
 import com.opicih.coach.data.prefs.Settings
 import com.opicih.coach.data.repo.appJson
 import java.time.LocalDate
@@ -25,6 +26,15 @@ fun lastExamDate(exams: List<ExamEntity>, today: LocalDate, regs: List<ExamRegis
     return exams.filter { it.id !in linkedNonOpic }.map { LocalDate.ofEpochDay(it.epochDay) }.filter { !it.isAfter(today) }.maxOrNull() ?: today
 }
 
+/**
+ * 가장 최근에 끝난 OPIc 응시의 결과 등급(알아볼 수 있는 값만). 현재 등급 설정의 기본 후보로 씁니다.
+ * 결과를 아직 입력하지 않았거나 "IM 2"처럼 알 수 없는 문자열이면 null입니다.
+ */
+fun latestResultGrade(regs: List<ExamRegistrationEntity>): LearnerGrade? =
+    regs.filter { it.type == ExamType.OPIC && it.state == RegistrationStatus.COMPLETED }
+        .mapNotNull { r -> r.latestDate?.let { d -> LearnerGrade.parse(r.resultGrade)?.let { d to it } } }
+        .maxByOrNull { it.first }?.second
+
 /** Most recent exam day (any type) that is over or today, for the debrief card. */
 fun lastSatDate(regs: List<ExamRegistrationEntity>, today: LocalDate): LocalDate? =
     regs.filter { it.state == RegistrationStatus.REGISTERED || it.state == RegistrationStatus.COMPLETED }
@@ -34,6 +44,7 @@ fun lastSatDate(regs: List<ExamRegistrationEntity>, today: LocalDate): LocalDate
 fun rulesOf(s: Settings, waiverAvailable: Boolean = false) = RetestAdvisor.Rules(
     policy = ExamPolicy.opic(), resultLagDays = s.resultLagDays, useWaiver = s.planWithWaiver && waiverAvailable,
     deadline = s.gradeDeadline, slots = s.slotDates(), registerLeadDays = s.registerLeadDays,
+    criteria = ReadinessCriteria.of(s.targetGrade),
 )
 
 /** Finished SAIL conversation reports stored in exam_training_sessions.summaryJson. */

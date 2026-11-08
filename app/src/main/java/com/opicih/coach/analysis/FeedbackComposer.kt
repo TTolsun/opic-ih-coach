@@ -1,5 +1,6 @@
 package com.opicih.coach.analysis
 
+import com.opicih.coach.learning.ScoreKind
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -37,6 +38,11 @@ data class AnalysisInput(
     val compare: CompareResult?,
     val transcriptCorrectedBySystem: Boolean,
     val requiredTense: String? = null,
+    /**
+     * 암기 점수만 스크립트 coverage를 내용 항목에 반영합니다. 말하기 점수는 같은 스크립트를 비교하더라도
+     * coverage를 쓰지 않아서, 원문과 똑같이 말한다고 점수가 오르지 않습니다.
+     */
+    val scoreKind: ScoreKind = if (usesScript) ScoreKind.MEMORIZATION else ScoreKind.SPEAKING,
 )
 
 /** Rule table that turns metrics into "잘한 점 2 / 수정 ≤3 / 미션". Labelled "로컬 분석(AI 아님)" in the UI. */
@@ -69,7 +75,7 @@ object FeedbackComposer {
         fluency -= (input.pauses?.longPauseCount ?: 0) * 4f
         fluency = fluency.coerceIn(0f, 25f)
         val structure = (d.connectorCount.coerceAtMost(6) / 6f * 15f + d.sentenceCount.coerceAtMost(8) / 8f * 10f)
-        val content = if (input.usesScript && input.compare != null) {
+        val content = if (input.scoreKind == ScoreKind.MEMORIZATION && input.usesScript && input.compare != null) {
             input.compare.coverage * 25f
         } else {
             (d.timeFrames * 6f + (if (d.experienceMarkers > 0) 4f else 0f) + (if (d.feelingWords > 0) 3f else 0f)).coerceAtMost(25f)

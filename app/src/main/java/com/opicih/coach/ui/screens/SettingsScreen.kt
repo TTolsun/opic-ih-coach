@@ -54,6 +54,8 @@ import com.opicih.coach.alarm.AlarmScheduler
 import com.opicih.coach.alarm.StudyBlock
 import com.opicih.coach.alarm.StudyBlocks
 import com.opicih.coach.data.prefs.CaptureMode
+import com.opicih.coach.data.prefs.LearnerGrade
+import com.opicih.coach.learning.latestResultGrade
 import com.opicih.coach.data.prefs.Settings
 import com.opicih.coach.data.prefs.StudyLevel
 import com.opicih.coach.ai.GeminiAiCoach
@@ -138,6 +140,27 @@ fun SettingsScreen(onExams: () -> Unit = {}) {
                 save { it.copy(examSlots = parsed.map { d -> d.toString() }.toSet()) }
                 message = "회차 ${parsed.size}개를 저장했습니다."
             }) { Text("회차 저장") }
+        }
+
+        SectionCard(title = "학습 등급") {
+            val regs by c.exams.flow.collectAsState(initial = emptyList())
+            Text("현재 등급 (최근 공식 결과)", style = MaterialTheme.typography.labelLarge)
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                CURRENT_GRADE_CHOICES.forEach { g -> Pill(g.code, g == s.currentGrade) { save { it.copy(currentGrade = g) } } }
+            }
+            latestResultGrade(regs)?.takeIf { it != s.currentGrade }?.let { g ->
+                Spacer(Modifier.height(6.dp))
+                Banner("최근 OPIc 결과는 ${g.code}입니다.", "현재 등급으로 설정") { save { it.copy(currentGrade = g) } }
+            }
+            Spacer(Modifier.height(10.dp))
+            Text("다음 시험 목표 등급", style = MaterialTheme.typography.labelLarge)
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                TARGET_GRADE_CHOICES.forEach { g -> Pill(g.code, g == s.targetGrade) { save { it.copy(targetGrade = g) } } }
+            }
+            Text(
+                "최종 목표는 IH입니다. AI 개선안의 길이, 코치 조언, 준비도 기준은 현재 등급과 다음 목표를 기준으로 맞춥니다.",
+                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
 
         SectionCard(title = "Background Survey 주제", collapsible = true, initiallyExpanded = false) {
@@ -398,6 +421,9 @@ private fun KeyField(keys: ApiKeyStore, p: ApiKeyStore.Provider, onMessage: (Str
         }
     }
 }
+
+private val CURRENT_GRADE_CHOICES = listOf(LearnerGrade.IL, LearnerGrade.IM1, LearnerGrade.IM2, LearnerGrade.IM3, LearnerGrade.IH)
+private val TARGET_GRADE_CHOICES = listOf(LearnerGrade.IM2, LearnerGrade.IM3, LearnerGrade.IH, LearnerGrade.AL)
 
 val SURVEY_CHOICES = listOf(
     "Overseas Travel", "Domestic Travel", "Movies", "Vacation", "Home & Furniture", "Park & Music", "Geography",

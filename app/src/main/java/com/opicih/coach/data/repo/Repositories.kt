@@ -31,6 +31,7 @@ import com.opicih.coach.data.db.ScriptVersion
 import com.opicih.coach.importer.DuplicateLinker
 import com.opicih.coach.importer.ParsedScript
 import com.opicih.coach.learning.MasteryRules
+import com.opicih.coach.learning.ScoreKind
 import com.opicih.coach.learning.SrsScheduler
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -172,7 +173,7 @@ class PracticeRepository(private val db: AppDatabase) {
             FeedbackComposer.acousticOnly(req.pauses)
         } else {
             FeedbackComposer.compose(
-                AnalysisInput(req.questionType, target != null, req.transcript, discourse, req.pauses, compare, req.transcriptFromDeviceStt, req.requiredTense)
+                AnalysisInput(req.questionType, target != null, req.transcript, discourse, req.pauses, compare, req.transcriptFromDeviceStt, req.requiredTense, ScoreKind.of(req.mode))
             )
         }
         var feedback = local

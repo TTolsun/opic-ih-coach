@@ -38,6 +38,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.opicih.coach.analysis.FixItem
 import com.opicih.coach.data.repo.AnalyzedAttempt
+import com.opicih.coach.learning.ScoreKind
 import com.opicih.coach.ui.components.Banner
 import com.opicih.coach.ui.components.Bullet
 import com.opicih.coach.ui.components.MetricTile
@@ -69,7 +70,7 @@ internal fun ResultPanel(r: AnalyzedAttempt, ui: SpeakingUi, vm: SpeakingViewMod
             Row(verticalAlignment = Alignment.Bottom) {
                 Text("${fb.score}", style = MaterialTheme.typography.displaySmall, color = MaterialTheme.colorScheme.primary)
                 Spacer(Modifier.width(8.dp))
-                Text("참고 점수", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(bottom = 8.dp))
+                Text(ScoreKind.of(a.mode).label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(bottom = 8.dp))
                 InfoButton(InfoTopics.MEASUREMENT)
             }
         }
