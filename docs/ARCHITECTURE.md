@@ -110,6 +110,24 @@ interface AiCoach {
 | `AnswerCapture` | 두 캡처 방식을 하나의 start/stop API로 묶음 (Speaking·Mock 공용) |
 | `AudioPlayer` | MediaPlayer 1개만 유지, 0.75x 재생 |
 | `SpeechCapabilities` | 인식 서비스·온디바이스 인식 지원 여부 실행 시 탐지 |
+| `ListenTts` | 스크립트 듣기 전용 TTS. 영어(질문 목소리·답변 목소리)와 한국어를 단계마다 바꿔 읽고, 끝날 때까지 기다립니다. 음성이 하나뿐이면 음높이로 질문과 답변을 구분합니다 |
+
+### 스크립트 듣기 (이슈 #22, 1단계: 재생 엔진)
+
+```
+ListenScreen ──명령──▶ ListenService(Foreground, mediaPlayback) ──▶ ListenPlayer(상태 기계)
+     ▲                    │ MediaSession · 오디오 포커스 · WakeLock       │ ShuffleQueue → ListenCycleBuilder
+     └────── state ───────┴───────────────────────────────────────────────┘          └▶ ListenSpeaker(ListenTts)
+```
+
+- 재생 순서는 질문(영·한) → 답변 전체(영·한) → 문단(영·한) → 문장(영·한)이고, 스크립트는 `ShuffleQueue`로 한 바퀴 동안 겹치지 않게 고릅니다.
+- **영한 정렬 데이터(`script_segments`, DB v5):** 학습본을 `ScriptSegmenter`가 코드로 먼저 문장·문단으로 나누고(빈 줄이 없으면 한 문단에 문장 3개 이하로 균등 분할), 번역은 문장마다만 만듭니다. 문단과 전체 답변의 한국어는 속한 문장 번역을 이어 붙인 것이라 영어와 항상 같은 범위입니다. 질문·학습본의 해시(`sourceHash`)가 달라지면 그 행들은 낡은 것으로 보고 쓰지 않습니다. 백업(v5)에 포함됩니다.
+- **번역을 채우는 두 경로:** (1) `assets/seed/segments_ko.json`을 앱 시작 때 `SegmentRepository.importBundled`가 가져옵니다(해시와 영어 문장 목록이 모두 맞는 스크립트만, 이미 있는 번역은 덮어쓰지 않음). (2) 재생 화면의 "번역 만들기"가 `AiCoach.translateToKorean`(Gemini)으로 번역이 없거나 낡은 스크립트를 만듭니다. 개수가 맞지 않는 응답은 저장하지 않습니다.
+- 번역이 없으면 `koreanMeaning`을 쓰되, 지금 학습본의 번역이라고 믿을 수 있을 때만 재생합니다(`koreanMatchesStudyText`). 그것도 아니면 한국어 단계를 건너뜁니다.
+- **목소리:** 질문은 여성, 답변은 남성 음성으로 읽습니다(영어·한국어 모두). 안드로이드가 성별을 알려 주지 않아 Google TTS 음성 이름의 코드로 추정하며(`VoiceGenders`), 화면에 "추정"으로 표시하고 미리듣기로 확인하게 합니다.
+- **이어폰 버튼:** TTS 소리는 TTS 엔진 앱이 내서 시스템이 이 앱을 오디오 재생 앱으로 보지 않고, 그러면 미디어 버튼이 음악 앱 세션으로 갑니다. 그래서 재생 중에만 `SilentKeepAlive`가 무음 오디오를 이 프로세스에서 재생합니다.
+- 모든 명령은 서비스를 거칩니다. 화면은 `ListenPlayer.state`를 읽기만 합니다. 전화·다른 앱이 오디오 포커스를 가져가거나 이어폰이 빠지면 일시정지하고, 자동으로 다시 재생하지 않습니다.
+- 읽기에 3번 연속 실패하거나 읽을 단계가 3사이클 연속 없으면 스스로 멈춰서 무한 반복을 막습니다.
 
 ## 6. 학습 엔진
 

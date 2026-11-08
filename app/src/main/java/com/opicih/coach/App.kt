@@ -20,7 +20,11 @@ import com.opicih.coach.data.repo.ScriptRepository
 import com.opicih.coach.data.secure.ApiKeyStore
 import com.opicih.coach.data.seed.SeedLoader
 import com.opicih.coach.importer.ImportService
+import com.opicih.coach.learning.ListenCycleBuilder
+import com.opicih.coach.playback.ListenPlayer
+import com.opicih.coach.playback.ListenPrefs
 import com.opicih.coach.speech.AudioPlayer
+import com.opicih.coach.speech.ListenTts
 import com.opicih.coach.speech.TtsManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -39,7 +43,30 @@ class AppContainer(context: Context) {
     val keys = ApiKeyStore(ctx)
     val tts by lazy { TtsManager(ctx) }
     val player = AudioPlayer()
+
+    /** 스크립트 듣기: 설정에서 읽은 값을 단계마다 새로 적용한다. */
+    private suspend fun listenPrefs(): ListenPrefs = settings.current().let {
+        ListenPrefs(it.listenQuestionVoice, it.listenAnswerVoice, it.listenGapMs.toLong(), it.listenRate)
+    }
+    val listenTts by lazy { ListenTts(ctx, ::listenPrefs) }
+    val listen by lazy {
+        ListenPlayer(
+            scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate),
+            speaker = listenTts,
+            ids = { dao.scripts().map { it.id } },
+            cycle = { id ->
+                val s = dao.script(id)
+                s?.let { sc ->
+                    val q = sc.question.trim()
+                    val hint = dao.questions().firstOrNull { it.text.trim().equals(q, ignoreCase = true) }?.hintKo?.takeIf { it.isNotBlank() }
+                    ListenCycleBuilder.forScript(sc, hint, segments.forPlayback(sc))
+                }
+            },
+            prefs = ::listenPrefs,
+        )
+    }
     val scripts = ScriptRepository(dao)
+    val segments = com.opicih.coach.data.repo.SegmentRepository(db)
     val glossary = com.opicih.coach.data.repo.GlossaryRepository(ctx, dao)
     val practice = PracticeRepository(db)
     val importer = ImportService(ctx)
@@ -80,6 +107,10 @@ class App : Application() {
         appScope.launch {
             runCatching { container.seed.seedIfNeeded() }
             runCatching { container.exams.bootstrapIfNeeded() }
+            // 내장 한국어 번역을 가져온다(번역이 없거나 낡은 스크립트 중 해시가 맞는 것만).
+            runCatching {
+                this@App.assets.open("seed/segments_ko.json").bufferedReader(Charsets.UTF_8).use { container.segments.importBundled(it.readText()) }
+            }
             val s = container.settings.current()
             com.opicih.coach.alarm.AlarmCoordinator.applyAll(this@App, s)
             runCatching { container.backup.purgeAudio(s.audioRetentionDays) }

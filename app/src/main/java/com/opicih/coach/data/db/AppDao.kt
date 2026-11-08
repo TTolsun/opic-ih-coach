@@ -114,6 +114,12 @@ interface AppDao {
     @Insert suspend fun insertLookups(l: List<WordLookupEntity>)
     @Query("SELECT COUNT(*) FROM chunks WHERE lower(phrase) IN (:phrases)") suspend fun chunkCount(phrases: List<String>): Int
 
+    // ---- Script segments (v5)
+    @Query("SELECT * FROM script_segments WHERE scriptId = :scriptId ORDER BY kind, idx") suspend fun segmentsFor(scriptId: Long): List<ScriptSegmentEntity>
+    @Query("SELECT * FROM script_segments ORDER BY scriptId, kind, idx") suspend fun segments(): List<ScriptSegmentEntity>
+    @Query("DELETE FROM script_segments WHERE scriptId = :scriptId") suspend fun deleteSegmentsFor(scriptId: Long)
+    @Insert suspend fun insertSegments(s: List<ScriptSegmentEntity>)
+
     // ---- Wipe / restore
     @Query("DELETE FROM scripts") suspend fun clearScripts()
     @Query("DELETE FROM script_revisions") suspend fun clearRevisions()
@@ -130,6 +136,7 @@ interface AppDao {
     @Query("DELETE FROM exam_status_events") suspend fun clearStatusEvents()
     @Query("DELETE FROM exam_training_sessions") suspend fun clearTrainingSessions()
     @Query("DELETE FROM word_lookups") suspend fun clearLookups()
+    @Query("DELETE FROM script_segments") suspend fun clearSegments()
 
     @Insert suspend fun insertScriptsRaw(s: List<ScriptEntity>)
     @Insert suspend fun insertAttempts(a: List<PracticeAttemptEntity>)
@@ -142,6 +149,6 @@ interface AppDao {
     suspend fun wipeAll() {
         clearScripts(); clearRevisions(); clearImports(); clearAttempts(); clearErrors(); clearChunks()
         clearDailyLogs(); clearMocks(); clearExams(); clearStories(); clearQuestions()
-        clearRegistrations(); clearStatusEvents(); clearTrainingSessions(); clearLookups()
+        clearRegistrations(); clearStatusEvents(); clearTrainingSessions(); clearLookups(); clearSegments()
     }
 }

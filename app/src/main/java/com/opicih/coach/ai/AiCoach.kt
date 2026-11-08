@@ -61,6 +61,13 @@ interface AiCoach {
 
     /** Short Korean feedback on a whole conversation (real AI only; LocalCoach uses ConversationScoring). */
     suspend fun summarizeConversation(history: List<ConvExchange>, localFindings: String): Result<String>
+
+    /**
+     * Translates each English item into Korean. The result has exactly one string per item, in the same order, or fails.
+     * Only a real AI can do this; the offline coach reports that AI is needed.
+     */
+    suspend fun translateToKorean(items: List<String>): Result<List<String>> =
+        Result.failure(AiException("한국어 번역은 설정에서 AI를 켜야 만들 수 있습니다.", false))
 }
 
 class AiException(message: String, val retryable: Boolean = true) : Exception(message)
