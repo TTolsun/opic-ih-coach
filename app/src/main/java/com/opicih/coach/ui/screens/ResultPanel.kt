@@ -165,6 +165,12 @@ private fun Details(r: AnalyzedAttempt, ui: SpeakingUi, vm: SpeakingViewModel) {
                 MetricTile("텍스트", "전사 없음")
             }
             m.compare?.let { MetricTile("내용 일치", "${(it.coverage * 100).toInt()}%") }
+            // Self-corrections and abandoned sentences are only visible in a verbatim transcript.
+            m.errorCounts?.takeIf { it.verbatim }?.let { e ->
+                e.tense?.let { MetricTile("시제 오류", "${it}회") }
+                e.abandoned?.let { MetricTile("끝맺지 못함", "${it}회") }
+                e.selfCorrection?.let { MetricTile("자기 수정", "${it}회") }
+            }
         }
         if (fb.strengths.size > 1) {
             Text("잘한 점 (더 보기)", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.secondary)

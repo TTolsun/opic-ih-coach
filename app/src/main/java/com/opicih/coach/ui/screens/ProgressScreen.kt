@@ -42,6 +42,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.ui.Alignment
 import com.opicih.coach.data.prefs.Settings
+import com.opicih.coach.analysis.VerbatimMarkup
+import com.opicih.coach.learning.ErrorTrend
 import com.opicih.coach.learning.ProgressCalculator
 import com.opicih.coach.learning.ScoreKind
 import com.opicih.coach.learning.ExamPolicy
@@ -104,6 +106,21 @@ fun ProgressScreen(onNextExam: () -> Unit = {}) {
             }
         }
 
+        SectionCard(title = "시제 오류·중단·자기 수정 (최대 12회)") {
+            val trend = remember(attempts) { ErrorTrend.points(attempts) }
+            if (trend.isEmpty()) Text("원문 그대로 전사한 답변이 아직 없습니다.", style = MaterialTheme.typography.bodyMedium)
+            else {
+                Text("과거 맥락 시제 오류 (회)", style = MaterialTheme.typography.labelMedium)
+                BarChart(trend.map { it.tense.toFloat() }, MaterialTheme.colorScheme.error, MaterialTheme.colorScheme.surfaceContainerHighest)
+                Spacer(Modifier.height(8.dp))
+                Text("끝맺지 못한 문장 (회)", style = MaterialTheme.typography.labelMedium)
+                BarChart(trend.map { it.abandoned.toFloat() }, MaterialTheme.colorScheme.tertiary, MaterialTheme.colorScheme.surfaceContainerHighest)
+                Spacer(Modifier.height(8.dp))
+                Text("자기 수정 (회)", style = MaterialTheme.typography.labelMedium)
+                BarChart(trend.map { it.selfCorrection.toFloat() }, MaterialTheme.colorScheme.secondary, MaterialTheme.colorScheme.surfaceContainerHighest)
+            }
+        }
+
         SectionCard(title = "스크립트 암기 숙련도") {
             MasteryState.entries.forEach { st ->
                 val n = scripts.count { it.masteryState == st.name }
@@ -137,7 +154,7 @@ fun ProgressScreen(onNextExam: () -> Unit = {}) {
                         val t = java.time.Instant.ofEpochMilli(a.createdAt).atZone(java.time.ZoneId.systemDefault())
                         Text("%d/%d %02d:%02d · %s · %s".format(t.monthValue, t.dayOfMonth, t.hour, t.minute, PracticeMode.of(a.mode).label, a.topic),
                             style = MaterialTheme.typography.bodySmall)
-                        Text(if (a.transcript.isBlank()) "전사 없음 · ${a.speechMs / 1000}초" else "${a.wordCount}단어 · ${ScoreKind.of(a.mode).label} ${a.score}점 · ${a.transcript.take(40)}",
+                        Text(if (a.transcript.isBlank()) "전사 없음 · ${a.speechMs / 1000}초" else "${a.wordCount}단어 · ${ScoreKind.of(a.mode).label} ${a.score}점 · ${VerbatimMarkup.parse(a.transcript).clean.take(40)}",
                             style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
                     }
                     IconButton(onClick = { toDelete = a }) { Icon(Icons.Filled.Delete, "기록 삭제") }

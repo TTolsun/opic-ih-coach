@@ -58,6 +58,10 @@ class GeminiTranscriber(private val apiKey: String, private val model: String) :
         const val PROMPT = "Transcribe this English speaking-test answer verbatim. " +
             "Keep filler words (um, uh, er, like, you know), repetitions, false starts and grammar mistakes exactly as spoken. " +
             "Do not correct, summarize or translate. Use normal punctuation for sentence breaks. " +
+            "Mark two things with a tag and use no other tags. " +
+            "When the speaker restarts or corrects a word or phrase, write what was said first, then the tag [self-correction], then the corrected wording " +
+            "(example: I go to the park yesterday [self-correction] I went to the park yesterday). " +
+            "When the speaker leaves a sentence unfinished and starts something new, end the unfinished part with the tag [abandoned]. " +
             "If there is no speech, return an empty string. Output only the transcript text."
 
         /** Pure: request JSON for an inline audio transcription. Unit tested. */

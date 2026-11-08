@@ -98,7 +98,7 @@ interface AiCoach {
 | `GeminiAiCoach` (기본) | 제공자 Gemini + 키 + AI 사용 + 텍스트 동의 | REST v1beta `generateContent`, systemInstruction + JSON 응답 모드(responseMimeType). 차단(blockReason/finishReason), 400/403/404/429를 한국어 메시지로 변환. `listModels`로 키에서 쓸 수 있는 모델 조회 |
 | `LocalCoach` | 그 외 | 규칙 기반. Short/Keywords만 생성, 채팅은 오프라인 질문·오류·취약 주제 응답 |
 
-`Transcriber` 인터페이스: `GeminiTranscriber`(WAV를 inline_data로 전송, 필러·반복·문법 실수를 그대로 받아 적도록 프롬프트 지정, temperature 0). AI 코치와 같은 Gemini 키와 모델을 씁니다.
+`Transcriber` 인터페이스: `GeminiTranscriber`(WAV를 inline_data로 전송, 필러·반복·문법 실수를 그대로 받아 적고 자기 수정은 `[self-correction]`, 끝맺지 못한 문장은 `[abandoned]`로 표기하도록 프롬프트 지정, temperature 0). 표기는 `VerbatimMarkup`이 읽어 분석용 본문과 횟수로 나누고, 저장되는 전사에는 표기를 남깁니다. `CapturePolicy`가 즉석 답변 모드의 캡처를 정하며, 횟수는 `ErrorCounts`로 `metricsJson`에 저장됩니다. 과거 맥락 시제 오류는 AI 값이 있으면 그 값을, 없으면 `TenseErrorDetector` 규칙을 씁니다. AI 코치와 같은 Gemini 키와 모델을 씁니다.
 
 ## 5. 음성 모듈
 

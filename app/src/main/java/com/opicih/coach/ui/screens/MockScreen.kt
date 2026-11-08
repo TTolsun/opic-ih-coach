@@ -49,6 +49,7 @@ import com.opicih.coach.data.db.QuestionType
 import com.opicih.coach.data.prefs.Settings
 import com.opicih.coach.data.repo.PracticeRepository
 import com.opicih.coach.data.repo.appJson
+import com.opicih.coach.learning.CapturePolicy
 import com.opicih.coach.learning.Focus
 import com.opicih.coach.learning.MockQuestion
 import com.opicih.coach.learning.MockTestBuilder
@@ -114,6 +115,7 @@ class MockViewModel(app: Application) : AndroidViewModel(app) {
     private var pool: List<QuestionSource> = emptyList()
     private var settings = Settings()
     private var timer: Job? = null
+    private var captureNote: String? = null
 
     fun setCount(n: Int) = ui.update { it.copy(count = n) }
 
@@ -146,7 +148,10 @@ class MockViewModel(app: Application) : AndroidViewModel(app) {
         when (ui.value.phase) {
             MockPhase.QUESTION -> {
                 c.tts.stop()
-                capture.start(viewModelScope, settings.captureMode)?.let { e -> ui.update { it.copy(error = e) }; return }
+                // A mock test is a free-speaking answer: record and transcribe it verbatim when the learner allowed it.
+                val choice = CapturePolicy.choose(PracticeMode.MOCK, settings, c.hasGeminiKey())
+                capture.start(viewModelScope, choice.mode)?.let { e -> ui.update { it.copy(error = e) }; return }
+                captureNote = choice.note
                 ui.update { it.copy(phase = MockPhase.RECORDING, error = null, answerElapsedMs = 0) }
             }
             MockPhase.RECORDING -> finishAnswer()
@@ -162,7 +167,7 @@ class MockViewModel(app: Application) : AndroidViewModel(app) {
             val r = capture.stop(c.transcriber(settings))
             runCatching {
                 c.practice.analyzeAndSave(
-                    PracticeRepository.Request(null, q.topic, q.text, q.type, PracticeMode.MOCK, r.transcript, r.captureMode, r.audioPath, r.durationMs, r.pauses, r.fromDeviceStt, mockId = u.mockId),
+                    PracticeRepository.Request(null, q.topic, q.text, q.type, PracticeMode.MOCK, r.transcript, r.captureMode, r.audioPath, r.durationMs, r.pauses, r.fromDeviceStt, mockId = u.mockId, captureNote = captureNote),
                     ai = null, examEpochDay = c.exams.focusEpochDay(), // per-answer AI would be slow and costly during a timed test
                 )
             }

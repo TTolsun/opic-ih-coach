@@ -293,13 +293,10 @@ fun SettingsScreen(onExams: () -> Unit = {}) {
             ToggleRow("AI 사용 (스크립트 개선, 답변 평가, 코치)", s.aiEnabled) { v -> save { it.copy(aiEnabled = v) } }
             ToggleRow("답변 텍스트를 Gemini에 전송하는 것에 동의", s.aiTextConsent) { v -> save { it.copy(aiTextConsent = v) } }
             Spacer(Modifier.height(10.dp))
-            Text("녹음 전사 (녹음 우선 모드에서만)", style = MaterialTheme.typography.labelLarge)
+            Text("녹음 전사 (자유 발화·모의시험에 자동 적용)", style = MaterialTheme.typography.labelLarge)
             Text("필러(um, uh)와 문법 실수까지 그대로 받아 적습니다.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             ToggleRow("녹음 파일을 Gemini로 전사", s.cloudSttEnabled) { v -> save { it.copy(cloudSttEnabled = v) } }
             ToggleRow("원본 음성 외부 전송에 동의", s.audioUploadConsent) { v -> save { it.copy(audioUploadConsent = v) } }
-            if (s.cloudSttEnabled && s.audioUploadConsent && s.captureMode != CaptureMode.RECORD_ONLY) {
-                Banner("녹음 전사는 '녹음 우선' 캡처 방식에서만 동작합니다.", "녹음 우선으로") { save { it.copy(captureMode = CaptureMode.RECORD_ONLY) } }
-            }
         }
 
         SectionCard(title = "데이터", collapsible = true, initiallyExpanded = false) {
