@@ -149,6 +149,4 @@ object RetestAdvisor {
         val registerBy = target.minusDays(rules.registerLeadDays.toLong()).let { if (it.isBefore(today)) today else it }
         return Advice(verdict, lastExam, earliest, latestUseful, target, registerBy, secondChance, gates, reasons, cautions)
     }
-
-    fun daysBetween(a: LocalDate, b: LocalDate) = ChronoUnit.DAYS.between(a, b)
 }

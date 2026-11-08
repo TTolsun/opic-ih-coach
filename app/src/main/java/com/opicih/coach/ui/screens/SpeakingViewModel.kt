@@ -49,7 +49,6 @@ data class SpeakingUi(
     val showTypedFallback: Boolean = false,
     val shadowIndex: Int = 0,
     val captureMode: CaptureMode = CaptureMode.LIVE_STT,
-    val aiOn: Boolean = false,
     val replays: Int = 0,
 )
 
@@ -75,7 +74,7 @@ class SpeakingViewModel(app: Application) : AndroidViewModel(app) {
             }
         }
         viewModelScope.launch {
-            c.settings.flow.collect { s -> _ui.update { it.copy(captureMode = s.captureMode, aiOn = c.realAi(s) != null) } }
+            c.settings.flow.collect { s -> _ui.update { it.copy(captureMode = s.captureMode) } }
         }
     }
 

@@ -87,7 +87,7 @@ import com.opicih.coach.ui.theme.EnglishReading
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
-fun SpeakingScreen(scriptId: Long?, mode: PracticeMode?, onOpenSettings: () -> Unit) {
+fun SpeakingScreen(scriptId: Long?, mode: PracticeMode?) {
     val vm: SpeakingViewModel = viewModel()
     val ui by vm.ui.collectAsStateWithLifecycle()
     val context = LocalContext.current

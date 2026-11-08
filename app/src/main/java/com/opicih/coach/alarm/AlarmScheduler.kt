@@ -17,7 +17,6 @@ import java.time.ZonedDateTime
 object AlarmScheduler {
     const val ACTION_FIRE = "com.opicih.coach.ALARM_FIRE"
     const val ACTION_SNOOZE = "com.opicih.coach.ALARM_SNOOZE"
-    const val ACTION_DISMISS = "com.opicih.coach.ALARM_DISMISS"
     const val ACTION_REMIND = "com.opicih.coach.REMIND"
     const val EXTRA_TITLE = "title"
     const val EXTRA_TEXT = "text"

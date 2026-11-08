@@ -55,9 +55,6 @@ object ExamSchedule {
             .mapNotNull { r -> r.latestDate?.let { LastSitting(it, r.precision == DatePrecision.DAY, r) } }
             .maxByOrNull { it.date }
 
-    fun daysUntil(today: LocalDate, r: ExamRegistrationEntity): Long? =
-        r.date?.let { java.time.temporal.ChronoUnit.DAYS.between(today, it) }
-
     private val KO = Locale.KOREAN
 
     /** "2026.11.11 (수) 19:20" / "2026.02 (일자 미입력)". */
@@ -71,8 +68,6 @@ object ExamSchedule {
         val time = r.startTimeLocal?.let { " $it" }.orEmpty()
         return "%d.%02d.%02d (%s)%s".format(d.year, d.monthValue, d.dayOfMonth, dow, time)
     }
-
-    fun shortDate(d: LocalDate): String = "${d.monthValue}/${d.dayOfMonth}"
 }
 
 /**

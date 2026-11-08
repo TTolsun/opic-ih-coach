@@ -42,7 +42,6 @@ data class NextExamSummary(
 
 data class HomeState(
     val loaded: Boolean = false,
-    val examDate: LocalDate = LocalDate.now(),
     val plan: DayPlan? = null,
     val tasks: List<TaskStatus> = emptyList(),
     val next: PlanTask? = null,
@@ -116,7 +115,6 @@ fun buildHomeState(
     val nextExam = NextExamSummary(advice.verdict.label, advice.recommended, advice.registerBy, advice.gates.count { it.passed }, advice.gates.size)
     return HomeState(
         loaded = true,
-        examDate = s.examDate,
         plan = plan,
         tasks = tasks,
         next = TodayProgress.next(tasks),
