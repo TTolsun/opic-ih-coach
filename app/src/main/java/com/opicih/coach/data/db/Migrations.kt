@@ -50,4 +50,12 @@ object MigrationSql {
             "`firstAt` INTEGER NOT NULL, `lastAt` INTEGER NOT NULL)",
         "CREATE UNIQUE INDEX IF NOT EXISTS `index_word_lookups_phrase_scriptId` ON `word_lookups` (`phrase`, `scriptId`)",
     )
+
+    /** v5: reusable sentence frames. Adds one table only; no existing row is changed. */
+    val V4_TO_V5 = listOf(
+        "CREATE TABLE IF NOT EXISTS `sentence_frames` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `pattern` TEXT NOT NULL, " +
+            "`hintKo` TEXT NOT NULL, `example` TEXT, `sourceScriptId` INTEGER, `origin` TEXT NOT NULL, `status` TEXT NOT NULL, " +
+            "`createdAt` INTEGER NOT NULL)",
+        "CREATE UNIQUE INDEX IF NOT EXISTS `index_sentence_frames_pattern` ON `sentence_frames` (`pattern`)",
+    )
 }

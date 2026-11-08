@@ -293,6 +293,7 @@ class BackupCoverageTest {
             ExamStatusEventEntity::class.java to BackupManager.BStatusEvent::class.java,
             ExamTrainingSessionEntity::class.java to BackupManager.BTrainingSession::class.java,
             com.opicih.coach.data.db.WordLookupEntity::class.java to BackupManager.BLookup::class.java,
+            com.opicih.coach.data.db.SentenceFrameEntity::class.java to BackupManager.BFrame::class.java,
         )
         pairs.forEach { (entity, mirror) ->
             val missing = fields(entity) - fields(mirror) - BackupManager.NOT_BACKED_UP[entity].orEmpty()
@@ -345,5 +346,8 @@ class BackupCoverageTest {
         val session = ExamTrainingSessionEntity(id = 1, examType = "a", kind = "b", startedAt = 2, finishedAt = 3, turnCount = 4, aiCalls = 5,
             summaryJson = "c")
         assertEquals(session, session.toBackup().toEntity())
+        val frame = com.opicih.coach.data.db.SentenceFrameEntity(pattern = "a", hintKo = "b", example = "c", sourceScriptId = 2, origin = "d",
+            status = "e", createdAt = 3)
+        assertEquals(frame, frame.toBackup().toEntity())
     }
 }

@@ -114,6 +114,15 @@ interface AppDao {
     @Insert suspend fun insertLookups(l: List<WordLookupEntity>)
     @Query("SELECT COUNT(*) FROM chunks WHERE lower(phrase) IN (:phrases)") suspend fun chunkCount(phrases: List<String>): Int
 
+    // ---- Sentence frames (v5)
+    /** Pending first. REJECTED rows stay in the table so a rejected frame is not suggested again, but are not listed. */
+    @Query("SELECT * FROM sentence_frames WHERE status != 'REJECTED' ORDER BY status DESC, id") fun framesFlow(): Flow<List<SentenceFrameEntity>>
+    @Query("SELECT * FROM sentence_frames ORDER BY id") suspend fun frames(): List<SentenceFrameEntity>
+    @Query("SELECT * FROM sentence_frames WHERE status = 'APPROVED' ORDER BY id") suspend fun approvedFrames(): List<SentenceFrameEntity>
+    /** IGNORE: the unique pattern index makes a repeated extraction a no-op for frames that already exist. */
+    @Insert(onConflict = OnConflictStrategy.IGNORE) suspend fun insertFrames(f: List<SentenceFrameEntity>)
+    @Query("UPDATE sentence_frames SET status = :status WHERE id = :id") suspend fun setFrameStatus(id: Long, status: String)
+
     // ---- Wipe / restore
     @Query("DELETE FROM scripts") suspend fun clearScripts()
     @Query("DELETE FROM script_revisions") suspend fun clearRevisions()
@@ -130,6 +139,7 @@ interface AppDao {
     @Query("DELETE FROM exam_status_events") suspend fun clearStatusEvents()
     @Query("DELETE FROM exam_training_sessions") suspend fun clearTrainingSessions()
     @Query("DELETE FROM word_lookups") suspend fun clearLookups()
+    @Query("DELETE FROM sentence_frames") suspend fun clearFrames()
 
     @Insert suspend fun insertScriptsRaw(s: List<ScriptEntity>)
     @Insert suspend fun insertAttempts(a: List<PracticeAttemptEntity>)
@@ -142,6 +152,6 @@ interface AppDao {
     suspend fun wipeAll() {
         clearScripts(); clearRevisions(); clearImports(); clearAttempts(); clearErrors(); clearChunks()
         clearDailyLogs(); clearMocks(); clearExams(); clearStories(); clearQuestions()
-        clearRegistrations(); clearStatusEvents(); clearTrainingSessions(); clearLookups()
+        clearRegistrations(); clearStatusEvents(); clearTrainingSessions(); clearLookups(); clearFrames()
     }
 }

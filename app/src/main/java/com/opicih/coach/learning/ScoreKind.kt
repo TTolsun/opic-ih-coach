@@ -19,7 +19,8 @@ enum class ScoreKind(val label: String) {
             PracticeMode.READ_LISTEN, PracticeMode.SHADOWING, PracticeMode.FILL_BLANK,
             PracticeMode.KEYWORD, PracticeMode.BLIND -> MEMORIZATION
             PracticeMode.RANDOM, PracticeMode.VARIATION, PracticeMode.FREE,
-            PracticeMode.MOCK, PracticeMode.SAIL_CONVERSATION -> SPEAKING
+            PracticeMode.MOCK, PracticeMode.SAIL_CONVERSATION,
+            PracticeMode.FRAME_ATTACH, PracticeMode.PARAGRAPH_LADDER -> SPEAKING
         }
 
         fun of(modeName: String?): ScoreKind = of(PracticeMode.of(modeName))

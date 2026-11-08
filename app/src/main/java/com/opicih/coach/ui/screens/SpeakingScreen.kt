@@ -74,6 +74,7 @@ import com.opicih.coach.data.db.PracticeMode
 import com.opicih.coach.data.db.QuestionType
 import com.opicih.coach.data.prefs.CaptureMode
 import com.opicih.coach.data.repo.AnalyzedAttempt
+import com.opicih.coach.learning.LadderLevel
 import com.opicih.coach.ui.components.Banner
 import com.opicih.coach.ui.components.Bullet
 import com.opicih.coach.ui.components.LevelBar
@@ -88,7 +89,7 @@ import com.opicih.coach.ui.components.GlossaryText
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
-fun SpeakingScreen(scriptId: Long?, mode: PracticeMode?) {
+fun SpeakingScreen(scriptId: Long?, mode: PracticeMode?, onOpenFrames: () -> Unit = {}) {
     val vm: SpeakingViewModel = viewModel()
     val ui by vm.ui.collectAsStateWithLifecycle()
     val context = LocalContext.current
@@ -152,7 +153,8 @@ fun SpeakingScreen(scriptId: Long?, mode: PracticeMode?) {
             } else {
                 Text(q.text, style = EnglishReading)
             }
-            q.mission?.let {
+            // 틀 붙이기와 문단 사다리는 아래 전용 카드에 같은 내용을 보여 주므로 미션 배너를 따로 띄우지 않습니다.
+            q.mission?.takeIf { ui.mode != PracticeMode.FRAME_ATTACH && ui.mode != PracticeMode.PARAGRAPH_LADDER }?.let {
                 Spacer(Modifier.height(8.dp))
                 Banner("미션: $it", tone = MaterialTheme.colorScheme.secondary)
             }
@@ -177,6 +179,7 @@ fun SpeakingScreen(scriptId: Long?, mode: PracticeMode?) {
 
         // Mode-specific support panel
         ModePanel(ui, vm)
+        PracticePanel(ui, onOpenFrames)
 
         // Mic area
         Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -212,6 +215,8 @@ fun SpeakingScreen(scriptId: Long?, mode: PracticeMode?) {
         }
 
         ui.error?.let { Banner(it, "닫기", tone = MaterialTheme.colorScheme.error) { vm.dismissError() } }
+
+        ui.check?.let { if (ui.result != null) CheckCard(it, vm) }
 
         ui.result?.let { ResultPanel(it, ui, vm, onRetry = { onMic() }) }
 
@@ -251,6 +256,44 @@ fun SpeakingScreen(scriptId: Long?, mode: PracticeMode?) {
 
 /** First listen plus one replay, as in the exam. */
 private const val EXAM_PLAYS = 2
+
+/** 틀 붙이기: 오늘 쓸 틀. 문단 사다리: 지금 단계와 조건. 다른 모드에서는 아무것도 그리지 않습니다. */
+@Composable
+private fun PracticePanel(ui: SpeakingUi, onOpenFrames: () -> Unit) {
+    val q = ui.question ?: return
+    when (ui.mode) {
+        PracticeMode.FRAME_ATTACH -> SectionCard(title = "이 틀로 답하기") {
+            if (q.frames.isEmpty()) Banner("승인한 문장 틀이 없습니다.", "틀 고르기") { onOpenFrames() }
+            q.frames.forEach { f ->
+                Text(f.pattern, style = EnglishReading)
+                Text(f.hintKo, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Spacer(Modifier.height(6.dp))
+            }
+        }
+        PracticeMode.PARAGRAPH_LADDER -> ui.ladder?.let { l ->
+            SectionCard(title = "${l.ordinal + 1} / ${LadderLevel.entries.size} 단계") { Text(l.missionKo) }
+        }
+        else -> Unit
+    }
+}
+
+/** 이 모드의 목표를 달성했는지(틀 사용, 사다리 단계)를 점수와 별개로 보여 줍니다. */
+@Composable
+private fun CheckCard(check: PracticeCheck, vm: SpeakingViewModel) {
+    if (check.frameUsage.isNotEmpty()) SectionCard(title = "틀 사용") {
+        check.frameUsage.forEach { (f, used) -> Bullet((if (used) "사용함 · " else "안 씀 · ") + f.pattern) }
+    }
+    check.ladder?.let { r ->
+        SectionCard(title = if (r.passed) "${r.level.label} 통과" else "${r.level.label} 아직 부족") {
+            r.missing.forEach { Bullet(it) }
+            if (r.passed) {
+                val next = r.level.next()
+                if (next != null) FilledTonalButton(onClick = { vm.ladderAdvance() }) { Text("${next.label}로 올리기") }
+                else FilledTonalButton(onClick = { vm.next() }) { Text("다른 질문") }
+            }
+        }
+    }
+}
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
