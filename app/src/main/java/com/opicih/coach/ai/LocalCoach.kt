@@ -21,7 +21,7 @@ class LocalCoach : AiCoach {
             ScriptVersions(
                 short = short,
                 keywords = keywords.ifEmpty { ScriptComparator.pickKeywords(input.original) },
-                reasonKo = "- 로컬 규칙으로 만든 Short/Keywords입니다 (AI 아님).\n- Natural/IH Target은 설정에서 AI를 켜면 생성할 수 있습니다.",
+                reasonKo = "- 로컬 규칙으로 만든 Short/Keywords입니다 (AI 아님).\n- Natural/Target은 설정에서 AI를 켜면 생성할 수 있습니다.",
             )
         )
     }

@@ -13,9 +13,9 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         ErrorPatternEntity::class, ChunkEntity::class, DailyLogEntity::class, MockTestEntity::class,
         ExamEntity::class, StoryEntity::class, QuestionEntity::class,
         ExamRegistrationEntity::class, ExamStatusEventEntity::class, ExamTrainingSessionEntity::class,
-        WordLookupEntity::class, ScriptSegmentEntity::class,
+        WordLookupEntity::class, SentenceFrameEntity::class, ScriptSegmentEntity::class,
     ],
-    version = 5,
+    version = 6,
     exportSchema = true,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -24,7 +24,7 @@ abstract class AppDatabase : RoomDatabase() {
     companion object {
         fun create(context: Context): AppDatabase =
             Room.databaseBuilder(context, AppDatabase::class.java, "opic_ih_coach.db")
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
                 .build()
 
         /** v2: exam debrief columns. Keeps all existing learning data. */
@@ -48,10 +48,17 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
-        /** v5: English-Korean script segments. Adds one table; every v4 row is kept. */
+        /** v5: sentence frames. Adds one table; every v4 row is kept. */
         val MIGRATION_4_5 = object : Migration(4, 5) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 MigrationSql.V4_TO_V5.forEach(db::execSQL)
+            }
+        }
+
+        /** v6: English-Korean script segments. Adds one table; every v5 row is kept. */
+        val MIGRATION_5_6 = object : Migration(5, 6) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                MigrationSql.V5_TO_V6.forEach(db::execSQL)
             }
         }
     }

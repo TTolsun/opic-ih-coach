@@ -39,9 +39,11 @@ object PracticeModes {
         ModeUi(PracticeMode.RANDOM, PracticeStage.RECALL, "바뀐 질문", "다르게 물어본 질문에 같은 내용으로 답하기"),
         ModeUi(PracticeMode.VARIATION, PracticeStage.APPLY, "응용 미션", "미션 조건(시제·질문)을 지켜 바꿔 말하기"),
         ModeUi(PracticeMode.FREE, PracticeStage.APPLY, "자유 발화", "처음 보는 질문에 바로 답하기"),
+        ModeUi(PracticeMode.FRAME_ATTACH, PracticeStage.APPLY, "틀 붙이기", "처음 보는 질문에 문장 틀을 써서 답하기"),
+        ModeUi(PracticeMode.PARAGRAPH_LADDER, PracticeStage.APPLY, "문단 사다리", "같은 질문에 1문장, 3문장, 5문장으로 늘려 답하기"),
     )
 
-    fun of(mode: PracticeMode): ModeUi = all.firstOrNull { it.mode == mode } ?: all.last()
+    fun of(mode: PracticeMode): ModeUi = all.firstOrNull { it.mode == mode } ?: all.first { it.mode == PracticeMode.FREE }
 }
 
 @Composable

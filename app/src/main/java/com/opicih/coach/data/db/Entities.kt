@@ -30,7 +30,7 @@ enum class QuestionType(val label: String) {
 }
 
 enum class ScriptVersion(val label: String) {
-    ORIGINAL("Original"), NATURAL("Natural"), IH_TARGET("IH Target"), SHORT("Short"), KEYWORDS("Keywords");
+    ORIGINAL("Original"), NATURAL("Natural"), IH_TARGET("Target"), SHORT("Short"), KEYWORDS("Keywords");
 
     companion object {
         fun of(name: String?): ScriptVersion = entries.firstOrNull { it.name == name } ?: ORIGINAL
@@ -140,7 +140,11 @@ enum class PracticeMode(val label: String, val usesScript: Boolean) {
     FREE("자유 발화", false),
     MOCK("모의시험", false),
     /** One turn of a SAIL practice conversation (v3). */
-    SAIL_CONVERSATION("SAIL 대화", false);
+    SAIL_CONVERSATION("SAIL 대화", false),
+    /** v5: answer a new question with 1-2 approved sentence frames. */
+    FRAME_ATTACH("틀 붙이기", false),
+    /** v5: answer the same new question in 1, then 3, then 5+ sentences. */
+    PARAGRAPH_LADDER("문단 사다리", false);
 
     /**
      * Whether the answer is scored against the script text. Variation asks the learner to change tense or reuse
@@ -233,6 +237,25 @@ data class WordLookupEntity(
     val lastAt: Long = System.currentTimeMillis(),
 )
 
+/**
+ * v5: a reusable sentence frame ("The thing I like most about ___ is ___ because ___."). Only [status] APPROVED frames
+ * are used in practice. [pattern] is unique so extracting again never duplicates a frame.
+ */
+@Entity(tableName = "sentence_frames", indices = [Index(value = ["pattern"], unique = true)])
+data class SentenceFrameEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val pattern: String,
+    val hintKo: String = "",
+    /** The learner's own sentence that used this frame, when it was found in a script. */
+    val example: String? = null,
+    val sourceScriptId: Long? = null,
+    /** BUILTIN or SCRIPT (see FrameOrigin). */
+    val origin: String = "BUILTIN",
+    /** PENDING, APPROVED or REJECTED (see FrameStatus). */
+    val status: String = "PENDING",
+    val createdAt: Long = System.currentTimeMillis(),
+)
+
 @Entity(tableName = "daily_logs")
 data class DailyLogEntity(
     @PrimaryKey val epochDay: Long,
@@ -294,7 +317,7 @@ data class QuestionEntity(
 enum class SegmentKind { QUESTION, FULL, PARAGRAPH, SENTENCE }
 
 /**
- * v5: 영어와 한국어를 조각 단위로 짝지은 데이터. 스크립트 듣기 플레이어가 "영어 → 그 조각의 한국어"를 읽는 데 쓴다.
+ * v6: 영어와 한국어를 조각 단위로 짝지은 데이터. 스크립트 듣기 플레이어가 "영어 → 그 조각의 한국어"를 읽는 데 쓴다.
  * 영어는 코드가 먼저 나누고 번역만 AI가 만들기 때문에 짝이 어긋나지 않는다.
  * [sourceHash]는 질문과 학습본 텍스트의 해시이며, 스크립트가 바뀌어 해시가 달라지면 이 행들은 낡은 것으로 보고 쓰지 않는다.
  */

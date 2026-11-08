@@ -114,7 +114,16 @@ interface AppDao {
     @Insert suspend fun insertLookups(l: List<WordLookupEntity>)
     @Query("SELECT COUNT(*) FROM chunks WHERE lower(phrase) IN (:phrases)") suspend fun chunkCount(phrases: List<String>): Int
 
-    // ---- Script segments (v5)
+    // ---- Sentence frames (v5)
+    /** All frames, pending first. REJECTED rows stay so a rejected frame is not suggested again; the screen can restore them. */
+    @Query("SELECT * FROM sentence_frames ORDER BY status DESC, id") fun framesFlow(): Flow<List<SentenceFrameEntity>>
+    @Query("SELECT * FROM sentence_frames ORDER BY id") suspend fun frames(): List<SentenceFrameEntity>
+    @Query("SELECT * FROM sentence_frames WHERE status = 'APPROVED' ORDER BY id") suspend fun approvedFrames(): List<SentenceFrameEntity>
+    /** IGNORE: the unique pattern index makes a repeated extraction a no-op for frames that already exist. */
+    @Insert(onConflict = OnConflictStrategy.IGNORE) suspend fun insertFrames(f: List<SentenceFrameEntity>)
+    @Query("UPDATE sentence_frames SET status = :status WHERE id = :id") suspend fun setFrameStatus(id: Long, status: String)
+
+    // ---- Script segments (v6)
     @Query("SELECT * FROM script_segments WHERE scriptId = :scriptId ORDER BY kind, idx") suspend fun segmentsFor(scriptId: Long): List<ScriptSegmentEntity>
     @Query("SELECT * FROM script_segments ORDER BY scriptId, kind, idx") suspend fun segments(): List<ScriptSegmentEntity>
     @Query("DELETE FROM script_segments WHERE scriptId = :scriptId") suspend fun deleteSegmentsFor(scriptId: Long)
@@ -136,6 +145,7 @@ interface AppDao {
     @Query("DELETE FROM exam_status_events") suspend fun clearStatusEvents()
     @Query("DELETE FROM exam_training_sessions") suspend fun clearTrainingSessions()
     @Query("DELETE FROM word_lookups") suspend fun clearLookups()
+    @Query("DELETE FROM sentence_frames") suspend fun clearFrames()
     @Query("DELETE FROM script_segments") suspend fun clearSegments()
 
     @Insert suspend fun insertScriptsRaw(s: List<ScriptEntity>)
@@ -149,6 +159,6 @@ interface AppDao {
     suspend fun wipeAll() {
         clearScripts(); clearRevisions(); clearImports(); clearAttempts(); clearErrors(); clearChunks()
         clearDailyLogs(); clearMocks(); clearExams(); clearStories(); clearQuestions()
-        clearRegistrations(); clearStatusEvents(); clearTrainingSessions(); clearLookups(); clearSegments()
+        clearRegistrations(); clearStatusEvents(); clearTrainingSessions(); clearLookups(); clearFrames(); clearSegments()
     }
 }

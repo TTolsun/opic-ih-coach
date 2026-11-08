@@ -70,6 +70,7 @@ import com.opicih.coach.data.db.RevisionStatus
 import com.opicih.coach.data.db.ScriptEntity
 import com.opicih.coach.data.db.ScriptVersion
 import com.opicih.coach.data.prefs.Settings
+import com.opicih.coach.learning.GradeTargets
 import com.opicih.coach.importer.ImportService
 import com.opicih.coach.importer.ParsedScript
 import com.opicih.coach.importer.QuestionClassifier
@@ -85,7 +86,7 @@ import kotlinx.coroutines.launch
 import java.time.LocalDate
 
 @Composable
-fun ScriptsScreen(onOpen: (Long) -> Unit, onNew: () -> Unit, onImport: () -> Unit, onListen: () -> Unit) {
+fun ScriptsScreen(onOpen: (Long) -> Unit, onNew: () -> Unit, onImport: () -> Unit, onFrames: () -> Unit, onListen: () -> Unit) {
     val c = LocalContainer.current
     // null = 아직 로딩 전. 빈 목록으로 먼저 그리면 복원된 스크롤 위치가 0으로 초기화된다.
     val loadedScripts by c.dao.scriptsFlow().collectAsState(initial = null)
@@ -104,6 +105,7 @@ fun ScriptsScreen(onOpen: (Long) -> Unit, onNew: () -> Unit, onImport: () -> Uni
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     FilledTonalButton(onClick = onImport) { Icon(Icons.Filled.FileOpen, null); Spacer(Modifier.width(6.dp)); Text("가져오기") }
                     OutlinedButton(onClick = onNew) { Icon(Icons.Filled.Edit, null); Spacer(Modifier.width(6.dp)); Text("직접 작성") }
+                    OutlinedButton(onClick = onFrames) { Text("문장 틀") }
                 }
                 if (scripts.isNotEmpty()) {
                     Spacer(Modifier.height(8.dp))
@@ -198,6 +200,10 @@ fun ScriptDetailScreen(id: Long, onPractice: (Long, PracticeMode) -> Unit, onEdi
                 )
             } else {
                 if (tab == ScriptVersion.KEYWORDS) Text(text, style = EnglishReading) else GlossaryText(text, s.id)
+                if (tab == ScriptVersion.IH_TARGET) {
+                    val words = text.trim().split(Regex("\\s+")).count { it.isNotEmpty() }
+                    Text(GradeTargets.fitLabel(words, settings.targetGrade), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     IconButton(onClick = { c.tts.speak(text, 0.95f) }) { Icon(Icons.AutoMirrored.Filled.VolumeUp, "듣기") }
                     TextButton(onClick = { c.tts.speak(text, 0.75f) }) { Text("0.75x") }

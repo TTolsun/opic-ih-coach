@@ -43,6 +43,7 @@ import com.opicih.coach.AppContainer
 import com.opicih.coach.data.db.PracticeMode
 import com.opicih.coach.ui.screens.CoachScreen
 import com.opicih.coach.ui.screens.ExamsScreen
+import com.opicih.coach.ui.screens.FramesScreen
 import com.opicih.coach.ui.screens.HomeScreen
 import com.opicih.coach.ui.screens.ListenScreen
 import com.opicih.coach.ui.screens.ImportScreen
@@ -164,7 +165,7 @@ fun AppNav(startRoute: String?, onRouteConsumed: () -> Unit) {
                 )
             }
             composable("scripts") {
-                ScriptsScreen(onOpen = { nav.navigate("script/$it") }, onNew = { nav.navigate("scriptEdit/0") }, onImport = { nav.navigate("import") }, onListen = { nav.navigate("listen") })
+                ScriptsScreen(onOpen = { nav.navigate("script/$it") }, onNew = { nav.navigate("scriptEdit/0") }, onImport = { nav.navigate("import") }, onFrames = { nav.navigate("frames") }, onListen = { nav.navigate("listen") })
             }
             composable(
                 "speaking?scriptId={scriptId}&mode={mode}",
@@ -175,8 +176,9 @@ fun AppNav(startRoute: String?, onRouteConsumed: () -> Unit) {
             ) { e ->
                 val id = e.arguments?.getLong("scriptId")?.takeIf { it > 0 }
                 val mode = e.arguments?.getString("mode")?.let { PracticeMode.of(it) }
-                SpeakingScreen(id, mode)
+                SpeakingScreen(id, mode, onOpenFrames = { nav.navigate("frames") })
             }
+            composable("frames") { FramesScreen() }
             composable("mock") { MockScreen() }
             composable("progress") { ProgressScreen(onNextExam = { nav.navigate("nextExam") }) }
             composable("script/{id}", arguments = listOf(navArgument("id") { type = NavType.LongType })) { e ->

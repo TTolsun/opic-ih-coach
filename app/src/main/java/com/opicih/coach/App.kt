@@ -68,6 +68,7 @@ class AppContainer(context: Context) {
     val scripts = ScriptRepository(dao)
     val segments = com.opicih.coach.data.repo.SegmentRepository(db)
     val glossary = com.opicih.coach.data.repo.GlossaryRepository(ctx, dao)
+    val frames = com.opicih.coach.data.repo.FrameRepository(dao)
     val practice = PracticeRepository(db)
     val importer = ImportService(ctx)
     val backup = BackupManager(ctx, db)
@@ -81,9 +82,9 @@ class AppContainer(context: Context) {
     fun realAi(s: Settings): AiCoach? {
         if (!s.aiEnabled || !s.aiTextConsent) return null
         val key = keys.get(ApiKeyStore.Provider.GEMINI) ?: return null
-        val cacheKey = key.takeLast(6) + s.geminiModel
+        val cacheKey = key.takeLast(6) + s.geminiModel + s.currentGrade.name + s.targetGrade.name
         cachedAi?.let { if (it.first == cacheKey) return it.second }
-        return GeminiAiCoach(key, s.geminiModel).also { cachedAi = cacheKey to it }
+        return GeminiAiCoach(key, s.geminiModel, s.profile).also { cachedAi = cacheKey to it }
     }
 
     fun coach(s: Settings): AiCoach = realAi(s) ?: localCoach

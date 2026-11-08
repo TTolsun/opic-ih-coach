@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 5,
-    "identityHash": "de3bf56921d518a9fb56743e42659da9",
+    "identityHash": "a79ac7e952ca476fc9a8236a8fc7bdfc",
     "entities": [
       {
         "tableName": "scripts",
@@ -1220,8 +1220,8 @@
         ]
       },
       {
-        "tableName": "script_segments",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `scriptId` INTEGER NOT NULL, `version` TEXT NOT NULL, `sourceHash` TEXT NOT NULL, `kind` TEXT NOT NULL, `idx` INTEGER NOT NULL, `en` TEXT NOT NULL, `ko` TEXT NOT NULL, `createdAt` INTEGER NOT NULL)",
+        "tableName": "sentence_frames",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `pattern` TEXT NOT NULL, `hintKo` TEXT NOT NULL, `example` TEXT, `sourceScriptId` INTEGER, `origin` TEXT NOT NULL, `status` TEXT NOT NULL, `createdAt` INTEGER NOT NULL)",
         "fields": [
           {
             "fieldPath": "id",
@@ -1230,44 +1230,36 @@
             "notNull": true
           },
           {
-            "fieldPath": "scriptId",
-            "columnName": "scriptId",
-            "affinity": "INTEGER",
-            "notNull": true
-          },
-          {
-            "fieldPath": "version",
-            "columnName": "version",
+            "fieldPath": "pattern",
+            "columnName": "pattern",
             "affinity": "TEXT",
             "notNull": true
           },
           {
-            "fieldPath": "sourceHash",
-            "columnName": "sourceHash",
+            "fieldPath": "hintKo",
+            "columnName": "hintKo",
             "affinity": "TEXT",
             "notNull": true
           },
           {
-            "fieldPath": "kind",
-            "columnName": "kind",
+            "fieldPath": "example",
+            "columnName": "example",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "sourceScriptId",
+            "columnName": "sourceScriptId",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "origin",
+            "columnName": "origin",
             "affinity": "TEXT",
             "notNull": true
           },
           {
-            "fieldPath": "idx",
-            "columnName": "idx",
-            "affinity": "INTEGER",
-            "notNull": true
-          },
-          {
-            "fieldPath": "en",
-            "columnName": "en",
-            "affinity": "TEXT",
-            "notNull": true
-          },
-          {
-            "fieldPath": "ko",
-            "columnName": "ko",
+            "fieldPath": "status",
+            "columnName": "status",
             "affinity": "TEXT",
             "notNull": true
           },
@@ -1286,20 +1278,20 @@
         },
         "indices": [
           {
-            "name": "index_script_segments_scriptId",
-            "unique": false,
+            "name": "index_sentence_frames_pattern",
+            "unique": true,
             "columnNames": [
-              "scriptId"
+              "pattern"
             ],
             "orders": [],
-            "createSql": "CREATE INDEX IF NOT EXISTS `index_script_segments_scriptId` ON `${TABLE_NAME}` (`scriptId`)"
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_sentence_frames_pattern` ON `${TABLE_NAME}` (`pattern`)"
           }
         ]
       }
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'de3bf56921d518a9fb56743e42659da9')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'a79ac7e952ca476fc9a8236a8fc7bdfc')"
     ]
   }
 }

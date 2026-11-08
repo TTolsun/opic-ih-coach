@@ -26,7 +26,8 @@ object SrsScheduler {
         PracticeMode.READ_LISTEN, PracticeMode.SHADOWING -> (coverage ?: 0f) >= 0.8f
         PracticeMode.FILL_BLANK, PracticeMode.KEYWORD -> (coverage ?: 0f) >= 0.6f
         PracticeMode.BLIND, PracticeMode.RANDOM -> (coverage ?: 0f) >= 0.6f
-        PracticeMode.VARIATION, PracticeMode.FREE, PracticeMode.MOCK, PracticeMode.SAIL_CONVERSATION -> score >= 60
+        PracticeMode.VARIATION, PracticeMode.FREE, PracticeMode.MOCK, PracticeMode.SAIL_CONVERSATION,
+        PracticeMode.FRAME_ATTACH, PracticeMode.PARAGRAPH_LADDER -> score >= 60
     }
 }
 
