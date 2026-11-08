@@ -75,10 +75,11 @@ object AlarmScheduler {
         return true
     }
 
-    fun cancel(context: Context) {
+    /** Cancels the daily alarm and, unless [includeSnooze] is false, a pending snooze or test alarm. */
+    fun cancel(context: Context, includeSnooze: Boolean = true) {
         val am = context.getSystemService(AlarmManager::class.java)
         am.cancel(firePending(context, REQ_MAIN))
-        am.cancel(firePending(context, REQ_SNOOZE))
+        if (includeSnooze) am.cancel(firePending(context, REQ_SNOOZE))
     }
 
     private fun scheduleAt(context: Context, at: Long, preferExact: Boolean, req: Int): Mode {

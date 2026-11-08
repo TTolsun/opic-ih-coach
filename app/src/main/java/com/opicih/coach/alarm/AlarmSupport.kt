@@ -4,6 +4,7 @@ import android.app.AlarmManager
 import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
+import android.util.Log
 import com.opicih.coach.data.prefs.Settings
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -37,16 +38,22 @@ object AlarmTrigger {
 
 /** Re-applies every settings-driven alarm. Used at app start, after reboot, and after a settings change. */
 object AlarmCoordinator {
-    /** Returns the morning alarm mode (OFF when disabled). One failing scheduler does not stop the others. */
+    /**
+     * Returns the morning alarm mode (OFF when disabled or when scheduling failed). One failing scheduler does not
+     * stop the others; failures are logged. A pending snooze or test alarm is left alone so a restart cannot drop it.
+     */
     fun applyAll(context: Context, s: Settings): AlarmScheduler.Mode {
-        val mode = runCatching {
+        val mode = logged("morning alarm") {
             if (s.alarmEnabled) AlarmScheduler.schedule(context, s.alarmHour, s.alarmMinute, s.useExactAlarm)
-            else { AlarmScheduler.cancel(context); AlarmScheduler.Mode.OFF }
-        }.getOrDefault(AlarmScheduler.Mode.OFF)
-        runCatching { ReminderWorker.ensure(context, s.eveningReminder) }
-        runCatching { StudyBlockScheduler.sync(context, s) }
+            else { AlarmScheduler.cancel(context, includeSnooze = false); AlarmScheduler.Mode.OFF }
+        } ?: AlarmScheduler.Mode.OFF
+        logged("evening reminder") { ReminderWorker.ensure(context, s.eveningReminder) }
+        logged("study blocks") { StudyBlockScheduler.sync(context, s) }
         return mode
     }
+
+    private inline fun <T> logged(what: String, block: () -> T): T? =
+        runCatching(block).onFailure { Log.w("AlarmCoordinator", "Could not schedule $what", it) }.getOrNull()
 }
 
 /** Runs [block] off the main thread and keeps the receiver alive until it finishes. */
