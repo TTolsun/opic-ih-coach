@@ -1,5 +1,6 @@
 package com.opicih.coach.ui.screens
 
+import com.opicih.coach.learning.lastExamDate
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -144,7 +145,7 @@ fun ProgressScreen(onNextExam: () -> Unit = {}) {
 
         SectionCard(title = "시험 결과와 재응시") {
             exams.forEach { e -> Bullet("${LocalDate.ofEpochDay(e.epochDay)} · ${e.resultGrade ?: "결과 대기"} ${e.note}") }
-            val last = lastExamDate(s, exams, LocalDate.now(), regs)
+            val last = lastExamDate(exams, LocalDate.now(), regs)
             Spacer(Modifier.height(6.dp))
             // OPIc's official rule, not the user-editable SAIL limit (s.retakeDays).
             val opic = ExamPolicy.opic()
