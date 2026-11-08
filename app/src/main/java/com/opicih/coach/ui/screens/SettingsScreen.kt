@@ -188,8 +188,29 @@ fun SettingsScreen(onExams: () -> Unit = {}) {
             }
             Text("TTS 속도 ${"%.2f".format(s.ttsRate)}", style = MaterialTheme.typography.labelLarge)
             Slider(s.ttsRate, { v -> save { it.copy(ttsRate = v) } }, valueRange = 0.6f..1.2f)
+            Text("TTS 음높이 ${"%.2f".format(s.ttsPitch)} (낮을수록 차분합니다)", style = MaterialTheme.typography.labelLarge)
+            Slider(s.ttsPitch, { v -> save { it.copy(ttsPitch = v) } }, valueRange = 0.6f..1.2f)
             val cap = remember { SpeechCapabilities.detect(context) }
             val tts by c.tts.state.collectAsState()
+            val voices = remember(tts) { c.tts.englishVoices() }
+            Text("영어 음성 선택", style = MaterialTheme.typography.labelLarge)
+            if (voices.isEmpty()) {
+                Text("선택할 수 있는 영어 음성이 없습니다. 기기의 TTS 설정에서 음성 데이터를 설치하세요.", style = MaterialTheme.typography.bodySmall)
+            } else {
+                @OptIn(ExperimentalLayoutApi::class)
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Pill("자동", s.ttsVoice.isBlank()) { save { it.copy(ttsVoice = "") } }
+                    voices.forEachIndexed { i, v ->
+                        val label = "${i + 1}. ${v.locale.displayCountry.ifBlank { v.locale.country }} ${if (v.isNetworkConnectionRequired) "온라인" else "오프라인"}"
+                        Pill(label, s.ttsVoice == v.name) {
+                            save { it.copy(ttsVoice = v.name) }
+                            c.tts.configure(v.name, s.ttsPitch)
+                            c.tts.speak("Hello. Let's begin the interview. Please answer calmly and clearly.", s.ttsRate)
+                        }
+                    }
+                }
+                Text("음성을 누르면 바로 들어볼 수 있습니다.", style = MaterialTheme.typography.labelSmall)
+            }
             Text("음성 진단", style = MaterialTheme.typography.labelLarge)
             Text("음성 인식: ${if (cap.recognitionAvailable) "사용 가능" else "없음"} · 온디바이스: ${when (cap.onDeviceAvailable) { true -> "가능"; false -> "불가"; null -> "확인 불가(Android 12 미만)" }}", style = MaterialTheme.typography.bodySmall)
             Text("인식 서비스: ${cap.recognizerPackages.joinToString().ifBlank { "-" }}", style = MaterialTheme.typography.bodySmall)
