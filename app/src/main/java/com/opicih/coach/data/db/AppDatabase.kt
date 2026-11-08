@@ -13,9 +13,9 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         ErrorPatternEntity::class, ChunkEntity::class, DailyLogEntity::class, MockTestEntity::class,
         ExamEntity::class, StoryEntity::class, QuestionEntity::class,
         ExamRegistrationEntity::class, ExamStatusEventEntity::class, ExamTrainingSessionEntity::class,
-        WordLookupEntity::class,
+        WordLookupEntity::class, SentenceFrameEntity::class,
     ],
-    version = 4,
+    version = 5,
     exportSchema = true,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -24,7 +24,7 @@ abstract class AppDatabase : RoomDatabase() {
     companion object {
         fun create(context: Context): AppDatabase =
             Room.databaseBuilder(context, AppDatabase::class.java, "opic_ih_coach.db")
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
                 .build()
 
         /** v2: exam debrief columns. Keeps all existing learning data. */
@@ -45,6 +45,13 @@ abstract class AppDatabase : RoomDatabase() {
         val MIGRATION_3_4 = object : Migration(3, 4) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 MigrationSql.V3_TO_V4.forEach(db::execSQL)
+            }
+        }
+
+        /** v5: sentence frames. Adds one table; every v4 row is kept. */
+        val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                MigrationSql.V4_TO_V5.forEach(db::execSQL)
             }
         }
     }

@@ -85,7 +85,7 @@ import kotlinx.coroutines.launch
 import java.time.LocalDate
 
 @Composable
-fun ScriptsScreen(onOpen: (Long) -> Unit, onNew: () -> Unit, onImport: () -> Unit) {
+fun ScriptsScreen(onOpen: (Long) -> Unit, onNew: () -> Unit, onImport: () -> Unit, onFrames: () -> Unit) {
     val c = LocalContainer.current
     // null = 아직 로딩 전. 빈 목록으로 먼저 그리면 복원된 스크롤 위치가 0으로 초기화된다.
     val loadedScripts by c.dao.scriptsFlow().collectAsState(initial = null)
@@ -104,6 +104,7 @@ fun ScriptsScreen(onOpen: (Long) -> Unit, onNew: () -> Unit, onImport: () -> Uni
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     FilledTonalButton(onClick = onImport) { Icon(Icons.Filled.FileOpen, null); Spacer(Modifier.width(6.dp)); Text("가져오기") }
                     OutlinedButton(onClick = onNew) { Icon(Icons.Filled.Edit, null); Spacer(Modifier.width(6.dp)); Text("직접 작성") }
+                    OutlinedButton(onClick = onFrames) { Text("문장 틀") }
                 }
                 if (scripts.isEmpty()) {
                     Spacer(Modifier.height(16.dp))

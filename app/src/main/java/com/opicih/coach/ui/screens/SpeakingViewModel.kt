@@ -13,6 +13,10 @@ import com.opicih.coach.data.db.ScriptEntity
 import com.opicih.coach.data.prefs.CaptureMode
 import com.opicih.coach.data.repo.AnalyzedAttempt
 import com.opicih.coach.data.repo.PracticeRepository
+import com.opicih.coach.learning.FrameMatcher
+import com.opicih.coach.learning.LadderLevel
+import com.opicih.coach.learning.LadderResult
+import com.opicih.coach.learning.ParagraphLadder
 import com.opicih.coach.speech.AnswerCapture
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -32,6 +36,17 @@ data class QuestionItem(
     val script: ScriptEntity? = null,
     val mission: String? = null,
     val requiredTense: String? = null,
+    /** FRAME_ATTACH: the approved frames the learner should use in this answer. */
+    val frames: List<FrameChip> = emptyList(),
+)
+
+/** A frame shown on the speaking screen. */
+data class FrameChip(val pattern: String, val hintKo: String)
+
+/** How an answer did against the mode's own goal (frame use, ladder level). Shown under the result card. */
+data class PracticeCheck(
+    val frameUsage: List<Pair<FrameChip, Boolean>> = emptyList(),
+    val ladder: LadderResult? = null,
 )
 
 enum class Phase { IDLE, RECORDING, PROCESSING, RESULT }
@@ -50,6 +65,9 @@ data class SpeakingUi(
     val shadowIndex: Int = 0,
     val captureMode: CaptureMode = CaptureMode.LIVE_STT,
     val replays: Int = 0,
+    /** PARAGRAPH_LADDER: the level the learner is trying now. Null in every other mode. */
+    val ladder: LadderLevel? = null,
+    val check: PracticeCheck? = null,
 )
 
 class SpeakingViewModel(app: Application) : AndroidViewModel(app) {
@@ -92,13 +110,13 @@ class SpeakingViewModel(app: Application) : AndroidViewModel(app) {
 
     fun setMode(m: PracticeMode) {
         if (_ui.value.phase == Phase.RECORDING) return
-        _ui.update { it.copy(mode = m, result = null, phase = Phase.IDLE, shadowIndex = 0, error = null) }
+        _ui.update { it.copy(mode = m, result = null, phase = Phase.IDLE, shadowIndex = 0, error = null, ladder = null, check = null) }
         val s = _ui.value.question?.script
         if (m.usesScript && s != null) setScript(s) else next()
     }
 
     fun setScript(s: ScriptEntity) {
-        _ui.update { it.copy(question = questionFor(s, it.mode), result = null, phase = Phase.IDLE, shadowIndex = 0, error = null, replays = 0, showTypedFallback = false) }
+        _ui.update { it.copy(question = questionFor(s, it.mode), result = null, phase = Phase.IDLE, shadowIndex = 0, error = null, replays = 0, showTypedFallback = false, ladder = null, check = null) }
     }
 
     /** Next question: due scripts first for script modes, Survey/focus topics first for free speaking. */
@@ -117,13 +135,60 @@ class SpeakingViewModel(app: Application) : AndroidViewModel(app) {
                 pick?.let { questionFor(it, mode) }
             } else {
                 val preferred = st.focusTopics + st.surveyTopics
-                val pool = bank.filter { b -> preferred.any { p -> b.topic.contains(p.substringBefore(" "), true) } }.ifEmpty { bank }
+                val all = bank.filter { b -> preferred.any { p -> b.topic.contains(p.substringBefore(" "), true) } }.ifEmpty { bank }
+                // The ladder needs a question that invites a past story; fall back to any question if none matches.
+                val pool = if (mode == PracticeMode.PARAGRAPH_LADDER) all.filter { it.type == QuestionType.PAST_EXPERIENCE.name }.ifEmpty { all } else all
                 pool.filter { it.text != current?.text }.randomOrNull()?.let {
-                    QuestionItem(it.topic, it.text, it.type, if (it.source == "USER_LIST") "내 기출 정리 자료(비공식)" else "AI 생성 연습 문제")
+                    val label = if (it.source == "USER_LIST") "내 기출 정리 자료(비공식)" else "AI 생성 연습 문제"
+                    when (mode) {
+                        PracticeMode.FRAME_ATTACH -> frameQuestion(it, label)
+                        PracticeMode.PARAGRAPH_LADDER -> QuestionItem(it.topic, it.text, it.type, label, mission = LadderLevel.ONE.missionKo)
+                        else -> QuestionItem(it.topic, it.text, it.type, label)
+                    }
                 }
             }
-            _ui.update { it.copy(question = q, result = null, phase = Phase.IDLE, shadowIndex = 0, error = null, replays = 0, showTypedFallback = false) }
+            val ladder = if (mode == PracticeMode.PARAGRAPH_LADDER && q != null) LadderLevel.ONE else null
+            _ui.update { it.copy(question = q, result = null, phase = Phase.IDLE, shadowIndex = 0, error = null, replays = 0, showTypedFallback = false, ladder = ladder, check = null) }
         }
+    }
+
+    /** A new question plus one or two approved frames to use in the answer (none when the learner has approved none). */
+    private suspend fun frameQuestion(b: QuestionEntity, label: String): QuestionItem {
+        val chips = pickFrames()
+        return QuestionItem(b.topic, b.text, b.type, label, mission = frameMission(chips), frames = chips)
+    }
+
+    private suspend fun pickFrames(): List<FrameChip> =
+        c.frames.approved().shuffled().take(FRAMES_PER_QUESTION).map { FrameChip(it.pattern, it.hintKo) }
+
+    private fun frameMission(chips: List<FrameChip>): String? =
+        chips.takeIf { it.isNotEmpty() }?.joinToString(" / ") { it.pattern }?.let { "문장 틀을 써서 답하세요: $it" }
+
+    /**
+     * The frames screen can approve frames while this question is open. When the current question was built with none,
+     * pick them now instead of making the learner skip the question to see them.
+     */
+    fun refreshFrames() {
+        val u = _ui.value
+        val q = u.question ?: return
+        if (u.mode != PracticeMode.FRAME_ATTACH || q.frames.isNotEmpty() || u.phase == Phase.RECORDING || u.phase == Phase.PROCESSING) return
+        viewModelScope.launch {
+            val chips = pickFrames()
+            if (chips.isEmpty()) return@launch
+            _ui.update { cur ->
+                val now = cur.question
+                if (now == null || now.text != q.text || now.frames.isNotEmpty()) cur
+                else cur.copy(question = now.copy(frames = chips, mission = frameMission(chips)))
+            }
+        }
+    }
+
+    /** Ladder: keep the same question and try the next level after passing one. */
+    fun ladderAdvance() {
+        val u = _ui.value
+        val next = u.ladder?.next() ?: return
+        if (u.phase == Phase.RECORDING) return
+        _ui.update { it.copy(ladder = next, question = it.question?.copy(mission = next.missionKo), result = null, check = null, phase = Phase.IDLE, error = null, replays = 0, showTypedFallback = false) }
     }
 
     private fun questionFor(s: ScriptEntity, mode: PracticeMode): QuestionItem {
@@ -244,10 +309,20 @@ class SpeakingViewModel(app: Application) : AndroidViewModel(app) {
             )
         }
         res.onSuccess { a ->
-            _ui.update { it.copy(phase = Phase.RESULT, result = a, error = listOfNotNull(warning, a.aiError?.let { e -> "AI 분석 실패: $e (로컬 분석으로 표시)" }).joinToString("\n").ifBlank { null }) }
+            val check = checkFor(u, q, transcript, a)
+            _ui.update { it.copy(phase = Phase.RESULT, result = a, check = check, error = listOfNotNull(warning, a.aiError?.let { e -> "AI 분석 실패: $e (로컬 분석으로 표시)" }).joinToString("\n").ifBlank { null }) }
         }.onFailure { e ->
             _ui.update { it.copy(phase = Phase.IDLE, error = "분석 중 오류: ${e.message}") }
         }
+    }
+
+    /** The mode's own goal: which frames were used, and whether the ladder level was reached. Null for other modes. */
+    private fun checkFor(u: SpeakingUi, q: QuestionItem, transcript: String, a: AnalyzedAttempt): PracticeCheck? = when {
+        u.mode == PracticeMode.FRAME_ATTACH && q.frames.isNotEmpty() ->
+            PracticeCheck(frameUsage = q.frames.map { it to FrameMatcher.used(it.pattern, transcript) })
+        u.mode == PracticeMode.PARAGRAPH_LADDER && u.ladder != null ->
+            PracticeCheck(ladder = ParagraphLadder.judge(u.ladder, a.metrics.discourse, SENTENCE_PUNCTUATION.containsMatchIn(transcript)))
+        else -> null
     }
 
     fun playRecording(speed: Float) {
@@ -267,5 +342,9 @@ class SpeakingViewModel(app: Application) : AndroidViewModel(app) {
         c.tts.stop(); c.player.stop()
     }
 
-    companion object { const val MAX_ANSWER_MS = 180_000L }
+    companion object {
+        const val MAX_ANSWER_MS = 180_000L
+        const val FRAMES_PER_QUESTION = 2
+        private val SENTENCE_PUNCTUATION = Regex("[.!?]")
+    }
 }

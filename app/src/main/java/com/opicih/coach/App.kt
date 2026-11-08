@@ -41,6 +41,7 @@ class AppContainer(context: Context) {
     val player = AudioPlayer()
     val scripts = ScriptRepository(dao)
     val glossary = com.opicih.coach.data.repo.GlossaryRepository(ctx, dao)
+    val frames = com.opicih.coach.data.repo.FrameRepository(dao)
     val practice = PracticeRepository(db)
     val importer = ImportService(ctx)
     val backup = BackupManager(ctx, db)

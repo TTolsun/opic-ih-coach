@@ -140,7 +140,11 @@ enum class PracticeMode(val label: String, val usesScript: Boolean) {
     FREE("자유 발화", false),
     MOCK("모의시험", false),
     /** One turn of a SAIL practice conversation (v3). */
-    SAIL_CONVERSATION("SAIL 대화", false);
+    SAIL_CONVERSATION("SAIL 대화", false),
+    /** v5: answer a new question with 1-2 approved sentence frames. */
+    FRAME_ATTACH("틀 붙이기", false),
+    /** v5: answer the same new question in 1, then 3, then 5+ sentences. */
+    PARAGRAPH_LADDER("문단 사다리", false);
 
     /**
      * Whether the answer is scored against the script text. Variation asks the learner to change tense or reuse
@@ -231,6 +235,25 @@ data class WordLookupEntity(
     val count: Int = 1,
     val firstAt: Long = System.currentTimeMillis(),
     val lastAt: Long = System.currentTimeMillis(),
+)
+
+/**
+ * v5: a reusable sentence frame ("The thing I like most about ___ is ___ because ___."). Only [status] APPROVED frames
+ * are used in practice. [pattern] is unique so extracting again never duplicates a frame.
+ */
+@Entity(tableName = "sentence_frames", indices = [Index(value = ["pattern"], unique = true)])
+data class SentenceFrameEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val pattern: String,
+    val hintKo: String = "",
+    /** The learner's own sentence that used this frame, when it was found in a script. */
+    val example: String? = null,
+    val sourceScriptId: Long? = null,
+    /** BUILTIN or SCRIPT (see FrameOrigin). */
+    val origin: String = "BUILTIN",
+    /** PENDING, APPROVED or REJECTED (see FrameStatus). */
+    val status: String = "PENDING",
+    val createdAt: Long = System.currentTimeMillis(),
 )
 
 @Entity(tableName = "daily_logs")
