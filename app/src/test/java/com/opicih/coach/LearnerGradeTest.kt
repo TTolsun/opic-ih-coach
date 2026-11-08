@@ -54,6 +54,13 @@ class LearnerGradeTest {
         }
     }
 
+    @Test fun evalPromptSizesBetterAnswerForTheTargetGrade() {
+        val eval = Prompts.evalSystem(im1ToIm3)
+        assertTrue(eval.contains("70-110 words"))
+        assertFalse(eval.contains("100-150"))
+        assertTrue(eval.contains("currently at IM1"))
+    }
+
     @Test fun defaultProfileIsIm1WithIm2Target() {
         assertEquals(LearnerGrade.IM1, LearnerProfile.DEFAULT.current)
         assertEquals(LearnerGrade.IM2, LearnerProfile.DEFAULT.target)

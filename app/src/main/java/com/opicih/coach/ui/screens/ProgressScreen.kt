@@ -94,7 +94,7 @@ fun ProgressScreen(onNextExam: () -> Unit = {}) {
         SectionCard(title = "최근 답변 추세 (최대 12회)") {
             // 암기 점수는 외울수록 오르므로, 추세는 즉석에서 말한 답변의 말하기 점수만 보여 줍니다.
             val recent = withText.filter { it.mode in ScoreKind.SPEAKING_MODES }.take(12).reversed()
-            if (recent.isEmpty()) Text("말하기 점수 기록이 아직 없습니다. 자유 발화나 모의시험으로 답해 보세요.", style = MaterialTheme.typography.bodyMedium)
+            if (recent.isEmpty()) Text("말하기 점수 기록이 아직 없습니다.", style = MaterialTheme.typography.bodyMedium)
             else {
                 Text(ScoreKind.SPEAKING.label, style = MaterialTheme.typography.labelMedium)
                 BarChart(recent.map { it.score.toFloat() }, MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.surfaceContainerHighest, max = 100f)

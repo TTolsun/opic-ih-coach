@@ -67,7 +67,7 @@ class EvalPromptMissionTest {
         val p = com.opicih.coach.ai.Prompts.evalUser(input("같은 이야기를 미래 계획으로 바꿔 말하세요."))
         org.junit.Assert.assertTrue(p.contains("Practice mission"))
         org.junit.Assert.assertTrue(p.contains("미래 계획으로 바꿔 말하세요"))
-        org.junit.Assert.assertTrue(com.opicih.coach.ai.Prompts.EVAL_SYSTEM.contains("practice mission"))
+        org.junit.Assert.assertTrue(com.opicih.coach.ai.Prompts.evalSystem(com.opicih.coach.data.prefs.LearnerProfile.DEFAULT).contains("practice mission"))
     }
 
     @Test fun noMissionLineForOrdinaryAnswers() {

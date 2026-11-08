@@ -179,7 +179,9 @@ class PracticeRepository(private val db: AppDatabase) {
         var feedback = local
         var aiError: String? = null
         if (ai != null && ai.isRealAi && discourse.wordCount >= 5) {
-            ai.evaluate(EvalInput(req.question, req.questionType, req.transcript, discourse, req.pauses, target, req.transcriptFromDeviceStt, req.mission))
+            // 말하기 점수 모드에는 스크립트를 넘기지 않습니다. 넘기면 AI가 원문과 비슷한 답변에 높은 점수를 줄 수 있습니다.
+            val aiTarget = target.takeIf { ScoreKind.of(req.mode) == ScoreKind.MEMORIZATION }
+            ai.evaluate(EvalInput(req.question, req.questionType, req.transcript, discourse, req.pauses, aiTarget, req.transcriptFromDeviceStt, req.mission))
                 .onSuccess { fb -> feedback = fb.copy(limits = local.limits, errors = fb.errors + local.errors) }
                 .onFailure { aiError = it.message }
         }

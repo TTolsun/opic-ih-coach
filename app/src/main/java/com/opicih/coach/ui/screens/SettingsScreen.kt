@@ -157,10 +157,6 @@ fun SettingsScreen(onExams: () -> Unit = {}) {
             FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 TARGET_GRADE_CHOICES.forEach { g -> Pill(g.code, g == s.targetGrade) { save { it.copy(targetGrade = g) } } }
             }
-            Text(
-                "최종 목표는 IH입니다. AI 개선안의 길이, 코치 조언, 준비도 기준은 현재 등급과 다음 목표를 기준으로 맞춥니다.",
-                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
         }
 
         SectionCard(title = "Background Survey 주제", collapsible = true, initiallyExpanded = false) {

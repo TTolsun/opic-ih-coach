@@ -30,7 +30,7 @@ enum class QuestionType(val label: String) {
 }
 
 enum class ScriptVersion(val label: String) {
-    ORIGINAL("Original"), NATURAL("Natural"), IH_TARGET("IH Target"), SHORT("Short"), KEYWORDS("Keywords");
+    ORIGINAL("Original"), NATURAL("Natural"), IH_TARGET("Target"), SHORT("Short"), KEYWORDS("Keywords");
 
     companion object {
         fun of(name: String?): ScriptVersion = entries.firstOrNull { it.name == name } ?: ORIGINAL
