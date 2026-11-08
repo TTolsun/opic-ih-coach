@@ -43,6 +43,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.ui.Alignment
 import com.opicih.coach.data.prefs.Settings
 import com.opicih.coach.learning.ProgressCalculator
+import com.opicih.coach.learning.ScoreKind
 import com.opicih.coach.learning.ExamPolicy
 import com.opicih.coach.ui.LocalContainer
 import com.opicih.coach.ui.components.Banner
@@ -91,10 +92,11 @@ fun ProgressScreen(onNextExam: () -> Unit = {}) {
         }
 
         SectionCard(title = "최근 답변 추세 (최대 12회)") {
-            val recent = withText.take(12).reversed()
-            if (recent.isEmpty()) Text("아직 기록이 없습니다.", style = MaterialTheme.typography.bodyMedium)
+            // 암기 점수는 외울수록 오르므로, 추세는 즉석에서 말한 답변의 말하기 점수만 보여 줍니다.
+            val recent = withText.filter { it.mode in ScoreKind.SPEAKING_MODES }.take(12).reversed()
+            if (recent.isEmpty()) Text("말하기 점수 기록이 아직 없습니다.", style = MaterialTheme.typography.bodyMedium)
             else {
-                Text("점수", style = MaterialTheme.typography.labelMedium)
+                Text(ScoreKind.SPEAKING.label, style = MaterialTheme.typography.labelMedium)
                 BarChart(recent.map { it.score.toFloat() }, MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.surfaceContainerHighest, max = 100f)
                 Spacer(Modifier.height(8.dp))
                 Text("2초 이상 무음 (회)", style = MaterialTheme.typography.labelMedium)
@@ -135,7 +137,7 @@ fun ProgressScreen(onNextExam: () -> Unit = {}) {
                         val t = java.time.Instant.ofEpochMilli(a.createdAt).atZone(java.time.ZoneId.systemDefault())
                         Text("%d/%d %02d:%02d · %s · %s".format(t.monthValue, t.dayOfMonth, t.hour, t.minute, PracticeMode.of(a.mode).label, a.topic),
                             style = MaterialTheme.typography.bodySmall)
-                        Text(if (a.transcript.isBlank()) "전사 없음 · ${a.speechMs / 1000}초" else "${a.wordCount}단어 · ${a.score}점 · ${a.transcript.take(40)}",
+                        Text(if (a.transcript.isBlank()) "전사 없음 · ${a.speechMs / 1000}초" else "${a.wordCount}단어 · ${ScoreKind.of(a.mode).label} ${a.score}점 · ${a.transcript.take(40)}",
                             style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
                     }
                     IconButton(onClick = { toDelete = a }) { Icon(Icons.Filled.Delete, "기록 삭제") }

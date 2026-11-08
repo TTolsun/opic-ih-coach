@@ -1,5 +1,6 @@
 package com.opicih.coach.learning
 
+import com.opicih.coach.data.prefs.LearnerGrade
 import java.time.LocalDate
 import java.time.temporal.ChronoUnit
 
@@ -28,13 +29,15 @@ object RetestAdvisor {
         val registerLeadDays: Int = 7,
         /** Spend a waiver on the next sitting: allowed from the day after the last exam. */
         val useWaiver: Boolean = false,
+        /** Readiness thresholds for the next exam's target grade. Default keeps the original IH values. */
+        val criteria: ReadinessCriteria = ReadinessCriteria.of(LearnerGrade.IH),
     )
 
     data class Readiness(
         /** Days since the last exam with >= 10 minutes of real speaking. */
         val practiceDays: Int,
         val speakingMinutes: Int,
-        /** Average words of recent no-script answers (free / blind / mock). */
+        /** Average words of recent 말하기 점수 answers (free / variation / mock / SAIL; never script-recall modes). */
         val avgWords: Int,
         /** Average long (2 s+) pauses per recent answer; null when not measured. */
         val avgLongPauses: Float?,
@@ -71,24 +74,28 @@ object RetestAdvisor {
         val cautions: List<String>,
     )
 
-    fun gates(r: Readiness): List<Gate> = listOf(
+    /**
+     * 준비도 조건. 길이·점수·모의시험 기준은 다음 시험 목표 등급([ReadinessCriteria])에 따라 달라지며,
+     * 점수와 길이는 말하기 점수(즉석 답변) 기록만 근거로 합니다.
+     */
+    fun gates(r: Readiness, c: ReadinessCriteria = ReadinessCriteria.of(LearnerGrade.IH)): List<Gate> = listOf(
         Gate("volume", "연습량", r.practiceDays >= 10 || r.speakingMinutes >= 150,
             "${r.practiceDays}일 · ${r.speakingMinutes}분", "10일 이상 또는 150분", ((10 - r.practiceDays).coerceAtLeast(0)).coerceAtMost(10)),
-        Gate("length", "자유 발화 길이", r.recentAnswers >= 3 && r.avgWords >= 90,
-            if (r.recentAnswers == 0) "기록 없음" else "평균 ${r.avgWords}단어", "평균 90단어 이상", if (r.avgWords >= 90) 0 else 7),
+        Gate("length", "자유 발화 길이", r.recentAnswers >= 3 && r.avgWords >= c.minWords,
+            if (r.recentAnswers == 0) "기록 없음" else "평균 ${r.avgWords}단어", "평균 ${c.minWords}단어 이상", if (r.avgWords >= c.minWords) 0 else 7),
         Gate("fluency", "긴 무음", r.avgLongPauses != null && r.avgLongPauses <= 1f,
             r.avgLongPauses?.let { "답변당 %.1f회".format(it) } ?: "측정 기록 없음", "답변당 1회 이하", 5),
-        Gate("score", "학습용 점수", r.recentAnswers >= 3 && r.avgScore >= 65,
-            if (r.recentAnswers == 0) "기록 없음" else "평균 ${r.avgScore}점", "평균 65점 이상", if (r.avgScore >= 65) 0 else 7),
-        Gate("mock", "모의시험", r.mocksSinceExam >= 1 && r.bestMockScore >= 60,
-            if (r.mocksSinceExam == 0) "없음" else "${r.mocksSinceExam}회 · 최고 ${r.bestMockScore}점", "1회 이상, 60점 이상", 3),
+        Gate("score", "말하기 점수", r.recentAnswers >= 3 && r.avgScore >= c.minScore,
+            if (r.recentAnswers == 0) "기록 없음" else "평균 ${r.avgScore}점", "평균 ${c.minScore}점 이상", if (r.avgScore >= c.minScore) 0 else 7),
+        Gate("mock", "모의시험", r.mocksSinceExam >= 1 && r.bestMockScore >= c.minMockScore,
+            if (r.mocksSinceExam == 0) "없음" else "${r.mocksSinceExam}회 · 최고 ${r.bestMockScore}점", "1회 이상, ${c.minMockScore}점 이상", 3),
     )
 
     fun advise(today: LocalDate, lastExam: LocalDate, rules: Rules, readiness: Readiness): Advice {
         // Official counting excludes the exam day: 6/1 exam -> 6/2..6/26 blocked -> 6/27 (D+26) first day.
         val earliest = if (rules.useWaiver) rules.policy.earliestWithWaiver(lastExam) else rules.policy.earliestWithoutWaiver(lastExam)
         val latestUseful = rules.deadline?.minusDays(rules.resultLagDays.toLong())
-        val gates = gates(readiness)
+        val gates = gates(readiness, rules.criteria)
         val cautions = mutableListOf<String>()
         if (rules.policy.verification == Verification.UNVERIFIED) cautions += "재응시 제한 ${rules.policy.blockedDays}일은 확인되지 않은 값입니다. 사내 공지나 접수 사이트에서 확인한 뒤 설정에서 '확인함'으로 바꾸세요."
         if (rules.useWaiver) cautions += "Waiver를 쓴다고 가정했습니다. 접수할 때 Waiver가 실제로 적용되는지 확인하세요."

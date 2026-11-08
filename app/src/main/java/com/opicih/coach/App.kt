@@ -54,9 +54,9 @@ class AppContainer(context: Context) {
     fun realAi(s: Settings): AiCoach? {
         if (!s.aiEnabled || !s.aiTextConsent) return null
         val key = keys.get(ApiKeyStore.Provider.GEMINI) ?: return null
-        val cacheKey = key.takeLast(6) + s.geminiModel
+        val cacheKey = key.takeLast(6) + s.geminiModel + s.currentGrade.name + s.targetGrade.name
         cachedAi?.let { if (it.first == cacheKey) return it.second }
-        return GeminiAiCoach(key, s.geminiModel).also { cachedAi = cacheKey to it }
+        return GeminiAiCoach(key, s.geminiModel, s.profile).also { cachedAi = cacheKey to it }
     }
 
     fun coach(s: Settings): AiCoach = realAi(s) ?: localCoach

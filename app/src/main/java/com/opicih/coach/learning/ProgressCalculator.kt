@@ -27,12 +27,13 @@ object ProgressCalculator {
     }
 
     /**
-     * Learning-only "IH 준비도" 0..100. Weighted: script mastery 30%, recent free/variation/mock speaking 50%,
+     * Learning-only "IH 준비도" 0..100. Weighted: script mastery 30%, recent 말하기 점수 attempts 50%,
      * activity breadth 20%. This is NOT a grade prediction.
+     * 암기 점수 모드(Blind 포함)는 말하기 항목에 섞지 않습니다. 암송 결과가 즉석 말하기 실력처럼 보이면 안 되기 때문입니다.
      */
     fun ihReadiness(scripts: List<ScriptEntity>, attempts: List<PracticeAttemptEntity>): Int {
         val mastery = if (scripts.isEmpty()) 0f else scripts.map { it.masteryScore }.average().toFloat()
-        val free = attempts.filter { it.mode in setOf("FREE", "VARIATION", "MOCK", "BLIND", "RANDOM") }.take(10)
+        val free = attempts.filter { it.mode in ScoreKind.SPEAKING_MODES }.take(10)
         val freeScore = if (free.isEmpty()) 0f else free.map { it.score }.average().toFloat()
         val topics = attempts.map { it.topic }.toSet().size
         val breadth = (topics / 8f).coerceAtMost(1f) * 100f
@@ -56,7 +57,7 @@ object ProgressCalculator {
 
     fun freeSpeakingRatio(attempts: List<PracticeAttemptEntity>): Float {
         if (attempts.isEmpty()) return 0f
-        return attempts.count { it.mode in setOf("FREE", "VARIATION", "MOCK", "BLIND", "RANDOM") }.toFloat() / attempts.size
+        return attempts.count { it.mode in ScoreKind.SPEAKING_MODES }.toFloat() / attempts.size
     }
 
     fun weeklyGoalRate(logs: List<DailyLogEntity>, todayEpochDay: Long, goalMinutes: Int): Float {
@@ -75,7 +76,7 @@ object ProgressCalculator {
     /** Readiness signals since [sinceEpochMs] (normally the last exam), for RetestAdvisor. */
     fun readiness(attempts: List<PracticeAttemptEntity>, logs: List<DailyLogEntity>, sinceEpochDay: Long, sinceEpochMs: Long): RetestAdvisor.Readiness {
         val after = attempts.filter { it.createdAt >= sinceEpochMs }
-        val noScript = after.filter { it.mode in setOf("FREE", "BLIND", "RANDOM", "VARIATION", "MOCK") && it.wordCount > 0 }.take(15)
+        val noScript = after.filter { it.mode in ScoreKind.SPEAKING_MODES && it.wordCount > 0 }.take(15)
         val withPauses = noScript.filter { it.captureMode != "TYPED" }
         val mocks = after.filter { it.mockId != null }.groupBy { it.mockId }
             .filter { (_, l) -> l.size >= 5 }.mapValues { (_, l) -> l.map { it.score }.average().toInt() }
