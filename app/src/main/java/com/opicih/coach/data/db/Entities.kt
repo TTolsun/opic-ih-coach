@@ -313,3 +313,26 @@ data class QuestionEntity(
     /** USER_LIST (사용자 정리 자료, 비공식) / AI_GENERATED */
     val source: String,
 )
+
+enum class SegmentKind { QUESTION, FULL, PARAGRAPH, SENTENCE }
+
+/**
+ * v6: 영어와 한국어를 조각 단위로 짝지은 데이터. 스크립트 듣기 플레이어가 "영어 → 그 조각의 한국어"를 읽는 데 쓴다.
+ * 영어는 코드가 먼저 나누고 번역만 AI가 만들기 때문에 짝이 어긋나지 않는다.
+ * [sourceHash]는 질문과 학습본 텍스트의 해시이며, 스크립트가 바뀌어 해시가 달라지면 이 행들은 낡은 것으로 보고 쓰지 않는다.
+ */
+@Entity(tableName = "script_segments", indices = [Index("scriptId")])
+data class ScriptSegmentEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val scriptId: Long,
+    /** 번역을 만들 때 학습본이었던 버전(ScriptVersion 이름). */
+    val version: String,
+    val sourceHash: String,
+    /** [SegmentKind] 이름. */
+    val kind: String,
+    /** 같은 kind 안에서의 순서(0부터). */
+    val idx: Int,
+    val en: String,
+    val ko: String,
+    val createdAt: Long = System.currentTimeMillis(),
+)

@@ -10,6 +10,8 @@
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.VIBRATE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
 
     <!-- Android 11+ package visibility: needed to detect STT/TTS engines at runtime. -->
     <queries>
@@ -42,6 +44,12 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- 화면이 꺼져도, 다른 앱을 써도 스크립트를 계속 읽어 주는 재생 서비스 -->
+        <service
+            android:name=".playback.ListenService"
+            android:exported="false"
+            android:foregroundServiceType="mediaPlayback" />
 
         <receiver
             android:name=".alarm.AlarmReceiver"

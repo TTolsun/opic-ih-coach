@@ -18,7 +18,7 @@ import java.sql.DriverManager
 
 /**
  * Runs the production migration SQL (MigrationSql) against a real SQLite database built from Room's exported
- * v1 schema, then checks the result against Room's exported v4 schema and that no user data was lost.
+ * v1 schema, then checks the result against Room's exported v6 schema and that no user data was lost.
  * This replaces an instrumented MigrationTestHelper run, which needs a device.
  */
 class MigrationTest {
@@ -70,11 +70,12 @@ class MigrationTest {
         MigrationSql.V2_TO_V3.forEach(::exec)
         MigrationSql.V3_TO_V4.forEach(::exec)
         MigrationSql.V4_TO_V5.forEach(::exec)
+        MigrationSql.V5_TO_V6.forEach(::exec)
     }
 
-    @Test fun v1ToV5MatchesRoomSchema() {
+    @Test fun v1ToV6MatchesRoomSchema() {
         migrateToV3()
-        for (e in entities(5)) {
+        for (e in entities(6)) {
             val table = e["tableName"]!!.jsonPrimitive.content
             val expected = e["fields"]!!.jsonArray.associate { f ->
                 val o = f.jsonObject
@@ -106,6 +107,7 @@ class MigrationTest {
         assertEquals(2, count("exams"))
         assertEquals(0, count("word_lookups"))
         assertEquals(0, count("sentence_frames"))
+        assertEquals(0, count("script_segments"))
         // SRS progress of every script is unchanged.
         assertEquals(23, count("scripts", "srsStep = (id - 1) % 5 AND dueEpochDay = 20400 + id - 1"))
     }
@@ -117,6 +119,19 @@ class MigrationTest {
         // Only the row with a result is treated as a sitting; the bare v1 date stays a plan.
         assertEquals(1, count("exam_registrations", "dateLocal = '2026-02-20' AND status = 'COMPLETED' AND resultGrade = 'IM2'"))
         assertEquals(1, count("exam_registrations", "dateLocal = '2026-11-14' AND status = 'PLANNED'"))
+    }
+
+    @Test fun divergedDevelopmentV5DatabaseIsHealedByV5ToV6() {
+        // 개발 중 빌드가 v5로 sentence_frames 대신 script_segments를 만들었던 기기: v4까지 올린 뒤 그 v5 상태를 흉내 낸다.
+        MigrationSql.V1_TO_V2.forEach(::exec)
+        MigrationSql.V2_TO_V3.forEach(::exec)
+        MigrationSql.V3_TO_V4.forEach(::exec)
+        MigrationSql.V5_TO_V6.filter { it.contains("script_segments") }.forEach(::exec)
+        assertEquals(0, count("sqlite_master", "name = 'sentence_frames'"))
+        MigrationSql.V5_TO_V6.forEach(::exec)
+        assertEquals(1, count("sqlite_master", "name = 'sentence_frames'"))
+        assertEquals(1, count("sqlite_master", "name = 'script_segments'"))
+        assertEquals(23, count("scripts"))
     }
 
     @Test fun emptyExamsTableMigrates() {

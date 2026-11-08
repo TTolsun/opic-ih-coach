@@ -61,6 +61,12 @@ class GeminiAiCoach(
         send(Prompts.convSummarySystem(profile), listOf(ChatTurn(true, Prompts.convSummaryUser(history, localFindings))), json = false, maxTokens = 2048)
     }
 
+    override suspend fun translateToKorean(items: List<String>): Result<List<String>> = call {
+        if (items.isEmpty()) return@call emptyList()
+        val text = send(Prompts.TRANSLATE_SYSTEM, listOf(ChatTurn(true, Prompts.translateUser(items))), json = true)
+        parseTranslations(text, items.size)
+    }
+
     private suspend fun send(system: String, turns: List<ChatTurn>, json: Boolean, maxTokens: Int = 8192): String = withContext(Dispatchers.IO) {
         val body = buildJsonObject {
             putJsonObject("systemInstruction") { putJsonArray("parts") { add(buildJsonObject { put("text", system) }) } }
@@ -137,6 +143,19 @@ class GeminiAiCoach(
                 }
             }
             return text
+        }
+
+        /**
+         * Pure: reads {"ko": [...]} and insists on exactly [expected] non-blank strings. A wrong count means the model merged or
+         * split items, so the alignment would be wrong; that is rejected instead of guessed at. Unit tested.
+         */
+        fun parseTranslations(text: String, expected: Int): List<String> {
+            val ko = (AiJson.json.parseToJsonElement(AiJson.extractObject(text)).jsonObject["ko"] as? JsonArray)
+                ?.map { it.jsonPrimitive.content.trim() }
+                ?: throw AiException("번역 응답에 ko 목록이 없습니다. 다시 시도하세요.")
+            if (ko.size != expected) throw AiException("번역 개수가 맞지 않습니다 (요청 ${expected}개, 응답 ${ko.size}개). 다시 시도하세요.")
+            if (ko.any { it.isBlank() }) throw AiException("비어 있는 번역이 있습니다. 다시 시도하세요.")
+            return ko
         }
 
         /** Lists models usable with generateContent for this key, so the user never has to guess model ids. */

@@ -93,6 +93,12 @@ data class Settings(
     /** Study block contract (see alarm/StudyBlocks.kt). Encoded as "startMinute:minutes,...". */
     val studyBlocksEnabled: Boolean = true,
     val studyBlocks: String = "450:40,1140:20,1440:60",
+    /** 스크립트 듣기 플레이어(v5): 질문과 답변에 쓰는 영어 음성 이름. 빈 값 = 자동으로 서로 다른 음성을 고름. */
+    val listenQuestionVoice: String = "",
+    val listenAnswerVoice: String = "",
+    /** 단계 사이 간격(ms)과 재생 속도. */
+    val listenGapMs: Int = 800,
+    val listenRate: Float = 1.0f,
 ) {
     fun aiCallsToday(todayEpochDay: Long): Int = if (aiCallDay == todayEpochDay) aiCallCount else 0
 
@@ -193,6 +199,10 @@ internal val SETTINGS_FIELDS: List<PrefField<*, *>> = listOf(
     plain("aiCallCount", intPreferencesKey("ai_call_count"), { it.aiCallCount }) { s, v -> s.copy(aiCallCount = v) },
     plain("studyBlocksEnabled", booleanPreferencesKey("study_blocks_on"), { it.studyBlocksEnabled }) { s, v -> s.copy(studyBlocksEnabled = v) },
     plain("studyBlocks", stringPreferencesKey("study_blocks"), { it.studyBlocks }) { s, v -> s.copy(studyBlocks = v) },
+    plain("listenQuestionVoice", stringPreferencesKey("listen_q_voice"), { it.listenQuestionVoice }) { s, v -> s.copy(listenQuestionVoice = v) },
+    plain("listenAnswerVoice", stringPreferencesKey("listen_a_voice"), { it.listenAnswerVoice }) { s, v -> s.copy(listenAnswerVoice = v) },
+    plain("listenGapMs", intPreferencesKey("listen_gap_ms"), { it.listenGapMs }) { s, v -> s.copy(listenGapMs = v) },
+    plain("listenRate", floatPreferencesKey("listen_rate"), { it.listenRate }) { s, v -> s.copy(listenRate = v) },
 )
 
 internal fun Preferences.toSettings(): Settings = SETTINGS_FIELDS.fold(Settings()) { acc, f -> f.readInto(this, acc) }

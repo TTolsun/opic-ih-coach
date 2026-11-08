@@ -56,6 +56,7 @@ class SettingsFieldsTest {
             opicWaiverDeclaredOn = LocalDate.of(2027, 2, 2), planWithWaiver = true,
             sailSharesOpicLimit = true, aiDailyCap = 5, aiCallDay = 20000L, aiCallCount = 4,
             studyBlocksEnabled = false, studyBlocks = "60:10",
+            listenQuestionVoice = "q-voice", listenAnswerVoice = "a-voice", listenGapMs = 1200, listenRate = 1.25f,
         )
         val prefs = mutablePreferencesOf()
         SETTINGS_FIELDS.forEach { it.write(prefs, s) }

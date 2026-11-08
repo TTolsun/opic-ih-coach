@@ -22,6 +22,8 @@ object Notifications {
     const val CH_ALARM_SILENT = "morning_alarm_silent"
     const val CH_REMINDER = "study_reminder"
     const val CH_STUDY_BLOCK = "study_block_alarm"
+    const val CH_LISTEN = "listen_player"
+    const val ID_LISTEN = 1020
     const val ID_MORNING = 1001
     const val ID_REMINDER = 1002
     const val ID_STUDY_BLOCK = 1010
@@ -48,6 +50,11 @@ object Notifications {
             setSound(alarmSound, attrs)
             enableVibration(true)
             vibrationPattern = longArrayOf(0, 600, 300, 600)
+            lockscreenVisibility = android.app.Notification.VISIBILITY_PUBLIC
+        })
+        nm.createNotificationChannel(NotificationChannel(CH_LISTEN, "스크립트 듣기", NotificationManager.IMPORTANCE_LOW).apply {
+            description = "스크립트를 소리로 이어서 들려주는 동안 보이는 재생 컨트롤"
+            setSound(null, null)
             lockscreenVisibility = android.app.Notification.VISIBILITY_PUBLIC
         })
         nm.createNotificationChannel(NotificationChannel(CH_REMINDER, "학습 리마인더", NotificationManager.IMPORTANCE_DEFAULT).apply {

@@ -58,4 +58,17 @@ object MigrationSql {
             "`createdAt` INTEGER NOT NULL)",
         "CREATE UNIQUE INDEX IF NOT EXISTS `index_sentence_frames_pattern` ON `sentence_frames` (`pattern`)",
     )
+
+    /**
+     * v6: sentence/paragraph-aligned English-Korean segments for the script player. Adds one table.
+     * It also (re)creates `sentence_frames` if it is missing: a development build of the player branch once shipped DB v5 with
+     * the segments table instead of the frames table, so a device can sit at v5 without it. Both statements are IF NOT EXISTS,
+     * so a normal v5 database is untouched.
+     */
+    val V5_TO_V6 = V4_TO_V5 + listOf(
+        "CREATE TABLE IF NOT EXISTS `script_segments` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `scriptId` INTEGER NOT NULL, " +
+            "`version` TEXT NOT NULL, `sourceHash` TEXT NOT NULL, `kind` TEXT NOT NULL, `idx` INTEGER NOT NULL, `en` TEXT NOT NULL, " +
+            "`ko` TEXT NOT NULL, `createdAt` INTEGER NOT NULL)",
+        "CREATE INDEX IF NOT EXISTS `index_script_segments_scriptId` ON `script_segments` (`scriptId`)",
+    )
 }

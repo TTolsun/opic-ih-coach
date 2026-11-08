@@ -67,7 +67,7 @@ class ScriptRepository(private val dao: AppDao) {
     suspend fun save(s: ScriptEntity): Long =
         if (s.id == 0L) dao.insertScript(s) else { dao.updateScript(s.copy(updatedAt = System.currentTimeMillis())); s.id }
 
-    suspend fun delete(s: ScriptEntity) { dao.deleteRevisionsFor(s.id); dao.deleteScript(s) }
+    suspend fun delete(s: ScriptEntity) { dao.deleteRevisionsFor(s.id); dao.deleteSegmentsFor(s.id); dao.deleteScript(s) }
 
     /** Approving copies the revision into its version field and makes it the active study text. The original stays. */
     suspend fun approve(rev: ScriptRevisionEntity, makeActive: Boolean = true) {

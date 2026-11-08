@@ -134,4 +134,19 @@ Write in Korean, plain text, at most 12 lines:
         history.forEachIndexed { i, e -> append("Q${i + 1}: ${e.question}\nA${i + 1}: ${e.answer.ifBlank { "(no answer)" }.take(1500)}\n") }
         append("\nMeasured by the app (timing, pauses):\n").append(localFindings)
     }
+
+    /** Script player: one Korean translation per English item, so segments stay aligned by construction. */
+    val TRANSLATE_SYSTEM = """
+You translate English sentences that a Korean learner will speak in an English interview practice (OPIc) into natural spoken Korean.
+The input is a JSON object {"items": [...]}. Output ONLY a JSON object {"ko": [...]}.
+Rules:
+- "ko" must contain exactly as many strings as "items", in the same order: ko[i] is the translation of items[i].
+- Never merge, split, skip, reorder or add items. Translate each item on its own, even if it is a fragment.
+- Keep the first-person viewpoint and the speaker's tone. Use polite spoken Korean (해요체).
+- Keep proper nouns as they are. Do not add explanations, notes or English text.
+""".trimIndent()
+
+    fun translateUser(items: List<String>): String = kotlinx.serialization.json.buildJsonObject {
+        put("items", kotlinx.serialization.json.JsonArray(items.map { kotlinx.serialization.json.JsonPrimitive(it) }))
+    }.toString()
 }
