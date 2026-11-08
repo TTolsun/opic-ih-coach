@@ -25,6 +25,8 @@ import com.opicih.coach.speech.TtsManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
 /** Manual DI: one place that builds every dependency (no Hilt, see HANDOFF 2). */
@@ -82,6 +84,13 @@ class App : Application() {
             ReminderWorker.ensure(this@App, s.eveningReminder)
             runCatching { com.opicih.coach.alarm.StudyBlockScheduler.sync(this@App, s) }
             runCatching { container.backup.purgeAudio(s.audioRetentionDays) }
+        }
+        // Voice and pitch follow the settings (also re-applied once the engine becomes ready).
+        appScope.launch {
+            container.settings.flow
+                .map { it.ttsVoice to it.ttsPitch }
+                .distinctUntilChanged()
+                .collect { (voice, pitch) -> container.tts.configure(voice, pitch) }
         }
         // Exam reminders follow the schedule: any registration change re-plans them.
         appScope.launch {

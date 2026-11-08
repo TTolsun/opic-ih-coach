@@ -53,6 +53,9 @@ data class Settings(
     val selfLevel: Int = 4,
     val captureMode: CaptureMode = CaptureMode.LIVE_STT,
     val ttsRate: Float = 0.9f,
+    /** Installed TTS voice name; empty = engine default. */
+    val ttsVoice: String = "",
+    val ttsPitch: Float = 0.9f,
     val aiEnabled: Boolean = false,
     val geminiModel: String = "gemini-3.5-flash",
     val aiTextConsent: Boolean = false,
@@ -111,6 +114,8 @@ class SettingsRepository(private val context: Context) {
         val selfLevel = intPreferencesKey("self_level")
         val capture = stringPreferencesKey("capture_mode")
         val ttsRate = floatPreferencesKey("tts_rate")
+        val ttsVoice = stringPreferencesKey("tts_voice")
+        val ttsPitch = floatPreferencesKey("tts_pitch")
         val aiOn = booleanPreferencesKey("ai_on")
         val geminiModel = stringPreferencesKey("gemini_model")
         val aiText = booleanPreferencesKey("ai_text_consent")
@@ -157,6 +162,8 @@ class SettingsRepository(private val context: Context) {
             p[K.selfLevel] = s.selfLevel
             p[K.capture] = s.captureMode.name
             p[K.ttsRate] = s.ttsRate
+            p[K.ttsVoice] = s.ttsVoice
+            p[K.ttsPitch] = s.ttsPitch
             p[K.aiOn] = s.aiEnabled
             p[K.geminiModel] = s.geminiModel
             p[K.aiText] = s.aiTextConsent
@@ -200,6 +207,8 @@ class SettingsRepository(private val context: Context) {
             selfLevel = this[K.selfLevel] ?: d.selfLevel,
             captureMode = CaptureMode.of(this[K.capture]),
             ttsRate = this[K.ttsRate] ?: d.ttsRate,
+            ttsVoice = this[K.ttsVoice] ?: d.ttsVoice,
+            ttsPitch = this[K.ttsPitch] ?: d.ttsPitch,
             aiEnabled = this[K.aiOn] ?: d.aiEnabled,
             geminiModel = this[K.geminiModel] ?: d.geminiModel,
             aiTextConsent = this[K.aiText] ?: d.aiTextConsent,
