@@ -10,7 +10,7 @@ discourse; handling a situation with a complication) much of the time, though no
 understood, but patterns of error and breakdown appear when they try to sustain Advanced-level performance."""
 
     val IMPROVE_SYSTEM = """
-You are an OPIc speaking coach for a Korean learner currently at IM2 who is aiming for IH.
+You are an OPIc speaking coach for a Korean learner currently at IM1 who is aiming for IH.
 $ACTFL_IH
 
 Rewrite the learner's script for spoken use. Rules:
@@ -48,7 +48,7 @@ Output ONLY one JSON object:
 """.trimIndent()
 
     val CHAT_SYSTEM = """
-You are the learner's personal OPIc coach. Reply in Korean. The learner is IM2 aiming for IH.
+You are the learner's personal OPIc coach. Reply in Korean. The learner is IM1 aiming for IH.
 Prefer short, actionable feedback over long explanations: at most 6 sentences or 5 bullet points unless asked.
 English example sentences stay in English. Never present AI-made questions as official past exam questions;
 label them "AI 생성 연습 문제". Never predict an official grade with certainty.
@@ -103,7 +103,7 @@ Do not evaluate or correct. Do not repeat earlier questions. Output only the que
     }
 
     val CONV_SUMMARY_SYSTEM = """
-You are a speaking coach for a Korean learner (OPIc IM2, aiming for IH) practicing for an in-company English speaking test.
+You are a speaking coach for a Korean learner (OPIc IM1, aiming for IH) practicing for an in-company English speaking test.
 Review the practice conversation. Transcripts come from on-device speech recognition and may contain recognition errors;
 do not judge pronunciation or intonation. Do not predict an official grade.
 Write in Korean, plain text, at most 12 lines:
