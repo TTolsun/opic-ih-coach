@@ -166,11 +166,11 @@ internal val SETTINGS_FIELDS: List<PrefField<*, *>> = listOf(
     plain("retakeDays", intPreferencesKey("retake_days"), { it.retakeDays }) { s, v -> s.copy(retakeDays = v) },
     plain("retakeVerified", booleanPreferencesKey("retake_verified"), { it.retakeVerified }) { s, v -> s.copy(retakeVerified = v) },
     plain("resultLagDays", intPreferencesKey("result_lag_days"), { it.resultLagDays }) { s, v -> s.copy(resultLagDays = v) },
-    // Stored as epoch day; null is written as -1. Legacy behaviour kept on purpose: reading a stored -1 yields the
-    // data-class default (not null), exactly as the previous `?: d.gradeDeadline` fallback did.
+    // Stored as epoch day; "no deadline" (cleared in Settings) is written as -1 and read back as null.
+    // The old reader fell back to the default here, so a cleared deadline came back after a restart.
     PrefField<LocalDate?, Long>(
         "gradeDeadline", longPreferencesKey("grade_deadline"),
-        { it.gradeDeadline }, { s, v -> s.copy(gradeDeadline = v ?: s.gradeDeadline) },
+        { it.gradeDeadline }, { s, v -> s.copy(gradeDeadline = v) },
         { it?.toEpochDay() ?: -1L }, { if (it < 0) null else LocalDate.ofEpochDay(it) },
     ),
     plain("examSlots", stringSetPreferencesKey("exam_slots"), { it.examSlots }) { s, v -> s.copy(examSlots = v) },

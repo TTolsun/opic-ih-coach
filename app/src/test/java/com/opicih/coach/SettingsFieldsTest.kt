@@ -9,6 +9,7 @@ import com.opicih.coach.data.prefs.StudyLevel
 import com.opicih.coach.data.prefs.toSettings
 import com.opicih.coach.data.prefs.writeChanges
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Test
 import java.lang.reflect.Modifier
 import java.time.LocalDate
@@ -66,5 +67,11 @@ class SettingsFieldsTest {
         prefs.writeChanges(old, old.copy(alarmHour = 9))
         assertEquals(1, prefs.asMap().size)
         assertEquals(9, prefs.toSettings().alarmHour)
+    }
+
+    @Test fun clearedDeadlineStaysCleared() {
+        val prefs = mutablePreferencesOf()
+        SETTINGS_FIELDS.forEach { it.write(prefs, Settings(gradeDeadline = null)) }
+        assertNull(prefs.toSettings().gradeDeadline)
     }
 }
