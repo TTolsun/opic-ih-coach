@@ -1,5 +1,9 @@
 package com.opicih.coach.ui.screens
 
+import com.opicih.coach.learning.lastExamDate
+import com.opicih.coach.learning.lastSatDate
+import com.opicih.coach.learning.rulesOf
+import com.opicih.coach.learning.conversationReports
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -101,7 +105,7 @@ fun buildHomeState(
         // Weakest script of that topic, so a tap opens something concrete to practice.
         WeakTopic(t, scripts.filter { it.topic.equals(t, true) }.minByOrNull { it.masteryScore }?.id)
     }
-    val last = lastExamDate(s, exams, today, reg)
+    val last = lastExamDate(exams, today, reg)
     // Debrief the most recent exam of any type; on exam day it appears only after the exam has ended.
     val sat = lastSatDate(reg, today) ?: last
     val satRow = exams.firstOrNull { it.epochDay == sat.toEpochDay() }
@@ -153,8 +157,3 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HomeState())
 }
 
-/** Finished SAIL conversation reports stored in exam_training_sessions.summaryJson. */
-fun conversationReports(sessions: List<com.opicih.coach.data.db.ExamTrainingSessionEntity>): List<com.opicih.coach.learning.ConversationReport> =
-    sessions.filter { it.finishedAt != null }.mapNotNull { s ->
-        s.summaryJson?.let { runCatching { com.opicih.coach.data.repo.appJson.decodeFromString(com.opicih.coach.learning.ConversationReport.serializer(), it) }.getOrNull() }
-    }.take(10)

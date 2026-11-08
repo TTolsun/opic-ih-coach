@@ -1,5 +1,7 @@
 package com.opicih.coach
 
+import com.opicih.coach.learning.ExamPolicy
+import com.opicih.coach.learning.Verification
 import com.opicih.coach.data.db.DailyLogEntity
 import com.opicih.coach.data.db.PracticeAttemptEntity
 import com.opicih.coach.learning.ProgressCalculator
@@ -16,7 +18,7 @@ import java.time.LocalDate
 
 class RetestAdvisorTest {
     private val exam = LocalDate.of(2026, 11, 11)
-    private val rules = Rules(retakeDays = 25, resultLagDays = 10, deadline = LocalDate.of(2026, 12, 31))
+    private val rules = Rules(policy = ExamPolicy.opic().copy(verification = Verification.UNVERIFIED), resultLagDays = 10, deadline = LocalDate.of(2026, 12, 31))
     private val notReady = Readiness(2, 30, 60, 2.5f, 45, 0, 0, 4)
     private val ready = Readiness(12, 200, 110, 0.5f, 72, 1, 66, 10)
 
@@ -34,7 +36,7 @@ class RetestAdvisorTest {
     }
 
     @Test fun readyLearnerGoesAtEarliestDate() {
-        val a = RetestAdvisor.advise(LocalDate.of(2026, 11, 25), exam, rules.copy(verified = true), ready)
+        val a = RetestAdvisor.advise(LocalDate.of(2026, 11, 25), exam, rules.copy(policy = ExamPolicy.opic()), ready)
         assertEquals(Verdict.REGISTER_EARLIEST, a.verdict)
         assertEquals(LocalDate.of(2026, 12, 7), a.recommended)
         assertTrue(a.cautions.none { it.contains("확인되지 않은") })
@@ -51,7 +53,7 @@ class RetestAdvisorTest {
     }
 
     @Test fun waiverMovesTheEarliestDateToTheNextDay() {
-        val a = RetestAdvisor.advise(LocalDate.of(2026, 11, 12), exam, rules.copy(verified = true, useWaiver = true), ready)
+        val a = RetestAdvisor.advise(LocalDate.of(2026, 11, 12), exam, rules.copy(policy = ExamPolicy.opic(), useWaiver = true), ready)
         assertEquals(LocalDate.of(2026, 11, 12), a.earliest)
         assertEquals(Verdict.REGISTER_EARLIEST, a.verdict)
         assertEquals(LocalDate.of(2026, 11, 13), a.recommended) // tomorrow at the earliest
