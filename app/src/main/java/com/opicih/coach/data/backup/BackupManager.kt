@@ -39,8 +39,6 @@ class BackupManager(private val context: Context, private val db: AppDatabase) {
         fun decode(text: String): Snapshot = json.decodeFromString(Snapshot.serializer(), text)
         /** Only a version-2+ file that actually carries a schedule replaces the current one. */
         fun restoresSchedule(snap: Snapshot): Boolean = snap.version >= 2 && snap.registrations.isNotEmpty()
-        /** Older files have no mock tests: keep the current ones instead of wiping them. */
-        fun restoresMocks(snap: Snapshot): Boolean = snap.version >= 3
 
         /**
          * Columns deliberately left out, per entity. Auto-generated ids are re-created on insert (nothing references
@@ -200,8 +198,8 @@ class BackupManager(private val context: Context, private val db: AppDatabase) {
             // A version-1 file has no exam schedule: keep the current one instead of wiping it.
             val hasSchedule = restoresSchedule(snap)
             if (hasSchedule) { d.clearRegistrations(); d.clearStatusEvents(); d.clearTrainingSessions() }
-            val hasMocks = restoresMocks(snap)
-            if (hasMocks) d.clearMocks()
+            // Mocks are always replaced: attempts are, and kept mocks would lose their answers (v1/v2 files have none).
+            d.clearMocks()
             d.insertScriptsRaw(snap.scripts.map { it.toEntity() })
             d.insertRevisions(snap.revisions.map { it.toEntity() })
             d.insertAttempts(snap.attempts.map { it.toEntity() })
@@ -209,7 +207,7 @@ class BackupManager(private val context: Context, private val db: AppDatabase) {
             d.insertChunks(snap.chunks.map { it.toEntity() })
             d.insertDailyLogs(snap.logs.map { it.toEntity() })
             d.insertExams(snap.exams.map { it.toEntity() })
-            if (hasMocks) d.insertMocks(snap.mocks.map { it.toEntity() })
+            d.insertMocks(snap.mocks.map { it.toEntity() })
             if (hasSchedule) {
                 d.insertRegistrations(snap.registrations.map { it.toEntity() })
                 d.insertStatusEvents(snap.statusEvents.map { it.toEntity() })
