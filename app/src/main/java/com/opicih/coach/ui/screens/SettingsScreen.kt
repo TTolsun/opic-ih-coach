@@ -101,7 +101,7 @@ fun SettingsScreen(onExams: () -> Unit = {}) {
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
         message?.let { Banner(it, "닫기") { message = null } }
 
-        SectionCard(title = "시험과 학습량") {
+        SectionCard(title = "시험과 학습량", collapsible = true) {
             Row(Modifier.fillMaxWidth().clickable(onClick = onExams).padding(vertical = 6.dp)) {
                 Text("시험 일정 관리 (OPIc·SAIL)", modifier = Modifier.weight(1f)); Text("열기", color = MaterialTheme.colorScheme.primary)
             }
@@ -109,7 +109,7 @@ fun SettingsScreen(onExams: () -> Unit = {}) {
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) { StudyLevel.entries.forEach { l -> Pill(l.label, s.studyLevel == l) { save { it.copy(studyLevel = l) } } } }
         }
 
-        SectionCard(title = "재응시 규칙 (다음 시험 추천에 사용)") {
+        SectionCard(title = "재응시 규칙 (다음 시험 추천에 사용)", collapsible = true, initiallyExpanded = false) {
             Text("OPIc은 공식 시험관리규정 제5조를 씁니다: 응시일 다음 날부터 25일 제한, D+26부터 응시 가능, Waiver 150일마다 1회.",
                 style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             NumberRow("OPIc Waiver 보유 수 (${s.opicWaiverDeclaredOn} 기준)", s.opicWaivers.coerceAtLeast(0)) { v ->
@@ -139,7 +139,7 @@ fun SettingsScreen(onExams: () -> Unit = {}) {
             }) { Text("회차 저장") }
         }
 
-        SectionCard(title = "Background Survey 주제") {
+        SectionCard(title = "Background Survey 주제", collapsible = true, initiallyExpanded = false) {
             Spacer(Modifier.height(6.dp))
             FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 SURVEY_CHOICES.forEach { t ->
@@ -151,7 +151,7 @@ fun SettingsScreen(onExams: () -> Unit = {}) {
             Slider(s.selfLevel.toFloat(), { v -> save { it.copy(selfLevel = v.toInt()) } }, valueRange = 1f..6f, steps = 4)
         }
 
-        SectionCard(title = "아침 알람") {
+        SectionCard(title = "아침 알람", collapsible = true) {
             refresh.let { }
             ToggleRow("매일 아침 알람", s.alarmEnabled) { v -> save { it.copy(alarmEnabled = v) } }
             Row(Modifier.fillMaxWidth().clickable { showTime = true }.padding(vertical = 6.dp)) {
@@ -177,7 +177,7 @@ fun SettingsScreen(onExams: () -> Unit = {}) {
             OutlinedButton(onClick = { scope.launch { AlarmScheduler.snooze(context, 1); message = "1분 뒤 테스트 알람을 예약했습니다." } }) { Text("1분 뒤 테스트 알람") }
         }
 
-        SectionCard(title = "음성") {
+        SectionCard(title = "음성", collapsible = true, initiallyExpanded = false) {
             Text("캡처 방식", style = MaterialTheme.typography.labelLarge)
             CaptureMode.entries.forEach { m ->
                 Row(Modifier.fillMaxWidth().clickable { save { it.copy(captureMode = m) } }.padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -217,7 +217,7 @@ fun SettingsScreen(onExams: () -> Unit = {}) {
             Text("TTS: ${c.tts.stateMessage()} (${tts.name})", style = MaterialTheme.typography.bodySmall)
         }
 
-        SectionCard(title = "AI · Gemini (선택, 비용 발생)") {
+        SectionCard(title = "AI · Gemini (선택, 비용 발생)", collapsible = true, initiallyExpanded = false) {
             Text("키는 이 기기에만 암호화해 저장합니다. 무료 등급은 입력 내용이 Google 제품 개선에 쓰일 수 있고, 유료 등급은 쓰이지 않습니다.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             KeyField(c.keys, ApiKeyStore.Provider.GEMINI) { message = it }
             var model by remember(s.geminiModel) { mutableStateOf(s.geminiModel) }
@@ -255,7 +255,7 @@ fun SettingsScreen(onExams: () -> Unit = {}) {
             }
         }
 
-        SectionCard(title = "데이터") {
+        SectionCard(title = "데이터", collapsible = true, initiallyExpanded = false) {
             val usage = remember(refresh) { c.backup.audioUsageBytes() }
             Text("녹음 저장 용량: ${usage / 1024 / 1024}MB · 보관 ${s.audioRetentionDays}일", style = MaterialTheme.typography.bodyMedium)
             Slider(s.audioRetentionDays.toFloat(), { v -> save { it.copy(audioRetentionDays = v.toInt()) } }, valueRange = 1f..60f)
