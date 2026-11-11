@@ -154,6 +154,7 @@ class PracticeRepository(private val db: AppDatabase) {
         val trainingSessionId: Long? = null,
         /** Why the verbatim transcript was not used for an answer that should have had one (#25). Shown as a limit. */
         val captureNote: String? = null,
+        val speakingReviewId: Long? = null,
     )
 
     /** Result of analysing one answer, before anything is written. */
@@ -188,7 +189,10 @@ class PracticeRepository(private val db: AppDatabase) {
             FeedbackComposer.acousticOnly(req.pauses)
         } else {
             FeedbackComposer.compose(
-                AnalysisInput(req.questionType, target != null, text, discourse, req.pauses, compare, req.transcriptFromDeviceStt, req.requiredTense, ScoreKind.of(req.mode))
+                AnalysisInput(
+                    req.questionType, target != null, text, discourse, req.pauses, compare, req.transcriptFromDeviceStt,
+                    req.requiredTense, ScoreKind.of(req.mode), question = req.question,
+                )
             )
         }
         val local = composed.copy(limits = composed.limits + listOfNotNull(req.captureNote))
@@ -224,6 +228,9 @@ class PracticeRepository(private val db: AppDatabase) {
             feedbackSource = feedback.source, mockId = req.mockId, trainingSessionId = req.trainingSessionId,
         )
         val id = dao.insertAttempt(attempt)
+        if (req.mode == PracticeMode.FREE && req.speakingReviewId != null && (attempt.wordCount > 0 || speechMs > 0)) {
+            dao.finishSpeakingReview(req.speakingReviewId, req.question, ExamRepository.nowKst().toLocalDate().toEpochDay())
+        }
 
         // Daily log: real speaking time, not app-open time.
         val today = LocalDate.now().toEpochDay()

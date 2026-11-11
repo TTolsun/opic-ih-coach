@@ -73,7 +73,7 @@ private val tabs = listOf(
 private val titles = mapOf(
     "script/{id}" to "스크립트", "scriptEdit/{id}" to "스크립트 편집", "import" to "스크립트 가져오기",
     "settings" to "설정", "nextExam" to "다음 OPIc 추천", "exams" to "시험 일정", "sail" to "SAIL 대화 연습", "morning" to "아침 표현 루틴", "coach" to "AI 코치",
-    "listen" to "스크립트 듣기",
+    "listen" to "스크립트 듣기", "review/{id}" to "다시 말하기",
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -155,6 +155,7 @@ fun AppNav(startRoute: String?, onRouteConsumed: () -> Unit) {
                     onSettings = { nav.navigate("settings") },
                     onNextExam = { nav.navigate("nextExam") },
                     onExams = { nav.navigate("exams") },
+                    onSpeakingReview = { nav.navigate("review/$it") { launchSingleTop = true } },
                     onSpeakMode = { m ->
                         when (m) {
                             null -> nav.goTab("speaking")
@@ -177,6 +178,9 @@ fun AppNav(startRoute: String?, onRouteConsumed: () -> Unit) {
                 val id = e.arguments?.getLong("scriptId")?.takeIf { it > 0 }
                 val mode = e.arguments?.getString("mode")?.let { PracticeMode.of(it) }
                 SpeakingScreen(id, mode, onOpenFrames = { nav.navigate("frames") })
+            }
+            composable("review/{id}", arguments = listOf(navArgument("id") { type = NavType.LongType })) { e ->
+                SpeakingScreen(null, PracticeMode.FREE, reviewId = e.arguments!!.getLong("id"), onOpenFrames = { nav.navigate("frames") })
             }
             composable("frames") { FramesScreen() }
             composable("mock") { MockScreen() }
@@ -211,7 +215,7 @@ fun AppNav(startRoute: String?, onRouteConsumed: () -> Unit) {
 
 /** Routes whose open time counts as study (not home / progress / settings / exams / nextExam / import / scriptEdit). */
 internal fun isStudyRoute(route: String?): Boolean = route != null && (
-    route == "scripts" || route == "script/{id}" ||
+    route == "scripts" || route == "script/{id}" || route == "review/{id}" ||
         listOf("speaking", "mock", "sail", "coach", "morning").any { route.startsWith(it) }
     )
 

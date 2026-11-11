@@ -18,7 +18,7 @@ import java.sql.DriverManager
 
 /**
  * Runs the production migration SQL (MigrationSql) against a real SQLite database built from Room's exported
- * v1 schema, then checks the result against Room's exported v6 schema and that no user data was lost.
+ * v1 schema, then checks the result against Room's exported v7 schema and that no user data was lost.
  * This replaces an instrumented MigrationTestHelper run, which needs a device.
  */
 class MigrationTest {
@@ -65,17 +65,18 @@ class MigrationTest {
         exec("INSERT INTO exams (epochDay, type, resultGrade, note) VALUES (${java.time.LocalDate.of(2026, 11, 14).toEpochDay()}, 'RETAKE', NULL, '')")
     }
 
-    private fun migrateToV3() {
+    private fun migrateToV7() {
         MigrationSql.V1_TO_V2.forEach(::exec)
         MigrationSql.V2_TO_V3.forEach(::exec)
         MigrationSql.V3_TO_V4.forEach(::exec)
         MigrationSql.V4_TO_V5.forEach(::exec)
         MigrationSql.V5_TO_V6.forEach(::exec)
+        MigrationSql.V6_TO_V7.forEach(::exec)
     }
 
-    @Test fun v1ToV6MatchesRoomSchema() {
-        migrateToV3()
-        for (e in entities(6)) {
+    @Test fun v1ToV7MatchesRoomSchema() {
+        migrateToV7()
+        for (e in entities(7)) {
             val table = e["tableName"]!!.jsonPrimitive.content
             val expected = e["fields"]!!.jsonArray.associate { f ->
                 val o = f.jsonObject
@@ -96,12 +97,13 @@ class MigrationTest {
     }
 
     @Test fun keepsAllUserData() {
-        migrateToV3()
+        migrateToV7()
         assertEquals(23, count("scripts"))
         assertEquals(1, count("script_revisions", "status = 'PENDING'"))
         assertEquals(1, count("script_revisions", "status = 'APPROVED'"))
         assertEquals(5, count("attempts"))
         assertEquals(5, count("attempts", "trainingSessionId IS NULL"))
+        assertEquals(5, count("attempts", "speakingReviewDueEpochDay IS NULL AND transcript = 'I went to Busan'"))
         assertEquals(1, count("error_patterns", "count = 4"))
         assertEquals(1, count("chunks", "srsStep = 3 AND dueEpochDay = 20410"))
         assertEquals(2, count("exams"))
@@ -113,7 +115,7 @@ class MigrationTest {
     }
 
     @Test fun oldExamsBecomeReviewRowsNotFacts() {
-        migrateToV3()
+        migrateToV7()
         assertEquals(2, count("exam_registrations"))
         assertEquals(2, count("exam_registrations", "examType = 'UNKNOWN' AND needsReview = 1 AND sourceType = 'MIGRATED' AND legacyExamId IS NOT NULL"))
         // Only the row with a result is treated as a sitting; the bare v1 date stays a plan.
@@ -136,7 +138,7 @@ class MigrationTest {
 
     @Test fun emptyExamsTableMigrates() {
         exec("DELETE FROM exams")
-        migrateToV3()
+        migrateToV7()
         assertEquals(0, count("exam_registrations"))
         assertTrue(count("exam_status_events") == 0 && count("exam_training_sessions") == 0)
     }

@@ -146,6 +146,7 @@ fun buildHomeState(
 
 class HomeViewModel(app: Application) : AndroidViewModel(app) {
     private val c = (app as App).container
+    val speakingReviews = c.dao.speakingReviewsFlow()
 
     private val stored = combine(c.dao.scriptsFlow(), c.dao.attemptsFlow(), c.dao.dailyLogsFlow()) { s, a, l -> Triple(s, a, l) }
     private val extra = combine(c.dao.mocksFlow(), c.dao.pendingRevisionsFlow(), c.dao.examsFlow()) { m, p, e -> Triple(m, p.size, e) }

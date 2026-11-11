@@ -39,6 +39,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -47,6 +48,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.opicih.coach.alarm.AlarmScheduler
@@ -54,6 +56,7 @@ import com.opicih.coach.alarm.Notifications
 import com.opicih.coach.data.db.ExamRegistrationEntity
 import com.opicih.coach.data.db.ExamType
 import com.opicih.coach.data.prefs.Settings
+import com.opicih.coach.data.repo.ExamRepository
 import com.opicih.coach.learning.DayPlan
 import com.opicih.coach.learning.ExamSchedule
 import com.opicih.coach.learning.PlanTask
@@ -87,9 +90,16 @@ fun HomeScreen(
     onExams: () -> Unit = {},
     /** Opens speaking with the task's PracticeMode name (null = default; SAIL_CONVERSATION = SAIL screen). */
     onSpeakMode: (String?) -> Unit = { onSpeak() },
+    onSpeakingReview: (Long) -> Unit,
 ) {
     val vm: HomeViewModel = viewModel()
     val st by vm.state.collectAsStateWithLifecycle()
+    val reviews by vm.speakingReviews.collectAsStateWithLifecycle(initialValue = emptyList())
+    var today by remember { mutableLongStateOf(ExamRepository.nowKst().toLocalDate().toEpochDay()) }
+    LifecycleResumeEffect(Unit) {
+        today = ExamRepository.nowKst().toLocalDate().toEpochDay()
+        onPauseOrDispose {}
+    }
     val plan = st.plan
     fun open(t: PlanTask) = when (t.type) {
         TaskType.MORNING -> onMorning()
@@ -113,6 +123,13 @@ fun HomeScreen(
         }
 
         if (plan == null) return@Column
+
+        reviews.firstOrNull { (it.speakingReviewDueEpochDay ?: Long.MAX_VALUE) <= today }?.let { review ->
+            Banner(
+                "다시 말할 질문이 있습니다.", "다시 말하기",
+                onAction = { onSpeakingReview(review.id) },
+            )
+        }
 
         // 1) The one thing to do now.
         NextActionButton(st.next, onClick = { st.next?.let { open(it) } ?: onSpeak() })

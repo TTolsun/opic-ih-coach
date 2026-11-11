@@ -35,11 +35,12 @@ import java.io.File
 class BackupManager(private val context: Context, private val db: AppDatabase) {
     companion object {
         /** 1 = learning data only. 2 = adds the exam schedule. 3 = adds mock tests and the columns v2 dropped.
-         *  4 = adds script glossary lookups. 5 = adds sentence frames. 6 = adds the English-Korean script segments. */
-        const val CURRENT_VERSION = 6
+         *  4 = adds script glossary lookups. 5 = adds sentence frames. 6 = adds English-Korean script segments.
+         *  7 = adds pending free-speaking reviews. */
+        const val CURRENT_VERSION = 7
         private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
         fun encode(snap: Snapshot): String = json.encodeToString(Snapshot.serializer(), snap)
-        /** Reads version-1 to 6 files: columns missing from older files fall back to the entity defaults. */
+        /** Columns missing from older files fall back to the entity defaults. */
         fun decode(text: String): Snapshot = json.decodeFromString(Snapshot.serializer(), text)
         /** Only a version-2+ file that actually carries a schedule replaces the current one. */
         fun restoresSchedule(snap: Snapshot): Boolean = snap.version >= 2 && snap.registrations.isNotEmpty()
@@ -78,12 +79,12 @@ class BackupManager(private val context: Context, private val db: AppDatabase) {
 
         fun PracticeAttemptEntity.toBackup() = BAttempt(scriptId, topic, questionText, questionType, mode, transcript, captureMode,
             durationMs, speechMs, longPauseCount, wordCount, wpm, coverage, score, metricsJson, feedbackJson, feedbackSource, createdAt,
-            trainingSessionId, mockId)
+            trainingSessionId, mockId, speakingReviewDueEpochDay)
         fun BAttempt.toEntity() = PracticeAttemptEntity(scriptId = scriptId, topic = topic, questionText = questionText,
             questionType = questionType, mode = mode, transcript = transcript, captureMode = captureMode, durationMs = durationMs,
             speechMs = speechMs, longPauseCount = longPauseCount, wordCount = wordCount, wpm = wpm, coverage = coverage, score = score,
             metricsJson = metricsJson, feedbackJson = feedbackJson, feedbackSource = feedbackSource, mockId = mockId,
-            createdAt = createdAt, trainingSessionId = trainingSessionId)
+            createdAt = createdAt, trainingSessionId = trainingSessionId, speakingReviewDueEpochDay = speakingReviewDueEpochDay)
 
         fun ErrorPatternEntity.toBackup() = BError(key, category, example, correction, count, lastSeen)
         fun BError.toEntity() = ErrorPatternEntity(key = key, category = category, example = example, correction = correction,
@@ -173,6 +174,7 @@ class BackupManager(private val context: Context, private val db: AppDatabase) {
         val captureMode: String, val durationMs: Long, val speechMs: Long, val longPauseCount: Int, val wordCount: Int, val wpm: Int,
         val coverage: Float?, val score: Int, val metricsJson: String, val feedbackJson: String, val feedbackSource: String,
         val createdAt: Long, val trainingSessionId: Long? = null, val mockId: Long? = null,
+        val speakingReviewDueEpochDay: Long? = null,
     )
     @Serializable data class BError(val key: String, val category: String, val example: String, val correction: String, val count: Int, val lastSeen: Long)
     @Serializable data class BChunk(

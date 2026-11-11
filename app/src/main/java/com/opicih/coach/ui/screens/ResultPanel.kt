@@ -27,9 +27,11 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -37,7 +39,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.opicih.coach.analysis.FixItem
+import com.opicih.coach.data.db.PracticeMode
 import com.opicih.coach.data.repo.AnalyzedAttempt
+import com.opicih.coach.data.repo.AttemptMetrics
+import com.opicih.coach.data.repo.appJson
 import com.opicih.coach.learning.ScoreKind
 import com.opicih.coach.ui.components.Banner
 import com.opicih.coach.ui.components.Bullet
@@ -47,6 +52,7 @@ import com.opicih.coach.ui.components.InfoTopics
 import com.opicih.coach.ui.components.SectionCard
 import com.opicih.coach.ui.components.SourceTag
 import com.opicih.coach.ui.components.formatMs
+import java.time.LocalDate
 
 /**
  * Result after one answer. Learning rule: one fix, then speak again right away.
@@ -76,8 +82,16 @@ internal fun ResultPanel(r: AnalyzedAttempt, ui: SpeakingUi, vm: SpeakingViewMod
         }
         r.previous?.let { p ->
             val dScore = a.score - p.score
+            val previousPauses = remember(p.metricsJson) {
+                runCatching { appJson.decodeFromString(AttemptMetrics.serializer(), p.metricsJson).pauses }.getOrNull()
+            }
             Banner(
-                "지난번보다 점수 ${signed(dScore)} · 단어 ${signed(a.wordCount - p.wordCount)} · 긴 무음 ${signed(a.longPauseCount - p.longPauseCount)}",
+                buildString {
+                    append("지난번보다 점수 ${signed(dScore)} · 단어 ${signed(a.wordCount - p.wordCount)}")
+                    if (a.captureMode == p.captureMode && r.metrics.pauses != null && previousPauses != null) {
+                        append(" · 긴 무음 ${signed(a.longPauseCount - p.longPauseCount)}")
+                    }
+                },
                 tone = if (dScore >= 0) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.tertiary,
             )
             Spacer(Modifier.height(10.dp))
@@ -118,6 +132,20 @@ internal fun ResultPanel(r: AnalyzedAttempt, ui: SpeakingUi, vm: SpeakingViewMod
                 OutlinedButton(onClick = { vm.playRecording(0.75f) }) { Text("0.75x", maxLines = 1) }
             }
             OutlinedButton(onClick = { vm.next() }) { Icon(Icons.Filled.SkipNext, null); Text("다음 질문", maxLines = 1) }
+            if (a.mode == PracticeMode.FREE.name && !ui.transferUnavailable) {
+                OutlinedButton(onClick = vm::nextSameType) { Text("같은 유형 새 질문") }
+            }
+        }
+        if (ui.transferUnavailable) {
+            Text("같은 유형의 새 질문이 없습니다.", style = MaterialTheme.typography.bodySmall)
+        }
+        if (a.mode == PracticeMode.FREE.name) {
+            val due = ui.reviewDueEpochDay?.let(LocalDate::ofEpochDay)
+            if (due != null) {
+                Text("다시 말하기 예정 · ${due.monthValue}/${due.dayOfMonth}", style = MaterialTheme.typography.bodyMedium)
+            } else if (a.wordCount > 0 || a.speechMs > 0) {
+                TextButton(onClick = vm::scheduleReview) { Text("3일 뒤 다시 말하기") }
+            }
         }
 
         Spacer(Modifier.height(6.dp))
