@@ -115,7 +115,7 @@ fun buildHomeState(
     val debriefType = reg.firstOrNull { it.date == sat && it.type != ExamType.UNKNOWN }?.type?.label.orEmpty()
     val sinceMs = last.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
     val retake = com.opicih.coach.learning.RetakeSummaries.of(s, reg, today)
-    val advice = RetestAdvisor.advise(today, last, rulesOf(s, retake.waiverAvailable), ProgressCalculator.readiness(attempts, logs, last.toEpochDay(), sinceMs))
+    val advice = RetestAdvisor.advise(today, last, rulesOf(s, retake.waiverAvailable), ProgressCalculator.readiness(attempts, logs, last.toEpochDay(), sinceMs, mocks))
     val nextExam = NextExamSummary(advice.verdict.label, advice.recommended, advice.registerBy, advice.gates.count { it.passed }, advice.gates.size)
     return HomeState(
         loaded = true,

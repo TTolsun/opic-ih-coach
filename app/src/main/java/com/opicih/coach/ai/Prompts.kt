@@ -1,9 +1,8 @@
 package com.opicih.coach.ai
 
-import com.opicih.coach.analysis.DiscourseMetrics
-import com.opicih.coach.analysis.PauseMetrics
 import com.opicih.coach.data.prefs.LearnerProfile
 import com.opicih.coach.learning.GradeTargets
+import com.opicih.coach.learning.CAPTURE_CLOUD_STT
 
 object Prompts {
     private const val ACTFL_IH = """ACTFL Intermediate High (IH) speakers can handle uncomplicated communicative tasks with ease and confidence,
@@ -42,22 +41,27 @@ You are an OPIc speaking coach. Give learning feedback in Korean for a learner $
 $ACTFL_IH
 
 Size your advice for the next exam target (${p.target.code}); do not demand ${p.finalGoal.code}-level performance yet.
-Judge the answer by the functions below: connected paragraph-length speech, narration in major time frames, relevance, concrete experience,
-discourse connectors, and whether grammar errors block communication. Pronunciation cannot be judged from text: do not comment on it.
-If the input gives a practice mission, the learner was told to change the answer that way (other tense, other question).
-Judge relevance against the mission and topic, not the original question wording, and never flag following the mission as off-topic.
-The transcript may come from a speech recognizer that auto-corrects grammar and removes fillers; mention this only if relevant.
-A recording transcription is verbatim: it may contain the tags [self-correction] (the speaker corrected the words just before it)
-and [abandoned] (an unfinished sentence). The tags are not words the learner said; do not quote them as English.
-Count, in "tenseErrors", the clauses where the learner used the wrong tense for the time frame (for example a present form in a story about
-last weekend). Count unfinished sentences in "abandonedSentences" and self-corrections in "selfCorrections". Use 0 when there are none.
+Start with the actual task. A replacement question and the assigned practice mission take precedence over the original question and type.
+Check whether the learner answered the question and completed each requested part. Question read-back is not an answer.
+Put a missed task first in fixes, even if the answer is long or fluent. Cite words from the answer that show the issue when available.
+Judge connectedness by how the ideas relate (for example, cause and effect, sequence, or a meaningful contrast).
+Keep the same score and connectedness for the same ideas with only extra discourse markers. Extra words or sentences earn no credit by themselves.
+Assess only the time frames the actual task calls for. A future sentence that does not support the task earns no credit.
+Base specificity and relevance on the information the listener can recover. For script recall, use the supplied target script.
+Give one concrete retry action for the actual task. Pronunciation cannot be judged from text.
+Use the stated capture source. Typed and auto-corrected text cannot show whether speech contained repairs or unfinished utterances.
+For verbatim recording transcripts, report only events supported by [self-correction] or [abandoned] tags, and do not quote tags as speech.
+Set the two event counts to 0 for other sources; the app marks those events as unmeasured.
+Count, in "tenseErrors", uncorrected present forms in past-time clauses, including the next sentence when the same past event continues.
+Exclude the attempt before [self-correction], explicit switches to present or future time, and speech inside direct quotations.
 When tenseErrors is above 0, include one item in "errors" with the key "tense_in_past_context".
+Use "task_incomplete" for missing parts of the requested task, "off_topic_response" for an unrelated answer, and "question_echo" for read-back.
 Never claim or predict an official ACTFL/OPIc grade. The score is a learning reference only.
 
 Output ONLY one JSON object:
 {"strengths":["(Korean) exactly 2 items"],
  "fixes":[{"issue":"(Korean)","why":"(Korean)","better":"(English example sentence)"}],   // at most 3, most important first
- "betterAnswer":"(English, ${GradeTargets.improve(p.target).let { "${it.minWords}-${it.maxWords}" }} words, same content made natural and ${p.target.code}-level, easy words)",
+ "betterAnswer":"(English, a concise example for the actual task using the learner's facts or a fill-in sentence frame)",
  "retryMission":"(Korean, one concrete instruction for the next attempt)",
  "score":0-100, "relevance":0-100, "specificity":0-100, "connectedness":0-100,
  "tenseErrors":0, "abandonedSentences":0, "selfCorrections":0,
@@ -82,17 +86,19 @@ label them "AI 생성 연습 문제". Never predict an official grade with certa
 
     fun evalUser(i: EvalInput) = buildString {
         appendLine("Question (${i.questionType}): ${i.question}")
-        if (!i.mission.isNullOrBlank()) appendLine("Practice mission (Korean; the learner answered this instead of the question as written): ${i.mission}")
-        appendLine("Transcript source: ${if (i.transcriptFromDeviceStt) "Android speech recognizer (may be auto-corrected)" else "recording transcription (verbatim, may contain [self-correction] and [abandoned] tags)"}")
-        appendLine("Measured: ${metrics(i.discourse, i.pauses)}")
+        if (!i.mission.isNullOrBlank()) appendLine("Practice mission: ${i.mission}")
+        i.missionQuestion?.let { appendLine("Replacement question (the actual question to answer): $it") }
+        i.requiredTense?.let { appendLine("Required time frame for the mission: $it") }
+        val source = when (i.captureMode) {
+            "TYPED" -> "typed answer (no speech events can be measured)"
+            "LIVE_STT" -> "Android speech recognizer (may be auto-corrected)"
+            CAPTURE_CLOUD_STT -> "verbatim recording transcript (may contain [self-correction] and [abandoned] tags)"
+            else -> "unverified transcript source (no speech events can be measured)"
+        }
+        appendLine("Transcript source: $source")
         if (!i.targetScript.isNullOrBlank()) appendLine("The learner was practicing this target script:\n${i.targetScript}")
         appendLine("Learner's answer transcript:")
         appendLine(i.transcript)
-    }
-
-    fun metrics(d: DiscourseMetrics, p: PauseMetrics?) = buildString {
-        append("words=${d.wordCount}, sentences=${d.sentenceCount}, past=${d.pastCount}, present=${d.presentCount}, future=${d.futureCount}, connectors=${d.connectorCount}")
-        if (p != null) append(", speechSeconds=${p.speechMs / 1000}, totalSeconds=${p.totalMs / 1000}, pausesOver2s=${p.longPauseCount}")
     }
 
     fun contextBlock(c: CoachContext) = buildString {

@@ -15,6 +15,7 @@ enum class ScoreKind(val label: String) {
     SPEAKING("말하기 점수");
 
     companion object {
+        const val FLOW_LABEL = "발화 흐름 점수"
         fun of(mode: PracticeMode): ScoreKind = when (mode) {
             PracticeMode.READ_LISTEN, PracticeMode.SHADOWING, PracticeMode.FILL_BLANK,
             PracticeMode.KEYWORD, PracticeMode.BLIND -> MEMORIZATION

@@ -3,6 +3,7 @@ package com.opicih.coach
 import com.opicih.coach.learning.ExamPolicy
 import com.opicih.coach.learning.Verification
 import com.opicih.coach.data.db.DailyLogEntity
+import com.opicih.coach.data.db.MockTestEntity
 import com.opicih.coach.data.db.PracticeAttemptEntity
 import com.opicih.coach.learning.ProgressCalculator
 import com.opicih.coach.learning.RetestAdvisor
@@ -81,7 +82,8 @@ class RetestAdvisorTest {
                 longPauseCount = 1, mockId = if (i < 5) 1L else null, createdAt = ms + i)
         } + PracticeAttemptEntity(topic = "Old", questionText = "old", mode = "FREE", wordCount = 10, score = 10, createdAt = ms - 1)
         val logs = listOf(DailyLogEntity(since.toEpochDay() + 1, speakingMs = 20 * 60_000), DailyLogEntity(since.toEpochDay() - 3, speakingMs = 60 * 60_000))
-        val r = ProgressCalculator.readiness(attempts, logs, since.toEpochDay(), ms)
+        val mocks = listOf(MockTestEntity(id = 1, startedAt = ms, finishedAt = ms + 5, questionCount = 5, selfLevel = 4))
+        val r = ProgressCalculator.readiness(attempts, logs, since.toEpochDay(), ms, mocks)
         assertEquals(1, r.practiceDays)
         assertEquals(20, r.speakingMinutes)
         assertEquals(100, r.avgWords)

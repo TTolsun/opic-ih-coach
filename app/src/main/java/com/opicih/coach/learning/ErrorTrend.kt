@@ -3,7 +3,6 @@ package com.opicih.coach.learning
 import com.opicih.coach.analysis.ErrorCounts
 import com.opicih.coach.data.db.PracticeAttemptEntity
 import com.opicih.coach.data.repo.AttemptMetrics
-import com.opicih.coach.data.repo.appJson
 
 /** 진행 화면에 그릴 한 답변의 오류 횟수. */
 data class ErrorTrendPoint(val createdAt: Long, val tense: Int, val abandoned: Int, val selfCorrection: Int)
@@ -15,7 +14,7 @@ data class ErrorTrendPoint(val createdAt: Long, val tense: Int, val abandoned: I
  */
 object ErrorTrend {
     fun countsOf(a: PracticeAttemptEntity): ErrorCounts? =
-        runCatching { appJson.decodeFromString(AttemptMetrics.serializer(), a.metricsJson).errorCounts }.getOrNull()
+        AttemptMetrics.from(a)?.errorCounts
 
     /** 원문 전사 답변이 없을 때 모든 기록의 JSON을 읽지 않도록, 최근 이만큼만 훑습니다. */
     const val MAX_SCAN = 200

@@ -54,10 +54,10 @@ class LearnerGradeTest {
         }
     }
 
-    @Test fun evalPromptSizesBetterAnswerForTheTargetGrade() {
+    @Test fun evalPromptUsesTheTargetGradeAndAsksForATaskExample() {
         val eval = Prompts.evalSystem(im1ToIm3)
-        assertTrue(eval.contains("70-110 words"))
-        assertFalse(eval.contains("100-150"))
+        assertTrue(eval.contains("Size your advice for the next exam target (IM3)"))
+        assertTrue(eval.contains("a concise example for the actual task"))
         assertTrue(eval.contains("currently at IM1"))
     }
 

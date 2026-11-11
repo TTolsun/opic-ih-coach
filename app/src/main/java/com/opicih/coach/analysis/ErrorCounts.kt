@@ -18,6 +18,11 @@ data class ErrorCounts(
     val verbatim: Boolean = false,
     /** tense 값의 출처: "AI" 또는 "LOCAL". */
     val tenseSource: String = "LOCAL",
+    val localTense: Int? = null,
+    val localTenseExamples: List<String> = emptyList(),
+    val aiTense: Int? = null,
+    val aiAbandoned: Int? = null,
+    val aiSelfCorrection: Int? = null,
 ) {
     /** 한 답변의 횟수와, 같은 값에서 나온 오류 노트 항목. */
     class Analysis(val counts: ErrorCounts, val notebook: List<ErrorItem>)
@@ -34,23 +39,38 @@ data class ErrorCounts(
         fun analyze(raw: String, verbatimSource: Boolean, ai: Feedback?): Analysis {
             val parsed = VerbatimMarkup.parse(raw)
             val hits = TenseErrorDetector.find(parsed.uncorrected)
-            val aiTense = ai?.takeIf { it.source == "AI" }?.tenseErrors
+            val evaluation = ai?.takeIf { it.source == "AI" }
+            val aiTense = evaluation?.tenseErrors
+            val measuredVerbatim = verbatimSource && parsed.clean.isNotBlank()
+            val examples = hits.map { FeedbackComposer.shorten(it.sentence, 80) }.distinct()
+            val localTense = hits.size.takeIf { parsed.uncorrected.isNotBlank() }
             val counts = ErrorCounts(
-                tense = aiTense ?: hits.size,
-                abandoned = if (verbatimSource) maxOf(parsed.abandoned, ai?.abandonedSentences ?: 0) else null,
-                selfCorrection = if (verbatimSource) maxOf(parsed.selfCorrections, ai?.selfCorrections ?: 0) else null,
-                verbatim = verbatimSource,
+                tense = aiTense ?: localTense,
+                abandoned = parsed.abandoned.takeIf { measuredVerbatim },
+                selfCorrection = parsed.selfCorrections.takeIf { measuredVerbatim },
+                verbatim = measuredVerbatim,
                 tenseSource = if (aiTense != null) "AI" else "LOCAL",
+                localTense = localTense,
+                localTenseExamples = examples,
+                aiTense = aiTense,
+                aiAbandoned = evaluation?.abandonedSentences.takeIf { measuredVerbatim },
+                aiSelfCorrection = evaluation?.selfCorrections.takeIf { measuredVerbatim },
             )
             val items = mutableListOf<ErrorItem>()
-            if (aiTense == null) hits.take(2).forEach {
-                items += ErrorItem("tense_in_past_context", "GRAMMAR", FeedbackComposer.shorten(it.sentence, 80), "과거 이야기에서는 동사를 과거형(went, ate, was)으로 유지")
+            if (aiTense == null) examples.firstOrNull()?.let {
+                items += ErrorItem("tense_in_past_context", "GRAMMAR", it, "과거 이야기에서는 동사를 과거형으로 말해 보세요.")
             }
-            if (verbatimSource) parsed.abandonedFragments.take(2).forEach {
+            if (measuredVerbatim) parsed.abandonedFragments.firstOrNull()?.let {
                 items += ErrorItem("abandoned_sentence", "FLUENCY", it, "쉬운 표현으로 바꿔서라도 문장을 끝까지 말하기")
             }
             val have = ai?.errors?.map { it.key }?.toSet().orEmpty()
             return Analysis(counts, items.filter { it.key !in have }.distinctBy { it.key })
         }
     }
+}
+
+/** Map known model aliases before counting repeated errors. Preserve unrelated error categories. */
+internal fun ErrorItem.withCanonicalKey(): ErrorItem = when (key) {
+    "irrelevant_description", "missing_problem_solving" -> copy(key = "task_incomplete")
+    else -> this
 }

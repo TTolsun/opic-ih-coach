@@ -45,7 +45,10 @@ data class QuestionItem(
     /** FRAME_ATTACH: the approved frames the learner should use in this answer. */
     val frames: List<FrameChip> = emptyList(),
     val reviewId: Long? = null,
+    val missionQuestion: String? = null,
 )
+
+private data class Variation(val instruction: String, val tense: String? = null, val question: String? = null)
 
 /** A frame shown on the speaking screen. */
 data class FrameChip(val pattern: String, val hintKo: String)
@@ -274,8 +277,8 @@ class SpeakingViewModel(app: Application) : AndroidViewModel(app) {
                 QuestionItem(s.topic, alt, s.questionType, "다른 표현 질문", s)
             }
             PracticeMode.VARIATION -> {
-                val (mission, tense) = variations(s).random()
-                QuestionItem(s.topic, s.question, s.questionType, "응용 챌린지", s, mission, tense)
+                val (mission, tense, question) = variations(s).random()
+                QuestionItem(s.topic, s.question, s.questionType, "응용 챌린지", s, mission, tense, missionQuestion = question)
             }
             else -> QuestionItem(s.topic, s.question, s.questionType, label, s)
         }
@@ -292,12 +295,16 @@ class SpeakingViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    private fun variations(s: ScriptEntity): List<Pair<String, String?>> = listOf(
-        "같은 이야기를 미래 계획으로 바꿔 말하세요. 예: \"Next month, I'm planning to...\"" to "FUTURE",
-        "같은 주제로 과거의 구체적인 경험 하나를 말하세요. 예: \"Last year, I...\"" to "PAST",
-        "과거와 지금을 비교해서 말하세요. 예: \"Back then, ... These days, ...\"" to null,
-        "이 답변을 다른 질문에 재활용하세요: \"" + (bank.filter { it.topic != s.topic && it.type == s.questionType }.randomOrNull()?.text ?: "Tell me about something you enjoy doing on weekends.") + "\"" to null,
-    )
+    private fun variations(s: ScriptEntity): List<Variation> {
+        val replacement = bank.filter { it.topic != s.topic && it.type == s.questionType }.randomOrNull()?.text
+            ?: "Tell me about something you enjoy doing on weekends."
+        return listOf(
+            Variation("같은 이야기를 미래 계획으로 바꿔 말하세요. 예: \"Next month, I'm planning to...\"", "FUTURE"),
+            Variation("같은 주제로 과거의 구체적인 경험 하나를 말하세요. 예: \"Last year, I...\"", "PAST"),
+            Variation("과거와 지금을 비교해서 말하세요. 예: \"Back then, ... These days, ...\"", "PAST_AND_PRESENT"),
+            Variation("이 답변을 다른 질문에 재활용하세요: \"$replacement\"", question = replacement),
+        )
+    }
 
     fun playQuestion(rate: Float = 1.0f) {
         val q = _ui.value.question ?: return
@@ -387,6 +394,7 @@ class SpeakingViewModel(app: Application) : AndroidViewModel(app) {
                     transcript = transcript, captureMode = captureMode, audioPath = audio, durationMs = duration,
                     pauses = pauses, transcriptFromDeviceStt = fromStt, requiredTense = q.requiredTense, mission = q.mission, target = target, captureNote = captureNote,
                     speakingReviewId = q.reviewId.takeIf { completeReview },
+                    missionQuestion = q.missionQuestion,
                 ),
                 ai = c.realAi(st), examEpochDay = c.exams.focusEpochDay(),
             )

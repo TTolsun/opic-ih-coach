@@ -1,22 +1,23 @@
 package com.opicih.coach.analysis
 
-/** 과거 맥락에서 현재형을 쓴 문장 하나. [sentence]는 화면과 오류 노트의 예시입니다. */
+/** 과거 맥락에서 현재형을 쓴 구절 하나. [sentence]는 화면과 오류 노트의 예시입니다. */
 data class TenseHit(val sentence: String, val verb: String)
 
 /**
- * 과거 시간 표지(yesterday, last weekend, ago, when I was ...)가 있는 문장에서 현재형 동사를 찾는 규칙 탐지기입니다.
- * "Last weekend I go to the park"처럼 과거 맥락에서 현재형을 쓴 오류를 잡기 위한 것으로,
- * 기존 과거형 개수 세기(`DiscourseAnalyzer`)는 이런 오류를 보지 못합니다.
- *
- * 오탐을 줄이려고 범위를 좁게 잡았습니다: 불규칙 동사 목록과 be 동사만 보고, 주어 바로 뒤의 동사만 봅니다.
- * 문장에 now/usually/every 같은 현재 표지가 있으면 그 문장은 건너뜁니다. 학습용 참고값이며 문법 검사기가 아닙니다.
+ * 과거 맥락에서 주어 뒤의 현재형 동사 후보를 찾습니다.
+ * 과거 표지는 바로 다음 문장까지 적용합니다. 빈 줄과 명시적 시간 전환은
+ * 맥락을 끊으며, 직접 인용 속의 표현은 화자의 서술에서 제외합니다.
  */
 object TenseErrorDetector {
-    private val PAST_MARKER = Regex(
-        "\\b(yesterday|last (night|week|weekend|month|year|summer|winter|spring|fall|time)|ago|when i was|the other day|in (19|20)\\d\\d)\\b",
-    )
-    private val PRESENT_MARKER = Regex("\\b(now|nowadays|these days|today|usually|always|often|never|still|every|sometimes)\\b")
-    private val SUBJECT = "(?:i|we|they|he|she|it|my \\w+|our \\w+|the \\w+)"
+    private const val SUBJECT = "(?:i|we|they|he|she|it|my \\w+|our \\w+|the \\w+)"
+    private const val PAST_MARKER =
+        "yesterday|last (night|week|weekend|month|year|summer|winter|spring|fall|time)|ago|when i was|the other day|back then|in (?:19|20)\\d\\d"
+    private const val OTHER_TIME =
+        "now|nowadays|these days|today|currently|at present|at the moment|since then|ever since|so far|tomorrow|" +
+            "next (?:weekend|week|month|year|summer|winter|spring|fall|time|monday|tuesday|wednesday|thursday|friday|saturday|sunday)|" +
+            "in the future|$SUBJECT (?:will|won't)|$SUBJECT'll|(?:am|is|are|'m|'s|'re) going to (?!the\\b|a\\b|an\\b)\\w+"
+    private val TIME_MARKER = Regex("\\b(?:($PAST_MARKER)|$OTHER_TIME)\\b")
+    private val HABIT_MARKER = Regex("\\b(usually|always|often|never|still|every|sometimes)\\b")
     private val ADVERB = "(?:(?:also|really|just|then|finally|actually) )?"
 
     /** 현재형 동사(원형과 3인칭). 과거형이 불규칙이라 현재형과 모양이 달라서 구분할 수 있는 것만 넣었습니다. */
@@ -31,29 +32,57 @@ object TenseErrorDetector {
     ).joinToString("|")
 
     private val HIT = Regex("\\b($SUBJECT) $ADVERB($PRESENT_VERBS)\\b(?! (?:been|had)\\b)")
+    private val CLAUSE_BOUNDARY = Regex(
+        "[;:–—]+|,(?=\\s*(?:$PAST_MARKER|$OTHER_TIME)\\b)|\\b(?:and|but|so)\\b(?=\\s+(?:$SUBJECT|$PAST_MARKER|$OTHER_TIME)\\b)",
+        RegexOption.IGNORE_CASE,
+    )
+    private val DIRECT_QUOTE = Regex(
+        """"[^"]*(?:"|$)|“[^”]*(?:”|$)|(?<![\w])'(?=\S).*?'(?!\w)|‘.*?’(?!\w)""",
+        RegexOption.DOT_MATCHES_ALL,
+    )
+    private val PARAGRAPH_BOUNDARY = Regex("\n[ \t]*\n")
     // 숫자는 남깁니다: "in 2019" 같은 과거 표지가 사라지면 안 됩니다.
     private val NOT_LETTERS = Regex("[^a-z0-9' ]")
     private val SPACES = Regex("\\s+")
-    private const val CHUNK_WORDS = 12
-    private const val LONG_SEGMENT_WORDS = 25
-
     private fun norm(s: String): String =
-        s.lowercase().replace('’', '\'').replace(NOT_LETTERS, " ").replace('\'', ' ').replace(SPACES, " ").trim()
+        s.lowercase().replace('’', '\'').replace(NOT_LETTERS, " ").replace(SPACES, " ").trim()
 
-    /**
-     * 문장 부호가 없는 인식 결과는 한 덩어리가 길어서, 앞쪽의 과거 표지가 뒤쪽 미래 이야기에까지 번지지 않도록
-     * 긴 덩어리를 [CHUNK_WORDS]단어씩 나눠서 봅니다.
-     */
-    private fun segments(text: String): List<String> =
-        text.split(Regex("(?<=[.!?])\\s+|\\n+")).map { it.trim() }.filter { it.isNotEmpty() }.flatMap { seg ->
-            val words = seg.split(SPACES)
-            if (words.size <= LONG_SEGMENT_WORDS) listOf(seg) else words.chunked(CHUNK_WORDS).map { it.joinToString(" ") }
+    fun find(text: String): List<TenseHit> = buildList {
+        val narration = DIRECT_QUOTE.replace(text) { quote ->
+            val end = quote.value.trimEnd('"', '\'', '”', '’').trimEnd().lastOrNull()
+            if (end != null && end in ".!?") "$end " else "; "
+        }.replace("\r\n", "\n").replace('\r', '\n')
+        for (paragraph in narration.split(PARAGRAPH_BOUNDARY)) {
+            var precedingPast = false
+            for (sentence in TextNormalizer.sentences(paragraph)) {
+                precedingPast = scan(sentence, precedingPast, this)
+            }
         }
+    }
 
-    fun find(text: String): List<TenseHit> = segments(text).flatMap { seg ->
-        val n = norm(seg)
-        if (!PAST_MARKER.containsMatchIn(n) || PRESENT_MARKER.containsMatchIn(n)) emptyList()
-        else HIT.findAll(n).map { TenseHit(seg.trim(), it.groupValues[2]) }.toList()
+    /** Returns whether an explicit anchor in this sentence can carry over. */
+    private fun scan(sentence: String, precedingPast: Boolean, hits: MutableList<TenseHit>): Boolean {
+        var past = precedingPast
+        var hasAnchor = false
+        for (clause in sentence.split(CLAUSE_BOUNDARY)) {
+            val normalized = norm(clause)
+            val markers = TIME_MARKER.findAll(normalized).toList()
+            if (markers.isEmpty() && HABIT_MARKER.containsMatchIn(normalized)) {
+                past = false
+                continue
+            }
+            for (hit in HIT.findAll(normalized)) {
+                // A trailing time expression can govern the whole clause.
+                val marker = markers.lastOrNull { it.range.first <= hit.range.first } ?: markers.firstOrNull()
+                val inPast = marker?.let { it.groups[1] != null } ?: past
+                if (inPast) hits.add(TenseHit(clause.trim(), hit.groupValues[2]))
+            }
+            markers.lastOrNull()?.let {
+                past = it.groups[1] != null
+                hasAnchor = true
+            }
+        }
+        return past && hasAnchor
     }
 
     fun count(text: String): Int = find(text).size
