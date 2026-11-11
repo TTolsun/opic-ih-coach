@@ -71,4 +71,6 @@ object MigrationSql {
             "`ko` TEXT NOT NULL, `createdAt` INTEGER NOT NULL)",
         "CREATE INDEX IF NOT EXISTS `index_script_segments_scriptId` ON `script_segments` (`scriptId`)",
     )
+
+    val V6_TO_V7 = listOf("ALTER TABLE `attempts` ADD COLUMN `speakingReviewDueEpochDay` INTEGER")
 }

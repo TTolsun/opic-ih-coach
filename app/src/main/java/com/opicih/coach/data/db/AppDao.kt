@@ -43,6 +43,43 @@ interface AppDao {
     /** Same question in the same mode only: a memorize-stage read-aloud score is not comparable to a blind answer. */
     @Query("SELECT * FROM attempts WHERE questionText = :q AND mode = :mode ORDER BY createdAt DESC LIMIT 5")
     suspend fun recentForQuestion(q: String, mode: String): List<PracticeAttemptEntity>
+    @Query("SELECT DISTINCT questionText FROM attempts WHERE wordCount > 0 OR speechMs > 0")
+    suspend fun answeredQuestionTexts(): List<String>
+
+    @Query("""
+        UPDATE attempts SET speakingReviewDueEpochDay = :due
+        WHERE id = :id AND mode = 'FREE' AND (wordCount > 0 OR speechMs > 0)
+        AND NOT EXISTS (
+            SELECT 1 FROM attempts AS pending
+            WHERE pending.mode = 'FREE' AND pending.questionText = attempts.questionText
+            AND pending.speakingReviewDueEpochDay IS NOT NULL
+        )
+    """)
+    suspend fun scheduleSpeakingReview(id: Long, due: Long): Int
+
+    @Query("""
+        SELECT MIN(speakingReviewDueEpochDay) FROM attempts
+        WHERE mode = 'FREE' AND questionText = :question
+    """)
+    suspend fun speakingReviewDate(question: String): Long?
+
+    @Query("""
+        SELECT * FROM attempts WHERE mode = 'FREE' AND speakingReviewDueEpochDay IS NOT NULL
+        ORDER BY speakingReviewDueEpochDay, id
+    """)
+    fun speakingReviewsFlow(): Flow<List<PracticeAttemptEntity>>
+
+    @Query("""
+        SELECT * FROM attempts WHERE id = :id AND mode = 'FREE' AND speakingReviewDueEpochDay <= :today
+    """)
+    suspend fun dueSpeakingReview(id: Long, today: Long): PracticeAttemptEntity?
+
+    @Query("""
+        UPDATE attempts SET speakingReviewDueEpochDay = NULL
+        WHERE id = :id AND mode = 'FREE' AND questionText = :question AND speakingReviewDueEpochDay <= :today
+    """)
+    suspend fun finishSpeakingReview(id: Long, question: String, today: Long): Int
+
     @Query("SELECT * FROM attempts WHERE mockId = :mockId ORDER BY createdAt") suspend fun attemptsForMock(mockId: Long): List<PracticeAttemptEntity>
     @Query("SELECT * FROM attempts WHERE audioPath IS NOT NULL AND createdAt < :before")
     suspend fun attemptsWithAudioBefore(before: Long): List<PracticeAttemptEntity>

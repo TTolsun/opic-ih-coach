@@ -12,6 +12,7 @@ import com.opicih.coach.data.db.QuestionType
 import com.opicih.coach.data.db.ScriptEntity
 import com.opicih.coach.data.prefs.CaptureMode
 import com.opicih.coach.data.repo.AnalyzedAttempt
+import com.opicih.coach.data.repo.ExamRepository
 import com.opicih.coach.data.repo.PracticeRepository
 import com.opicih.coach.analysis.VerbatimMarkup
 import com.opicih.coach.data.prefs.Settings
@@ -21,6 +22,7 @@ import com.opicih.coach.learning.FrameMatcher
 import com.opicih.coach.learning.LadderLevel
 import com.opicih.coach.learning.LadderResult
 import com.opicih.coach.learning.ParagraphLadder
+import com.opicih.coach.learning.transferCandidates
 import com.opicih.coach.speech.AnswerCapture
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -42,6 +44,7 @@ data class QuestionItem(
     val requiredTense: String? = null,
     /** FRAME_ATTACH: the approved frames the learner should use in this answer. */
     val frames: List<FrameChip> = emptyList(),
+    val reviewId: Long? = null,
 )
 
 /** A frame shown on the speaking screen. */
@@ -72,6 +75,8 @@ data class SpeakingUi(
     /** PARAGRAPH_LADDER: the level the learner is trying now. Null in every other mode. */
     val ladder: LadderLevel? = null,
     val check: PracticeCheck? = null,
+    val reviewDueEpochDay: Long? = null,
+    val transferUnavailable: Boolean = false,
 )
 
 class SpeakingViewModel(app: Application) : AndroidViewModel(app) {
@@ -81,7 +86,10 @@ class SpeakingViewModel(app: Application) : AndroidViewModel(app) {
     val ui: StateFlow<SpeakingUi> = _ui
     private var bank: List<QuestionEntity> = emptyList()
     private var tick: Job? = null
+    private var questionLoad: Job? = null
     private var configured = false
+    private var openingReview = false
+    private var reviewRoute = false
 
     init {
         viewModelScope.launch {
@@ -92,7 +100,7 @@ class SpeakingViewModel(app: Application) : AndroidViewModel(app) {
                     val q = u.question?.let { q -> q.script?.let { s -> list.firstOrNull { it.id == s.id }?.let { q.copy(script = it) } } ?: q }
                     u.copy(scripts = list, question = q)
                 }
-                if (_ui.value.question == null && configured) next()
+                if (_ui.value.question == null && configured && !reviewRoute) next()
             }
         }
         viewModelScope.launch {
@@ -109,10 +117,24 @@ class SpeakingViewModel(app: Application) : AndroidViewModel(app) {
     private var activeChoice: CaptureChoice? = null
 
     /** Called once from navigation arguments. */
-    fun configure(scriptId: Long?, mode: PracticeMode?) {
+    fun configure(scriptId: Long?, mode: PracticeMode?, reviewId: Long?) {
         if (configured) return
         configured = true
+        reviewRoute = reviewId != null
+        openingReview = reviewRoute
         viewModelScope.launch {
+            if (reviewId != null) {
+                val review = c.dao.dueSpeakingReview(reviewId, ExamRepository.nowKst().toLocalDate().toEpochDay())
+                openingReview = false
+                if (review == null) {
+                    _ui.update { it.copy(mode = PracticeMode.FREE, error = "다시 말할 질문이 없습니다.") }
+                } else {
+                    _ui.update { it.copy(mode = PracticeMode.FREE) }
+                    val source = bank.firstOrNull { it.text == review.questionText }?.sourceLabel ?: "다시 말하기"
+                    showQuestion(QuestionItem(review.topic, review.questionText, review.questionType, source, reviewId = review.id))
+                }
+                return@launch
+            }
             val s = scriptId?.takeIf { it > 0 }?.let { c.dao.script(it) }
             val m = mode ?: if (s != null) PracticeMode.KEYWORD else PracticeMode.BLIND
             _ui.update { it.copy(mode = m) }
@@ -121,20 +143,22 @@ class SpeakingViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun setMode(m: PracticeMode) {
-        if (_ui.value.phase == Phase.RECORDING) return
+        if (openingReview || _ui.value.phase in setOf(Phase.RECORDING, Phase.PROCESSING)) return
         _ui.update { it.copy(mode = m, result = null, phase = Phase.IDLE, shadowIndex = 0, error = null, ladder = null, check = null) }
         val s = _ui.value.question?.script
         if (m.usesScript && s != null) setScript(s) else next()
     }
 
     fun setScript(s: ScriptEntity) {
-        _ui.update { it.copy(question = questionFor(s, it.mode), result = null, phase = Phase.IDLE, shadowIndex = 0, error = null, replays = 0, showTypedFallback = false, ladder = null, check = null) }
+        questionLoad?.cancel()
+        showQuestion(questionFor(s, _ui.value.mode))
     }
 
     /** Next question: due scripts first for script modes, Survey/focus topics first for free speaking. */
     fun next() {
-        if (_ui.value.phase == Phase.RECORDING) return
-        viewModelScope.launch {
+        if (openingReview || _ui.value.phase in setOf(Phase.RECORDING, Phase.PROCESSING)) return
+        questionLoad?.cancel()
+        questionLoad = viewModelScope.launch {
             val st = c.settings.current()
             val mode = _ui.value.mode
             val current = _ui.value.question
@@ -146,23 +170,61 @@ class SpeakingViewModel(app: Application) : AndroidViewModel(app) {
                     .let { list -> list.take(4).shuffled().firstOrNull() ?: scripts.firstOrNull() }
                 pick?.let { questionFor(it, mode) }
             } else {
+                if (bank.isEmpty()) bank = c.dao.questions()
                 val preferred = st.focusTopics + st.surveyTopics
                 val all = bank.filter { b -> preferred.any { p -> b.topic.contains(p.substringBefore(" "), true) } }.ifEmpty { bank }
                 // The ladder needs a question that invites a past story; fall back to any question if none matches.
                 val pool = if (mode == PracticeMode.PARAGRAPH_LADDER) all.filter { it.type == QuestionType.PAST_EXPERIENCE.name }.ifEmpty { all } else all
                 pool.filter { it.text != current?.text }.randomOrNull()?.let {
-                    val label = if (it.source == "USER_LIST") "내 기출 정리 자료(비공식)" else "AI 생성 연습 문제"
                     when (mode) {
-                        PracticeMode.FRAME_ATTACH -> frameQuestion(it, label)
-                        PracticeMode.PARAGRAPH_LADDER -> QuestionItem(it.topic, it.text, it.type, label, mission = LadderLevel.ONE.missionKo)
-                        else -> QuestionItem(it.topic, it.text, it.type, label)
+                        PracticeMode.FRAME_ATTACH -> frameQuestion(it, it.sourceLabel)
+                        PracticeMode.PARAGRAPH_LADDER -> QuestionItem(it.topic, it.text, it.type, it.sourceLabel, mission = LadderLevel.ONE.missionKo)
+                        else -> QuestionItem(it.topic, it.text, it.type, it.sourceLabel)
                     }
                 }
             }
             val ladder = if (mode == PracticeMode.PARAGRAPH_LADDER && q != null) LadderLevel.ONE else null
-            _ui.update { it.copy(question = q, result = null, phase = Phase.IDLE, shadowIndex = 0, error = null, replays = 0, showTypedFallback = false, ladder = ladder, check = null) }
+            showQuestion(q, ladder)
         }
     }
+
+    fun nextSameType() {
+        val attempt = _ui.value.result?.attempt?.takeIf { it.mode == PracticeMode.FREE.name } ?: return
+        questionLoad?.cancel()
+        questionLoad = viewModelScope.launch {
+            val candidate = transferCandidates(bank, attempt, c.dao.answeredQuestionTexts()).randomOrNull()
+            if (_ui.value.result?.attempt?.id != attempt.id) return@launch
+            if (candidate == null) {
+                _ui.update { it.copy(transferUnavailable = true) }
+            } else {
+                stopAudio()
+                showQuestion(QuestionItem(candidate.topic, candidate.text, candidate.type, candidate.sourceLabel))
+            }
+        }
+    }
+
+    fun scheduleReview() {
+        val attempt = _ui.value.result?.attempt?.takeIf { it.mode == PracticeMode.FREE.name } ?: return
+        viewModelScope.launch {
+            val due = ExamRepository.nowKst().toLocalDate().plusDays(3).toEpochDay()
+            c.dao.scheduleSpeakingReview(attempt.id, due)
+            val scheduled = c.dao.speakingReviewDate(attempt.questionText)
+            _ui.update { if (it.result?.attempt?.id == attempt.id) it.copy(reviewDueEpochDay = scheduled) else it }
+        }
+    }
+
+    private fun showQuestion(question: QuestionItem?, ladder: LadderLevel? = null) {
+        _ui.update {
+            it.copy(
+                question = question, result = null, phase = Phase.IDLE, shadowIndex = 0, error = null,
+                replays = 0, showTypedFallback = false, ladder = ladder, check = null,
+                reviewDueEpochDay = null, transferUnavailable = false,
+            )
+        }
+    }
+
+    private val QuestionEntity.sourceLabel: String
+        get() = if (source == "USER_LIST") "내 기출 정리 자료(비공식)" else "AI 생성 연습 문제"
 
     /** A new question plus one or two approved frames to use in the answer (none when the learner has approved none). */
     private suspend fun frameQuestion(b: QuestionEntity, label: String): QuestionItem {
@@ -266,6 +328,7 @@ class SpeakingViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     private fun start() {
+        questionLoad?.cancel()
         c.tts.stop(); c.player.stop()
         // Free-speaking answers are recorded and transcribed verbatim when the learner allowed it; otherwise the
         // chosen capture mode is kept and the reason is shown with the result.
@@ -287,7 +350,7 @@ class SpeakingViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    fun stop() {
+    fun stop(completeReview: Boolean = true) {
         if (_ui.value.phase != Phase.RECORDING) return
         tick?.cancel()
         _ui.update { it.copy(phase = Phase.PROCESSING) }
@@ -300,18 +363,19 @@ class SpeakingViewModel(app: Application) : AndroidViewModel(app) {
                 _ui.update { it.copy(phase = Phase.IDLE, error = r.warning ?: "인식된 영어 문장이 없습니다. 다시 말하거나, 말한 내용을 직접 입력하세요.", showTypedFallback = true) }
                 return@launch
             }
-            analyze(r.transcript, r.captureMode, r.audioPath, r.durationMs, r.pauses, r.fromDeviceStt, r.warning, activeChoice?.note)
+            analyze(r.transcript, r.captureMode, r.audioPath, r.durationMs, r.pauses, r.fromDeviceStt, r.warning, activeChoice?.note, completeReview)
         }
     }
 
     /** Recovery path when STT fails: the user types what they said. */
     fun submitTyped(text: String) {
-        if (text.isBlank()) return
+        if (text.isBlank() || _ui.value.phase in setOf(Phase.RECORDING, Phase.PROCESSING)) return
+        questionLoad?.cancel()
         _ui.update { it.copy(phase = Phase.PROCESSING, showTypedFallback = false, error = null) }
         viewModelScope.launch { analyze(text.trim(), "TYPED", null, 0, null, false, null, null) }
     }
 
-    private suspend fun analyze(transcript: String, captureMode: String, audio: String?, duration: Long, pauses: com.opicih.coach.analysis.PauseMetrics?, fromStt: Boolean, warning: String?, captureNote: String?) {
+    private suspend fun analyze(transcript: String, captureMode: String, audio: String?, duration: Long, pauses: com.opicih.coach.analysis.PauseMetrics?, fromStt: Boolean, warning: String?, captureNote: String?, completeReview: Boolean = true) {
         val st = c.settings.current()
         val u = _ui.value
         val q = u.question ?: return
@@ -322,13 +386,20 @@ class SpeakingViewModel(app: Application) : AndroidViewModel(app) {
                     script = q.script, topic = q.topic, question = q.text, questionType = q.type, mode = u.mode,
                     transcript = transcript, captureMode = captureMode, audioPath = audio, durationMs = duration,
                     pauses = pauses, transcriptFromDeviceStt = fromStt, requiredTense = q.requiredTense, mission = q.mission, target = target, captureNote = captureNote,
+                    speakingReviewId = q.reviewId.takeIf { completeReview },
                 ),
                 ai = c.realAi(st), examEpochDay = c.exams.focusEpochDay(),
             )
         }
         res.onSuccess { a ->
             val check = checkFor(u, q, transcript, a)
-            _ui.update { it.copy(phase = Phase.RESULT, result = a, check = check, error = listOfNotNull(warning, a.aiError?.let { e -> "AI 분석 실패: $e (로컬 분석으로 표시)" }).joinToString("\n").ifBlank { null }) }
+            val reviewDate = if (u.mode == PracticeMode.FREE) c.dao.speakingReviewDate(q.text) else null
+            _ui.update {
+                it.copy(
+                    phase = Phase.RESULT, result = a, check = check, reviewDueEpochDay = reviewDate, transferUnavailable = false,
+                    error = listOfNotNull(warning, a.aiError?.let { e -> "AI 분석 실패: $e (로컬 분석으로 표시)" }).joinToString("\n").ifBlank { null },
+                )
+            }
         }.onFailure { e ->
             _ui.update { it.copy(phase = Phase.IDLE, error = "분석 중 오류: ${e.message}") }
         }
@@ -357,7 +428,7 @@ class SpeakingViewModel(app: Application) : AndroidViewModel(app) {
     fun dismissError() = _ui.update { it.copy(error = null) }
 
     /** App went to background or the screen left: never keep the mic open. */
-    fun onBackground() { if (_ui.value.phase == Phase.RECORDING) stop() }
+    fun onBackground() { if (_ui.value.phase == Phase.RECORDING) stop(completeReview = false) }
 
     override fun onCleared() {
         capture.release()

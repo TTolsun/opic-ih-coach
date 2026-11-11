@@ -164,8 +164,33 @@ class FeedbackComposerTest {
     }
 
     @Test fun comparisonWithoutPresentIsFlagged() {
-        val fb = FeedbackComposer.compose(input("When I was young, our sofa was small and I jumped on it every day.", type = "COMPARISON"))
+        val fb = FeedbackComposer.compose(
+            input("When I was young, our sofa was small and I jumped on it every day.", type = "COMPARISON")
+                .copy(question = "How is your furniture now different from the furniture in your childhood home?"),
+        )
         assertTrue(fb.errors.any { it.key == "comparison_frame_missing" })
+    }
+
+    @Test fun comparingTwoCurrentPlacesDoesNotRequirePastTense() {
+        val fb = FeedbackComposer.compose(
+            input("My local park has lots of trees. The park near work is smaller but quieter.", type = "COMPARISON")
+                .copy(question = "Compare the park near your home with the one near work."),
+        )
+        assertTrue(fb.errors.none { it.key == "comparison_frame_missing" })
+    }
+
+    @Test fun pastExperienceDoesNotNeedFuturePlansOrExperienceMarkers() {
+        val story = "Last May I was on a trip to Rome. My bag fell off a bus. I ran to the next stop and told the driver. " +
+            "He let me look in the back. I found it on a seat and got it back. I felt glad I had my bag."
+        val feedback = FeedbackComposer.compose(input(story))
+        assertTrue(feedback.fixes.none { it.issue.contains("미래") || it.issue.contains("개인 경험이 없습니다") })
+        assertTrue(feedback.fixes.any { it.better.contains("이유, 결과, 순서") })
+    }
+
+    @Test fun explicitFutureMissionTakesPrecedenceOverThePastQuestionType() {
+        val feedback = FeedbackComposer.compose(input("I had a ticket for the trip.").copy(requiredTense = "FUTURE"))
+        assertTrue(feedback.errors.none { it.key == "past_tense_missing" })
+        assertTrue(feedback.fixes.any { it.issue.contains("미래 계획") })
     }
 
     @Test fun wpm() {

@@ -47,10 +47,15 @@ data class AnalysisInput(
      * coverage를 쓰지 않아서, 원문과 똑같이 말한다고 점수가 오르지 않습니다.
      */
     val scoreKind: ScoreKind = if (usesScript) ScoreKind.MEMORIZATION else ScoreKind.SPEAKING,
+    val question: String = "",
 )
 
 /** Rule table that turns metrics into "잘한 점 2 / 수정 ≤3 / 미션". Labelled "로컬 분석(AI 아님)" in the UI. */
 object FeedbackComposer {
+    private val pastComparison = Regex(
+        """\b(childhood|in the past|used to|when you were|years ago|over the years|back then)\b""",
+        RegexOption.IGNORE_CASE,
+    )
 
     /** Cuts at a word boundary so the UI never shows half a word. */
     fun shorten(s: String, max: Int = 60): String =
@@ -135,7 +140,7 @@ object FeedbackComposer {
         // ---- Strengths (pick the best 2)
         val candidates = mutableListOf<Pair<Int, String>>()
         if (d.wordCount >= 100) candidates += 9 to "답변 길이가 충분합니다 (${d.wordCount}단어). IH는 문단 수준의 연결 발화가 핵심입니다."
-        if (d.connectorCount >= 5) candidates += 8 to "연결 표현을 ${d.connectorCount}회 사용해 문장을 이어 갔습니다 (${d.connectorsUsed.take(3).joinToString()})."
+        if (d.connectorCount >= 5) candidates += 8 to "연결 표현을 ${d.connectorCount}회 사용했습니다 (${d.connectorsUsed.take(3).joinToString()})."
         if (d.timeFrames >= 2) candidates += 7 to "두 가지 이상의 시제(과거 ${d.pastCount}, 현재 ${d.presentCount}, 미래 ${d.futureCount})를 사용했습니다."
         if (d.experienceMarkers > 0) candidates += 7 to "구체적인 경험 표지(I remember, last year 등)로 이야기를 시작했습니다."
         if (d.feelingWords > 0) candidates += 6 to "감정 표현을 넣어 이야기가 생생합니다."
@@ -155,25 +160,24 @@ object FeedbackComposer {
             "IH는 짧은 문장 나열이 아니라 문단 단위로 이야기를 이어 가는 능력을 봅니다.",
             "시작 → 구체적 설명 2개 → 경험 1개 → 느낌 → 마무리 순서로 5~7문장을 목표로 하세요.",
         )
-        if (type == "PAST_EXPERIENCE" && d.pastCount < 3) {
+        if (input.requiredTense == null && type == "PAST_EXPERIENCE" && d.pastCount < 3) {
             fixCandidates += 9 to FixItem("과거 경험 질문인데 과거 시제가 적습니다.", "경험 서사는 과거 시제의 일관성이 핵심 평가 요소입니다.", "\"Last summer, I went... I saw... I felt...\"처럼 동사를 과거형으로 유지하세요.")
             errors += ErrorItem("past_tense_missing", "GRAMMAR", "과거 경험을 현재형으로 설명", "went / had / was 등 과거형 유지")
         }
-        if (type == "COMPARISON" && (d.pastCount == 0 || d.presentCount == 0)) {
-            fixCandidates += 9 to FixItem("비교 질문인데 과거와 현재가 모두 나오지 않았습니다.", "비교 질문은 과거→현재→이유→느낌 구조가 필요합니다.", "\"When I was a kid, ... But these days, ... I think it's because ...\"")
+        if (input.requiredTense == null && type == "COMPARISON" &&
+            pastComparison.containsMatchIn(input.question) && (d.pastCount == 0 || d.presentCount == 0)
+        ) {
+            fixCandidates += 9 to FixItem("과거와 현재 중 빠진 내용을 확인하세요.", "질문에서 예전과 지금의 차이를 물었습니다.", "\"Back then, ... These days, ...\"")
             errors += ErrorItem("comparison_frame_missing", "CONTENT", "비교 구조 없이 한쪽만 설명", "In the past ... / These days ... / The biggest difference is ...")
         }
-        if (type == "ROUTINE" && d.presentCount == 0 && d.pastCount > d.presentCount) {
+        if (input.requiredTense == null && type == "ROUTINE" && d.presentCount == 0 && d.pastCount > d.presentCount) {
             fixCandidates += 7 to FixItem("루틴 질문인데 과거형으로 말했습니다.", "습관은 현재 시제로 말해야 자연스럽습니다.", "\"I usually..., then I..., after that I...\"")
             errors += ErrorItem("routine_in_past", "GRAMMAR", "루틴을 과거형으로 설명", "usually + 현재형")
         }
-        if (d.futureCount == 0 && d.wordCount >= 40) fixCandidates += 5 to FixItem(
-            "미래 표현이 없습니다.", "IH는 여러 시간대를 넘나드는 능력을 봅니다.",
-            "마지막에 한 문장 추가: \"Next weekend, I'm planning to...\" 또는 \"I hope I can... someday.\"",
-        )
         if (d.connectorCount < 3) fixCandidates += 8 to FixItem(
-            "문장 연결이 부족합니다 (연결 표현 ${d.connectorCount}회).", "연결 표현이 없으면 문장 나열(IM 수준)로 들립니다.",
-            "because / so / after that / actually / on the other hand 중 3개 이상을 넣어 보세요.",
+            "문장 사이의 관계를 확인해 보세요.",
+            "",
+            "이유, 결과, 순서 중 한 곳을 골라 because / so / after that으로 연결해 보세요.",
         )
         if (p != null && p.longPauseCount >= 2) fixCandidates += 8 to FixItem(
             "2초 이상 멈춘 구간이 ${p.longPauseCount}회 있습니다 (최대 ${p.maxPauseMs / 1000}초).",
@@ -183,10 +187,6 @@ object FeedbackComposer {
         if (p != null && p.leadingSilenceMs > 5000) fixCandidates += 6 to FixItem(
             "첫 마디까지 ${p.leadingSilenceMs / 1000}초 걸렸습니다.", "시작이 늦으면 전체 발화 시간이 줄어듭니다.",
             "첫 문장을 고정해 두세요: \"Oh, that's a good question. Let me tell you about...\"",
-        )
-        if (d.experienceMarkers == 0 && type in setOf("PAST_EXPERIENCE", "DESCRIPTION", "COMPARISON")) fixCandidates += 6 to FixItem(
-            "구체적인 개인 경험이 없습니다.", "구체적 디테일(언제, 어디서, 누구와)이 IH 답변의 설득력을 만듭니다.",
-            "\"One thing I remember clearly is...\"로 짧은 에피소드 하나를 넣어 보세요.",
         )
         if (input.compare != null && input.compare.coverage < 0.5f) fixCandidates += 9 to FixItem(
             "스크립트 핵심 내용의 ${(input.compare.coverage * 100).toInt()}%만 말했습니다.",

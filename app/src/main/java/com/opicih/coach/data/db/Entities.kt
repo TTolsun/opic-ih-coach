@@ -185,6 +185,8 @@ data class PracticeAttemptEntity(
     val createdAt: Long = System.currentTimeMillis(),
     /** v3: groups the turns of one exam training session (e.g. a SAIL conversation). */
     val trainingSessionId: Long? = null,
+    /** A pending review of this exact free-speaking question. Null when unscheduled or completed. */
+    val speakingReviewDueEpochDay: Long? = null,
 ) {
     /** Measured speech time, or the whole answer duration when speech was not measured. */
     val effectiveSpeechMs: Long get() = if (speechMs > 0) speechMs else durationMs

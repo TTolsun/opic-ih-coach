@@ -30,7 +30,10 @@ class LocalCoach : AiCoach {
         val compare = input.targetScript?.let { ScriptComparator.compare(it, input.transcript) }
         return Result.success(
             FeedbackComposer.compose(
-                AnalysisInput(input.questionType, input.targetScript != null, input.transcript, input.discourse, input.pauses, compare, input.transcriptFromDeviceStt)
+                AnalysisInput(
+                    input.questionType, input.targetScript != null, input.transcript, input.discourse, input.pauses,
+                    compare, input.transcriptFromDeviceStt, question = input.question,
+                )
             )
         )
     }
