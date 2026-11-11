@@ -47,7 +47,7 @@ class HomeStateTest {
 
     @Test fun weakTopicOpensWeakestScriptOfThatTopic() {
         val scripts = listOf(script(1, "여행", 80), script(2, "여행", 20), script(3, "음악", 50))
-        val attempts = listOf(PracticeAttemptEntity(topic = "여행", questionText = "q", mode = "FREE", score = 30))
+        val attempts = listOf(PracticeAttemptEntity(topic = "여행", questionText = "q", mode = "FREE", wordCount = 5, score = 30))
         val st = buildHomeState(today, Settings(surveyTopics = emptySet()), scripts, attempts, emptyList(), emptyList(), 0)
         val travel = st.weak.single { it.topic == "여행" }
         assertEquals(2L, travel.scriptId)

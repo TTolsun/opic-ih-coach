@@ -2,8 +2,13 @@ package com.opicih.coach.learning
 
 import com.opicih.coach.data.db.ChunkEntity
 import com.opicih.coach.data.db.DailyLogEntity
+import com.opicih.coach.data.db.MockTestEntity
 import com.opicih.coach.data.db.PracticeAttemptEntity
+import com.opicih.coach.data.db.PracticeMode
 import com.opicih.coach.data.db.ScriptEntity
+import com.opicih.coach.data.prefs.CaptureMode
+import com.opicih.coach.data.repo.AttemptMetrics
+import com.opicih.coach.data.repo.measuredScore
 
 /** Pure progress math. Everything is based on recorded speaking/review activity, never on app-open time. */
 object ProgressCalculator {
@@ -33,25 +38,32 @@ object ProgressCalculator {
      */
     fun ihReadiness(scripts: List<ScriptEntity>, attempts: List<PracticeAttemptEntity>): Int {
         val mastery = if (scripts.isEmpty()) 0f else scripts.map { it.masteryScore }.average().toFloat()
-        val free = attempts.filter { it.mode in ScoreKind.READINESS_MODES }.take(10)
-        val freeScore = if (free.isEmpty()) 0f else free.map { it.score }.average().toFloat()
-        val topics = attempts.map { it.topic }.toSet().size
+        val spoken = attempts.filter { it.hasSpokenTranscript }
+        val free = spoken.filter { it.mode in ScoreKind.READINESS_MODES }.take(10)
+        val freeScore = comparableScores(free)?.scores?.average()?.toFloat() ?: 0f
+        val topics = spoken.map { it.topic }.toSet().size
         val breadth = (topics / 8f).coerceAtMost(1f) * 100f
         return (mastery * 0.3f + freeScore * 0.5f + breadth * 0.2f).toInt().coerceIn(0, 100)
     }
 
-    data class TopicStat(val topic: String, val attempts: Int, val avgScore: Int, val avgWords: Int)
+    data class TopicStat(val topic: String, val attempts: Int, val avgScore: Int?, val avgWords: Int, val flow: Boolean)
 
     fun topicStats(attempts: List<PracticeAttemptEntity>): List<TopicStat> =
         attempts.groupBy { it.topic }.map { (t, list) ->
-            TopicStat(t, list.size, list.map { it.score }.average().toInt(), list.map { it.wordCount }.average().toInt())
-        }.sortedBy { it.avgScore }
+            val scored = list.mapNotNull { attempt ->
+                val metrics = AttemptMetrics.from(attempt)
+                attempt.measuredScore(metrics)?.let { (metrics?.speakingFlow == true) to it }
+            }
+            val flow = scored.firstOrNull()?.first ?: false
+            val scores = scored.filter { it.first == flow }.map { it.second }
+            TopicStat(t, list.size, scores.takeIf { it.isNotEmpty() }?.average()?.toInt(), list.map { it.wordCount }.average().toInt(), flow)
+        }.sortedBy { it.avgScore ?: Int.MAX_VALUE }
 
     /** Weak topics: lowest average score with at least one attempt, or Survey topics never practiced. */
     fun weakTopics(attempts: List<PracticeAttemptEntity>, survey: Set<String>, max: Int = 3): List<String> {
         val stats = topicStats(attempts.take(60))
         val never = survey.filter { s -> stats.none { it.topic.equals(s, true) } }
-        val low = stats.filter { it.avgScore < 70 }.map { it.topic }
+        val low = stats.filter { it.avgScore?.let { score -> score < 70 } == true }.map { it.topic }
         return (never + low).distinct().take(max)
     }
 
@@ -73,23 +85,56 @@ object ProgressCalculator {
         scriptsReviewed = (log.scriptsReviewed - if (a.scriptId != null) 1 else 0).coerceAtLeast(0),
     )
 
-    /** Readiness signals since [sinceEpochMs] (normally the last exam), for RetestAdvisor. */
-    fun readiness(attempts: List<PracticeAttemptEntity>, logs: List<DailyLogEntity>, sinceEpochDay: Long, sinceEpochMs: Long): RetestAdvisor.Readiness {
+    /** Readiness signals since [sinceEpochMs]. [attempts] are ordered newest first. */
+    fun readiness(
+        attempts: List<PracticeAttemptEntity>,
+        logs: List<DailyLogEntity>,
+        sinceEpochDay: Long,
+        sinceEpochMs: Long,
+        mocks: List<MockTestEntity> = emptyList(),
+    ): RetestAdvisor.Readiness {
         val after = attempts.filter { it.createdAt >= sinceEpochMs }
-        val noScript = after.filter { it.mode in ScoreKind.READINESS_MODES && it.wordCount > 0 }.take(15)
-        val withPauses = noScript.filter { it.captureMode != "TYPED" }
-        val mocks = after.filter { it.mockId != null }.groupBy { it.mockId }
-            .filter { (_, l) -> l.size >= 5 }.mapValues { (_, l) -> l.map { it.score }.average().toInt() }
+        val speaking = after.filter { it.mode in ScoreKind.READINESS_MODES && it.captureMode in speechCaptures }
+        val transcribed = speaking.filter { it.hasSpokenTranscript }.take(15)
+        val pauseCounts = speaking.take(15).mapNotNull { attempt ->
+            AttemptMetrics.from(attempt)?.pauses?.takeIf { it.speechMs > 0 }?.longPauseCount
+        }
+        val local = comparableScores(transcribed)
+        val mockAttempts = after.filter { it.mode == PracticeMode.MOCK.name && it.hasSpokenTranscript }.groupBy { it.mockId }
+        val completedMocks = mocks.filter { it.finishedAt?.let { time -> time >= sinceEpochMs } == true }
+        val scoredMocks = completedMocks.mapNotNull { comparableScores(mockAttempts[it.id].orEmpty()) }
         val recentLogs = logs.filter { it.epochDay >= sinceEpochDay }
         return RetestAdvisor.Readiness(
             practiceDays = recentLogs.count { it.speakingMs >= 10 * 60_000 },
             speakingMinutes = (recentLogs.sumOf { it.speakingMs } / 60_000).toInt(),
-            avgWords = if (noScript.isEmpty()) 0 else noScript.map { it.wordCount }.average().toInt(),
-            avgLongPauses = if (withPauses.isEmpty()) null else withPauses.map { it.longPauseCount }.average().toFloat(),
-            avgScore = if (noScript.isEmpty()) 0 else noScript.map { it.score }.average().toInt(),
-            mocksSinceExam = mocks.size,
-            bestMockScore = mocks.values.maxOrNull() ?: 0,
-            recentAnswers = noScript.size,
+            avgWords = if (transcribed.isEmpty()) 0 else transcribed.map { it.wordCount }.average().toInt(),
+            avgLongPauses = pauseCounts.takeIf { it.isNotEmpty() }?.average()?.toFloat(),
+            avgScore = local?.scores?.average()?.toInt(),
+            mocksSinceExam = completedMocks.size,
+            bestMockScore = scoredMocks.filter { it.scores.size >= 5 }.maxOfOrNull { it.scores.average().toInt() },
+            recentAnswers = transcribed.size,
+            scoredAnswers = local?.scores?.size ?: 0,
+            scoreCapture = local?.capture,
+            scoreIsFlow = local?.flow == true,
+            scorableMockAnswers = scoredMocks.maxOfOrNull { it.scores.size } ?: 0,
         )
+    }
+
+    private val speechCaptures = setOf(CaptureMode.LIVE_STT.name, CAPTURE_CLOUD_STT, CaptureMode.RECORD_ONLY.name)
+    private val PracticeAttemptEntity.hasSpokenTranscript: Boolean
+        get() = wordCount > 0 && (captureMode == CaptureMode.LIVE_STT.name || captureMode == CAPTURE_CLOUD_STT)
+
+    private data class ComparableScores(val capture: String, val flow: Boolean, val scores: List<Int>)
+
+    /** Use the most populated local scoring group. The newest capture wins a tie. */
+    private fun comparableScores(attempts: List<PracticeAttemptEntity>): ComparableScores? {
+        val scoresByCapture = attempts.mapNotNull { attempt ->
+            val metrics = AttemptMetrics.from(attempt)
+            val flow = metrics?.speakingFlow == true
+            val score = if (!flow && attempt.feedbackSource == "LOCAL") attempt.score else metrics?.localScore
+            score?.takeIf { it in 0..100 }?.let { (attempt.captureMode to flow) to it }
+        }.groupBy({ it.first }, { it.second })
+        val group = scoresByCapture.maxByOrNull { it.value.size } ?: return null
+        return ComparableScores(group.key.first, group.key.second, group.value)
     }
 }

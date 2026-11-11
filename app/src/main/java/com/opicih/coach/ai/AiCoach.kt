@@ -42,6 +42,9 @@ data class EvalInput(
      * not the question as written, so the evaluator must judge relevance against it.
      */
     val mission: String? = null,
+    val captureMode: String = if (transcriptFromDeviceStt) "LIVE_STT" else "",
+    val requiredTense: String? = null,
+    val missionQuestion: String? = null,
 )
 
 /** One question/answer pair of a SAIL practice conversation. */

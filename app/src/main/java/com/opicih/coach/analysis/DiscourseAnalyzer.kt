@@ -69,7 +69,9 @@ object DiscourseAnalyzer {
 
         val content = words.filter { it !in TextNormalizer.stopwords }
         val ttr = if (content.isEmpty()) 0f else content.toSet().size.toFloat() / content.size
-        val repeats = words.zipWithNext().count { (a, b) -> a == b && a.length > 1 }
+        val repeats = sentences.sumOf { sentence ->
+            TextNormalizer.words(sentence).zipWithNext().count { (a, b) -> a == b }
+        }
 
         return DiscourseMetrics(
             wordCount = words.size,

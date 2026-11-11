@@ -42,7 +42,7 @@ import com.opicih.coach.analysis.FixItem
 import com.opicih.coach.data.db.PracticeMode
 import com.opicih.coach.data.repo.AnalyzedAttempt
 import com.opicih.coach.data.repo.AttemptMetrics
-import com.opicih.coach.data.repo.appJson
+import com.opicih.coach.data.repo.measuredScore
 import com.opicih.coach.learning.ScoreKind
 import com.opicih.coach.ui.components.Banner
 import com.opicih.coach.ui.components.Bullet
@@ -66,35 +66,49 @@ internal fun ResultPanel(r: AnalyzedAttempt, ui: SpeakingUi, vm: SpeakingViewMod
     val fb = r.feedback
     val a = r.attempt
     val isAi = fb.source == "AI"
+    val scoreKind = ScoreKind.of(a.mode)
     var details by rememberSaveable(a.id) { mutableStateOf(false) }
 
     SectionCard(
         title = "결과",
         trailing = { SourceTag(if (isAi) "AI 분석 (${fb.engine.ifBlank { "AI" }})" else "로컬 분석 (AI 아님)", if (isAi) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant) },
     ) {
-        if (a.transcript.isNotBlank() || fb.score > 0) {
+        if (fb.scoreMeasured) {
             Row(verticalAlignment = Alignment.Bottom) {
                 Text("${fb.score}", style = MaterialTheme.typography.displaySmall, color = MaterialTheme.colorScheme.primary)
                 Spacer(Modifier.width(8.dp))
-                Text(ScoreKind.of(a.mode).label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(bottom = 8.dp))
+                Text(if (r.metrics.speakingFlow) ScoreKind.FLOW_LABEL else scoreKind.label,
+                    style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(bottom = 8.dp))
                 InfoButton(InfoTopics.MEASUREMENT)
             }
         }
-        r.previous?.let { p ->
-            val dScore = a.score - p.score
-            val previousPauses = remember(p.metricsJson) {
-                runCatching { appJson.decodeFromString(AttemptMetrics.serializer(), p.metricsJson).pauses }.getOrNull()
+        if (!isAi && r.metrics.speakingFlow && a.transcript.isNotBlank() && fb.relevance == null) {
+            Text("질문 적합성 미평가", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        r.previous?.let { previous ->
+            val previousMetrics = remember(previous.metricsJson) { AttemptMetrics.from(previous) }
+            val sameCapture = previous.captureMode == a.captureMode
+            val sameScoreKind = r.metrics.speakingFlow == (previousMetrics?.speakingFlow == true)
+            val sameScoreSource = r.metrics.speakingFlow || previous.feedbackSource == a.feedbackSource
+            val scoreDelta = previous.measuredScore(previousMetrics)?.takeIf {
+                fb.scoreMeasured && sameCapture && sameScoreKind && sameScoreSource
+            }?.let { a.score - it }
+            val changes = buildList {
+                scoreDelta?.let { add("점수 ${signed(it)}") }
+                if (a.wordCount > 0 && previous.wordCount > 0) {
+                    add("단어 ${signed(a.wordCount - previous.wordCount)}")
+                }
+                if (sameCapture && (r.metrics.pauses?.speechMs ?: 0) > 0 && (previousMetrics?.pauses?.speechMs ?: 0) > 0) {
+                    add("긴 무음 ${signed(a.longPauseCount - previous.longPauseCount)}")
+                }
             }
-            Banner(
-                buildString {
-                    append("지난번보다 점수 ${signed(dScore)} · 단어 ${signed(a.wordCount - p.wordCount)}")
-                    if (a.captureMode == p.captureMode && r.metrics.pauses != null && previousPauses != null) {
-                        append(" · 긴 무음 ${signed(a.longPauseCount - p.longPauseCount)}")
-                    }
-                },
-                tone = if (dScore >= 0) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.tertiary,
-            )
-            Spacer(Modifier.height(10.dp))
+            if (changes.isNotEmpty()) {
+                Banner(
+                    "지난 답변보다 " + changes.joinToString(" · "),
+                    tone = if (scoreDelta != null && scoreDelta < 0) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.secondary,
+                )
+                Spacer(Modifier.height(10.dp))
+            }
         }
 
         fb.strengths.firstOrNull()?.let {
@@ -105,7 +119,7 @@ internal fun ResultPanel(r: AnalyzedAttempt, ui: SpeakingUi, vm: SpeakingViewMod
 
         fb.fixes.firstOrNull()?.let { FocusFix(it) }
         // The retry mission usually asks to add missing sentences, so the first two stay visible here.
-        val missing = r.metrics.compare?.sentences?.filter { !it.covered }.orEmpty()
+        val missing = r.metrics.compare.takeIf { scoreKind == ScoreKind.MEMORIZATION }?.sentences?.filter { !it.covered }.orEmpty()
         if (missing.isNotEmpty()) {
             Spacer(Modifier.height(8.dp))
             Text("빠진 내용", style = MaterialTheme.typography.titleSmall)
@@ -192,12 +206,14 @@ private fun Details(r: AnalyzedAttempt, ui: SpeakingUi, vm: SpeakingViewModel) {
             } else {
                 MetricTile("텍스트", "전사 없음")
             }
-            m.compare?.let { MetricTile("내용 일치", "${(it.coverage * 100).toInt()}%") }
+            m.compare?.takeIf { ScoreKind.of(a.mode) == ScoreKind.MEMORIZATION }?.let {
+                MetricTile("내용 일치", "${(it.coverage * 100).toInt()}%")
+            }
             // Self-corrections and abandoned sentences are only visible in a verbatim transcript.
             m.errorCounts?.takeIf { it.verbatim }?.let { e ->
-                e.tense?.let { MetricTile("시제 오류", "${it}회") }
-                e.abandoned?.let { MetricTile("끝맺지 못함", "${it}회") }
-                e.selfCorrection?.let { MetricTile("자기 수정", "${it}회") }
+                e.tense?.let { MetricTile("시제 오류 (${if (e.tenseSource == "AI") "AI" else "로컬"})", "${it}회") }
+                e.abandoned?.let { MetricTile("중단 (전사 표기)", "${it}회") }
+                e.selfCorrection?.let { MetricTile("자기 수정 (전사 표기)", "${it}회") }
             }
         }
         if (fb.strengths.size > 1) {
@@ -214,7 +230,7 @@ private fun Details(r: AnalyzedAttempt, ui: SpeakingUi, vm: SpeakingViewModel) {
                 }
             }
         }
-        m.compare?.let { cmp ->
+        m.compare?.takeIf { ScoreKind.of(a.mode) == ScoreKind.MEMORIZATION }?.let { cmp ->
             // The first two are already shown above the retry button.
             val missing = cmp.sentences.filter { !it.covered }.drop(2)
             if (missing.isNotEmpty()) {

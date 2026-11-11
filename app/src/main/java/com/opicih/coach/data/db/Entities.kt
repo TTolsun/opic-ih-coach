@@ -18,7 +18,7 @@ enum class QuestionType(val label: String) {
     DESCRIPTION("묘사"),
     ROUTINE("루틴/습관"),
     PAST_EXPERIENCE("과거 경험"),
-    COMPARISON("과거·현재 비교"),
+    COMPARISON("비교"),
     ROLEPLAY("롤플레이"),
     ISSUE("이슈/사회"),
     UNEXPECTED("돌발"),
