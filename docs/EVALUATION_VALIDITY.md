@@ -1,6 +1,6 @@
 # 말하기 평가와 피드백 타당성 검증
 
-검증 대상은 [이슈 #40](https://github.com/TTolsun/opic-ih-coach/issues/40)과 앱 코드 `293ae5df3671f03c753e28c73422b48060eab287`입니다. 2026년 11월 12일에 한국 표준시를 기준으로 자료를 확인했습니다.
+최초 검증은 2026년 11월 12일에 앱 코드 `293ae5df3671f03c753e28c73422b48060eab287`을 기준으로 진행했습니다. P0~P2를 반영한 `main`의 결과는 [머지 후 Gemini 반복 검증](#머지-후-gemini-반복-검증)에 기록했습니다. 날짜는 한국 표준시를 기준으로 합니다. [이슈 #40](https://github.com/TTolsun/opic-ih-coach/issues/40)
 
 직접 입력이 발화 준비도에 들어가고, 필수 항목이 없는 AI 응답이 0점으로 처리되는 문제를 우선 수정합니다. 학습에 사용할 관찰은 질문의 과업 완수, 전달된 내용, 문장 사이의 실제 관계, 과업에 필요한 시간대의 유지입니다.
 
@@ -81,7 +81,7 @@ ACTFL의 2024년 말하기 지침은 기능과 과업, 정확성, 맥락과 내�
 
 현재 디버그 APK를 Android 16의 `opic_verify` 설정에서 복제한 검증용 AVD에 설치했습니다. `말하기 → 응용 → 자유 발화 → 직접 입력 → 분석 → 기록`을 실행했습니다. 영화 관람 경험 질문에 입력한 요리 이야기에서 ADB로 전달된 앞부분 44단어가 로컬 46점으로 표시됐습니다. 결과 카드는 길이와 경험 표현을 피드백했고, 주제 이탈을 지적하지 않았습니다. Room에도 `FREE / PAST_EXPERIENCE / TYPED / LOCAL`, 44단어·46점, `metricsJson.pauses` 없음으로 저장됐으며 기록 화면에 시도 1회가 나타났습니다. AVD에서는 이 로컬 경로를 확인했고, 전사와 AI의 결합은 실기기 보관 기록으로, 현재 AI 요청과 준비도 계산은 JVM에서 각각 확인했습니다.
 
-## AI 요청과 응답 처리 재현
+## 수정 전 AI 요청과 응답 처리 재현
 
 실제 합성 호출에는 보관 설정에서 확인한 `gemini-3.5-flash`와 기존 환경의 Gemini 키를 사용했습니다. 평가 코드 `GeminiAiCoach.evaluate`가 `Prompts.evalSystem`과 `Prompts.evalUser`를 사용해 REST `v1beta:generateContent`로 요청합니다. 평가 설정은 `temperature=0.4`, 최대 출력 8192토큰, `responseMimeType=application/json`입니다. 학습자 프로필은 앱 기본값(IM1, 다음 목표 IM2, 최종 목표 IH)입니다. 보관된 녹음과 전사는 이번 호출에 사용하지 않았습니다. 보관 설정에는 당시 AI 사용과 텍스트 전송, 녹음 전사와 음성 전송 동의가 설정되어 있었습니다. 클라우드 전사 요청 코드의 `temperature=0.0`과 원문 보존 프롬프트는 확인했으며, 동일 녹음에 대한 새 외부 전사 요청은 실행하지 않았습니다. [GeminiAiCoach](../app/src/main/java/com/opicih/coach/ai/GeminiAiCoach.kt) · [Prompts](../app/src/main/java/com/opicih/coach/ai/Prompts.kt) · [GeminiTranscriber](../app/src/main/java/com/opicih/coach/ai/CloudTranscriber.kt)
 
@@ -111,7 +111,7 @@ C는 점수와 적합성이 같았지만, 동일한 과업 누락을 첫 호출�
 
 ### 프롬프트와 응답 처리
 
-다음은 `aiResponseFixtures`로 재현한 앱 측 오류입니다. 응답 JSON은 테스트가 의도적으로 만든 입력입니다. 실제 모델이 해당 응답을 생성하는 빈도는 이 재현으로 추정할 수 없습니다.
+다음은 최초 검증에서 `aiResponseFixtures`로 재현한 앱 측 오류입니다. 응답 JSON은 테스트가 의도적으로 만든 입력입니다. 수정 후 앱의 응답 검증은 [불완전 응답의 로컬 폴백](#불완전-응답의-로컬-폴백)에 기록했습니다.
 
 | 재현 절차 | 실제 결과 | 기대 결과와 학습 영향 |
 | --- | --- | --- |
@@ -119,6 +119,30 @@ C는 점수와 적합성이 같았지만, 동일한 과업 누락을 첫 호출�
 | 응답 본문 `{}`를 Gemini 응답 봉투에 넣고 앱과 같은 디코더를 통과시킵니다. | 기본값으로 0점과 빈 피드백이 만들어집니다. `evaluate`는 필수 필드를 검사하지 않고 이 값을 `AI`로 표시하며, 저장 경로는 로컬 점수 대신 이 점수를 씁니다. | 필수 평가 항목이 없는 응답은 로컬 결과로 돌아가야 합니다. 그렇지 않으면 응답 형식 문제가 학습자 점수 0으로 남습니다. |
 | 원문 E에 `{"score":80,"tenseErrors":0}`을 적용합니다. | 로컬 시제 오류 1회가 AI 0회로 덮이며 `tense_in_past_context` 오류 노트도 사라집니다. | `I see`의 근거를 확인하고 모델 판정과 규칙 결과가 다를 때 확인할 수 있어야 합니다. |
 | E에 `{"score":80,"tenseErrors":1,"abandonedSentences":3,"selfCorrections":2}`를 적용합니다. | 태그는 각각 1개지만 더 큰 AI 수를 취해 중단 3회와 자기 수정 2회를 집계합니다. | 관측 가능한 태그와 AI 추정의 근거를 따로 남겨야 합니다. 근거 없는 수가 진행 추세를 바꿀 수 있습니다. |
+
+## 머지 후 Gemini 반복 검증
+
+2026년 11월 12일에 `main`의 머지 커밋 `7d4726c`에서 기존 합성 사례 C, C+, D, D+를 다시 평가했습니다. 네 사례 모두 도서관에서 겪은 문제와 해결을 묻는 같은 질문에 대한 직접 입력입니다. C+는 C에 연결어만 추가했고, D+는 D에 자전거를 살 계획을 덧붙였습니다. `gemini-3.5-flash`와 앱 기본 학습자 프로필을 사용하고, 질문·전사·평가 설정을 고정한 채 사례마다 세 번 요청했습니다. 각 회차에서 수정본의 총점과 연결성이 원본보다 올랐는지, 피드백이 과업 누락과 주제에서 벗어난 문장을 짚었는지 확인했습니다. [통제 사례와 실행 코드](../app/src/test/java/com/opicih/coach/EvaluationValidityProbeTest.kt)
+
+### 모델 응답과 앱 표시 점수
+
+평가 설정은 최초 검증과 동일하게 `temperature=0.4`, 최대 출력 8192토큰, `responseMimeType=application/json`으로 유지했습니다. 반복 검증은 `GeminiAiCoach.evaluate`를 직접 호출해 모델 응답을 수집했습니다. 응답 12건이 형식 검증을 통과했습니다. C의 3회차 첫 요청에서 연결 오류가 발생했고, 검증 도구에서 한 번 재시도해 성공했습니다. 표의 각 점수는 1·2·3회차 순서로 적었습니다.
+
+| 사례 | Gemini 총점 | 질문 적합성 | 구체성 | 연결성 | 피드백 |
+| --- | --- | --- | --- | --- | --- |
+| C | 35, 40, 35 | 30, 35, 40 | 25, 30, 30 | 30, 30, 20 | 세 회차 모두 문제와 해결 과정이 빠졌다고 지적했습니다. |
+| C+ | 40, 35, 35 | 35, 30, 35 | 30, 25, 30 | 25, 20, 20 | 세 회차 모두 같은 과업 누락과 문맥에 맞지 않는 연결어를 지적했습니다. 첫 회차에서는 연결어 사용을 시도한 점도 칭찬했습니다. |
+| D | 88, 88, 88 | 100, 95, 100 | 85, 85, 85 | 85, 88, 90 | 세 회차 모두 잠긴 반납함, 직원의 도움, 반납 결과의 관계를 긍정적으로 평가했습니다. |
+| D+ | 82, 85, 85 | 80, 80, 80 | 85, 80, 85 | 85, 88, 85 | 세 회차 모두 자전거 계획을 주제에서 벗어난 문장으로 지적하고 빼도록 안내했습니다. |
+
+- **연결어 추가(C → C+).** 연결성 차이는 회차별로 −5점, −10점, 0점이었습니다. 총점은 +5점, −5점, 0점으로 방향이 달랐고, 원본 C도 동일 입력에서 총점이 5점 변동했습니다. 연결성을 높게 평가한 회차는 없었지만, 형식만 바꾼 답변에서 Gemini 총점이 한 번 올랐습니다. 이 세 회차만으로 그 상승을 연결어 추가의 효과로 판단하기는 어렵습니다.
+- **무관한 미래 문장 추가(D → D+).** 총점은 6점, 3점, 3점 내려갔습니다. 질문 적합성은 20점, 15점, 20점 내려갔고 연결성은 두 회차에서 같았으며 한 회차에서 5점 내려갔습니다. 세 회차 모두 이미 과업을 수행한 본문을 인정하면서 마지막 문장을 수정 대상으로 삼았습니다.
+
+자유 발화 화면의 점수에는 로컬 음향 기반 발화 흐름 점수가 적용됩니다. 별도 회귀 테스트에서 C/C+와 D/D+의 음향 수치와 긴 무음 1회를 고정했을 때, 로컬 평가와 모의 AI 평가 모두 네 사례를 84점으로 처리했습니다. 모의 AI가 수정본의 총점을 95점, 원본을 40점으로 반환해도 표시 점수는 84점으로 같았습니다. 실제 Gemini 반복 검증에 사용한 직접 입력에는 음향 수치가 없어 앱의 발화 흐름 점수가 미측정으로 처리됩니다. [말하기 점수 회귀 테스트](../app/src/test/java/com/opicih/coach/EvaluationValidityProbeTest.kt) · [평가 저장 경로](../app/src/main/java/com/opicih/coach/data/repo/Repositories.kt)
+
+### 불완전 응답의 로컬 폴백
+
+동일 커밋의 `GeminiEvaluationFallbackTest` 네 테스트가 모두 통과했습니다. 테스트는 모의 HTTP 응답을 앱의 Gemini 디코더와 평가 저장 직전 경로에 전달합니다. 빈 객체, 필수 점수·세부 항목·오류 횟수 누락, 범위를 벗어난 값, 시제 횟수와 근거의 불일치 등 잘못된 본문 11종과 `MAX_TOKENS`로 끝난 응답, HTTP 429가 모두 로컬로 폴백했습니다. 평가 출처는 `LOCAL`이었고, 발화 흐름 84점과 피드백, 직렬화한 피드백 및 오류 집계는 AI 없이 같은 답변을 평가한 결과와 일치했습니다. 완전한 응답은 AI 피드백을 사용했고, 필수 항목을 갖춘 명시적 0점도 암기 평가에서 수락했습니다. 실제 반복 호출 12건에서는 불완전 응답이 관찰되지 않았으므로 폴백 검증 결과는 모의 응답에 근거합니다. [Gemini 응답 검증 회귀 테스트](../app/src/test/java/com/opicih/coach/GeminiEvaluationFallbackTest.kt)
 
 ## 활용할 지표
 
@@ -158,12 +182,13 @@ C는 점수와 적합성이 같았지만, 동일한 과업 누락을 첫 호출�
 .\gradlew.bat :app:testDebugUnitTest --tests 'com.opicih.coach.EvaluationValidityProbeTest'
 ```
 
-- `localControls`와 `captureAndReadiness`로 전사·점수·수정 사항·준비도 출력값을 비교합니다. `aiResponseFixtures`는 외부 연결 없이 응답 디코딩과 오류 집계를 재현합니다.
+- `localControls`와 `captureAndReadiness`로 전사·점수·수정 사항·준비도 출력값을 비교합니다. `aiResponseFixtures`는 응답을 저장용 `Feedback` 형식으로 직접 읽는 실험입니다. 수정 후 Gemini 응답의 수락 여부는 `GeminiEvaluationFallbackTest`로 재현합니다.
 - 실제 자료의 로컬 재현에는 해당 파일을 읽을 수 있는 환경에서 `OPIC_EVAL_LOCAL_ARCHIVE`에 `dist`의 절대 경로를 설정하고 `replayPrivateArchive`를 실행합니다. SQLite는 읽기 전용으로 열리며 출력에는 전사나 녹음 내용이 포함되지 않습니다.
 - 실제 AI는 기존 Gemini 키가 `GEMINI_API_KEY`에 설정된 환경에서 `OPIC_EVAL_GEMINI_MODEL`에 사용할 모델을 지정하고 `geminiSyntheticRepeats`를 실행합니다. `OPIC_EVAL_GEMINI_CASES`에 쉼표로 사례를 선택하고 `OPIC_EVAL_GEMINI_RUNS`로 반복 횟수를 지정할 수 있습니다. 선택을 생략하면 첫 회차에 전체 사례를, 이후 회차에 주요 비교 사례를 보냅니다. 외부 호출 입력은 테스트 코드의 합성 사례입니다.
+- 머지 후 비교를 재현하려면 모델을 `gemini-3.5-flash`로 지정하고 `OPIC_EVAL_GEMINI_CASES=C,C+,D,D+`와 `OPIC_EVAL_GEMINI_RUNS=3`을 설정합니다. `connectorsAndAnUnrequestedFutureSentenceDoNotRaiseEitherDisplayedScore`와 `GeminiEvaluationFallbackTest`는 외부 연결 없이 각각 화면에 쓰는 점수와 로컬 폴백을 검증합니다.
 - 실행 결과는 Gradle의 `test-results/testDebugUnitTest/TEST-com.opicih.coach.EvaluationValidityProbeTest.xml`에 남습니다. 이번 빌드에서는 설치된 Build Tools 36.0.0과 분리한 Gradle 빌드 경로를 임시 초기화 스크립트로 지정했습니다.
 
-최종 디버그 빌드에 성공했습니다. 전체 JVM 테스트는 294개가 통과했습니다. 실제 Gemini를 호출하는 테스트 1개는 최종 전체 실행에서 제외했으며, 별도 실행의 결과를 위에 기록했습니다.
+최초 검증의 디버그 빌드가 성공했고 JVM 테스트 294개가 통과했습니다. 실제 Gemini 호출은 별도 실행으로 검증했습니다. 머지 후에는 실제 Gemini 반복 호출과 발화 흐름 점수, 로컬 폴백을 확인한 관련 JVM 테스트 6개가 모두 통과했습니다.
 
 ## 이슈 완료 조건 확인
 
