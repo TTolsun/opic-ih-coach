@@ -98,7 +98,14 @@ fun SettingsScreen(onExams: () -> Unit = {}) {
     }
     val importLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
         uri ?: return@rememberLauncherForActivityResult
-        scope.launch { message = runCatching { "복원 완료: 스크립트 ${c.backup.restore(uri)}개" }.getOrElse { "복원 실패: ${it.message}" } }
+        scope.launch {
+            message = runCatching { c.backup.restore(uri) }
+                .onSuccess { runCatching { c.seed.seedIfNeeded() } }
+                .fold(
+                    onSuccess = { "복원 완료: 스크립트 ${it}개" },
+                    onFailure = { "복원 실패: ${it.message}" },
+                )
+        }
     }
 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {

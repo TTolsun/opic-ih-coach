@@ -7,7 +7,7 @@
     {"phrase": "hot spring", "forms": ["hot spring"], "kind": "IDIOM", "meaningKo": "온천"},
     {"phrase": "steaming hot", "forms": ["steaming hot"], "kind": "IDIOM", "meaningKo": "김이 모락모락 날 만큼 뜨거운"},
     {"phrase": "soak in", "forms": ["soaked in"], "kind": "IDIOM", "meaningKo": "(물에) 몸을 푹 담그다", "noteKo": "soak는 '흠뻑 적시다'입니다. soaked in the water는 '물에 몸을 담갔다'라는 뜻입니다."},
-    {"phrase": "fly (항공사)", "forms": ["flew jeju air"], "kind": "IDIOM", "meaningKo": "~항공을 타고 가다", "noteKo": "fly 뒤에 항공사 이름을 바로 쓰면 '그 항공사 비행기를 탔다'라는 뜻이 됩니다."},
+    {"phrase": "fly (항공사)", "forms": ["flew jeju air", "flew with jeju air"], "kind": "IDIOM", "meaningKo": "~항공을 타고 가다", "noteKo": "‘flew with Jeju Air’라고 하면 제주항공을 탔다는 뜻입니다."},
     {"phrase": "three nights and four days", "forms": ["three nights and four days", "3 nights and 4 days"], "kind": "IDIOM", "meaningKo": "3박 4일", "noteKo": "영어권에서는 a four-day trip이라고 더 짧게 말하기도 합니다."},
     {"phrase": "famous for", "forms": ["famous for"], "kind": "IDIOM", "meaningKo": "~로 유명한"},
     {"phrase": "the best part", "forms": ["the best part"], "kind": "IDIOM", "meaningKo": "가장 좋았던 점, 백미", "noteKo": "The best part was that ~ 형태로 경험담의 하이라이트를 꺼낼 때 씁니다."},

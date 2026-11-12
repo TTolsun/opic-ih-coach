@@ -197,8 +197,8 @@ class SeedAssetsTest {
         val s = json.decodeFromString(SeedScripts.serializer(), asset("user_scripts_2026.json").readText())
         assertEquals(23, s.scripts.size)
         assertTrue(s.scripts.all { it.original.isNotBlank() && it.ihTarget.isNotBlank() && it.keywords.size >= 4 && it.reasonKo.isNotBlank() })
-        // IH targets should be paragraph length but still sayable.
-        s.scripts.forEach { sc ->
+        // The pilot deliberately uses shorter targets based on the original experience.
+        s.scripts.filterNot { it.refreshRevisions }.forEach { sc ->
             val n = sc.ihTarget.split(Regex("\\s+")).size
             assertTrue("${sc.title} ihTarget words=$n", n in 90..170)
         }

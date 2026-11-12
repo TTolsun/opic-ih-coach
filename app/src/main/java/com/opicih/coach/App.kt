@@ -65,7 +65,7 @@ class AppContainer(context: Context) {
             prefs = ::listenPrefs,
         )
     }
-    val scripts = ScriptRepository(dao)
+    val scripts = ScriptRepository(db)
     val segments = com.opicih.coach.data.repo.SegmentRepository(db)
     val glossary = com.opicih.coach.data.repo.GlossaryRepository(ctx, dao)
     val frames = com.opicih.coach.data.repo.FrameRepository(dao)
@@ -73,7 +73,7 @@ class AppContainer(context: Context) {
     val importer = ImportService(ctx)
     val backup = BackupManager(ctx, db)
     val exams = ExamRepository(db, settings)
-    val seed = SeedLoader(ctx, dao, settings)
+    val seed = SeedLoader(ctx, db, settings)
     val localCoach = LocalCoach()
 
     private var cachedAi: Pair<String, AiCoach>? = null

@@ -17,7 +17,6 @@ import com.opicih.coach.analysis.TextNormalizer
 import com.opicih.coach.analysis.taskCorrection
 import com.opicih.coach.analysis.withCanonicalKey
 import androidx.room.withTransaction
-import com.opicih.coach.data.db.AppDao
 import com.opicih.coach.data.db.AppDatabase
 import com.opicih.coach.data.db.MorningReviewEntity
 import com.opicih.coach.data.db.ContentSource
@@ -74,7 +73,8 @@ data class AnalyzedAttempt(
 
 val appJson = Json { ignoreUnknownKeys = true; encodeDefaults = true; explicitNulls = false }
 
-class ScriptRepository(private val dao: AppDao) {
+class ScriptRepository(private val db: AppDatabase) {
+    private val dao = db.dao()
     fun scripts() = dao.scriptsFlow()
     fun script(id: Long) = dao.scriptFlow(id)
     fun revisions(id: Long) = dao.revisionsFlow(id)
@@ -85,8 +85,9 @@ class ScriptRepository(private val dao: AppDao) {
     suspend fun delete(s: ScriptEntity) { dao.deleteRevisionsFor(s.id); dao.deleteSegmentsFor(s.id); dao.deleteScript(s) }
 
     /** Approving copies the revision into its version field and makes it the active study text. The original stays. */
-    suspend fun approve(rev: ScriptRevisionEntity, makeActive: Boolean = true) {
-        val s = dao.script(rev.scriptId) ?: return
+    suspend fun approve(rev: ScriptRevisionEntity, makeActive: Boolean = true) = db.withTransaction {
+        if (rev.status != RevisionStatus.PENDING.name || dao.revision(rev.id) != rev) return@withTransaction
+        val s = dao.script(rev.scriptId) ?: return@withTransaction
         val v = ScriptVersion.of(rev.version)
         val updated = when (v) {
             ScriptVersion.NATURAL -> s.copy(natural = rev.text)
@@ -99,7 +100,11 @@ class ScriptRepository(private val dao: AppDao) {
         dao.updateRevision(rev.copy(status = RevisionStatus.APPROVED.name))
     }
 
-    suspend fun reject(rev: ScriptRevisionEntity) = dao.updateRevision(rev.copy(status = RevisionStatus.REJECTED.name))
+    suspend fun reject(rev: ScriptRevisionEntity) = db.withTransaction {
+        if (rev.status == RevisionStatus.PENDING.name && dao.revision(rev.id) == rev) {
+            dao.updateRevision(rev.copy(status = RevisionStatus.REJECTED.name))
+        }
+    }
 
     suspend fun setActive(s: ScriptEntity, v: ScriptVersion) = dao.updateScript(s.copy(activeVersion = v.name))
 
