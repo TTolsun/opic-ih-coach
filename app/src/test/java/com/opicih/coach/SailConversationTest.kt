@@ -99,6 +99,27 @@ class ConversationScoringTest {
         assertTrue(r.limits.any { it.contains("직접 입력") })
     }
 
+    @Test fun skippedTurnsAreCountedWithoutDilutingAnswerMetrics() {
+        val answer = turn("Why do you like running?", "I like running because it is relaxing.", 1200, pauses = 1)
+        val skipped = turn("Where do you run?", "", null, typed = true)
+        val baseline = ConversationScoring.report(listOf(answer))
+        val mixed = ConversationScoring.report(listOf(answer, skipped))
+
+        assertEquals(baseline.copy(turns = 2, skippedTurns = 1), mixed)
+        assertEquals(1, mixed.answeredTurns)
+    }
+
+    @Test fun skipOnlyConversationHasNoAnswerFeedback() {
+        val r = ConversationScoring.report(listOf(turn("Q one?", "", null, typed = true)))
+
+        assertEquals(0, r.answeredTurns)
+        assertEquals(1, r.skippedTurns)
+        assertNull(r.avgLatencyMs)
+        assertTrue(r.strengths.isEmpty())
+        assertTrue(r.fixes.isEmpty())
+        assertTrue(r.weakCompetencies.isEmpty())
+    }
+
     @Test fun repeatedPhrasesAreFound() {
         val rep = ConversationScoring.repeatedPhrases(listOf(
             "it was very fun and it was very good",

@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.LinearProgressIndicator
@@ -26,8 +27,12 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -52,7 +57,6 @@ import com.opicih.coach.data.repo.measuredScore
 import com.opicih.coach.learning.ScoreKind
 import com.opicih.coach.data.repo.appJson
 import com.opicih.coach.learning.CapturePolicy
-import com.opicih.coach.learning.Focus
 import com.opicih.coach.learning.MockQuestion
 import com.opicih.coach.learning.MockTestBuilder
 import com.opicih.coach.learning.QuestionSource
@@ -64,11 +68,13 @@ import com.opicih.coach.ui.components.MetricTile
 import com.opicih.coach.ui.components.InfoButton
 import com.opicih.coach.ui.components.InfoTopics
 import com.opicih.coach.ui.components.MicButton
+import com.opicih.coach.ui.components.MicPermissionBanner
 import com.opicih.coach.ui.components.Pill
 import com.opicih.coach.ui.components.SectionCard
 import com.opicih.coach.ui.components.SourceTag
 import com.opicih.coach.ui.components.formatMs
 import com.opicih.coach.ui.theme.EnglishReading
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -94,7 +100,7 @@ data class MockReport(
     val flowScore: Boolean = false,
 )
 
-enum class MockPhase { SETUP, QUESTION, RECORDING, SAVING, ADJUST, REPORT }
+enum class MockPhase { SETUP, STARTING, QUESTION, RECORDING, SAVING, ADJUST, REPORT }
 
 data class MockUi(
     val phase: MockPhase = MockPhase.SETUP,
@@ -122,21 +128,33 @@ class MockViewModel(app: Application) : AndroidViewModel(app) {
 
     fun setCount(n: Int) = ui.update { it.copy(count = n) }
 
-    fun start() = viewModelScope.launch {
-        settings = c.settings.current()
-        pool = c.dao.questions().map { QuestionSource(it.topic, it.text, it.type, if (it.source == "USER_LIST") "내 기출 정리(비공식)" else "AI 생성 연습 문제") } +
-            c.dao.scripts().map { QuestionSource(it.topic, it.question, it.questionType, "내 스크립트 질문") }
-        val qs = MockTestBuilder.build(pool, settings.surveyTopics, ui.value.count, settings.selfLevel)
-        val id = c.dao.insertMock(MockTestEntity(questionCount = qs.size, selfLevel = settings.selfLevel))
-        ui.value = MockUi(phase = MockPhase.QUESTION, count = qs.size, questions = qs, testStartedAt = System.currentTimeMillis(), mockId = id)
-        timer?.cancel()
-        timer = viewModelScope.launch {
-            while (isActive) {
-                ui.update { it.copy(testElapsedMs = System.currentTimeMillis() - it.testStartedAt, answerElapsedMs = if (it.phase == MockPhase.RECORDING) capture.elapsedMs else it.answerElapsedMs) }
-                delay(250)
+    fun start(count: Int = ui.value.count) {
+        val previous = ui.value
+        if (previous.phase != MockPhase.SETUP && previous.phase != MockPhase.REPORT) return
+        ui.value = previous.copy(phase = MockPhase.STARTING, error = null)
+        viewModelScope.launch {
+            try {
+                settings = c.settings.current()
+                pool = c.dao.questions().map { QuestionSource(it.topic, it.text, it.type, if (it.source == "USER_LIST") "내 기출 정리(비공식)" else "AI 생성 연습 문제") } +
+                    c.dao.scripts().map { QuestionSource(it.topic, it.question, it.questionType, "내 스크립트 질문") }
+                val qs = MockTestBuilder.build(pool, settings.surveyTopics, count, settings.selfLevel)
+                val id = c.dao.insertMock(MockTestEntity(questionCount = qs.size, selfLevel = settings.selfLevel))
+                ui.value = MockUi(phase = MockPhase.QUESTION, count = count, questions = qs, testStartedAt = System.currentTimeMillis(), mockId = id)
+                timer?.cancel()
+                timer = viewModelScope.launch {
+                    while (isActive) {
+                        ui.update { it.copy(testElapsedMs = System.currentTimeMillis() - it.testStartedAt, answerElapsedMs = if (it.phase == MockPhase.RECORDING) capture.elapsedMs else it.answerElapsedMs) }
+                        delay(250)
+                    }
+                }
+                playQuestion(first = true)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                timer?.cancel()
+                ui.value = previous.copy(error = "모의시험을 시작하지 못했습니다.")
             }
         }
-        playQuestion(first = true)
     }
 
     fun playQuestion(first: Boolean = false) {
@@ -162,23 +180,33 @@ class MockViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    private fun finishAnswer() {
+    private fun finishAnswer(endTest: Boolean = false) {
         ui.update { it.copy(phase = MockPhase.SAVING) }
         viewModelScope.launch {
             val u = ui.value
             val q = u.questions[u.index]
-            val r = capture.stop(c.transcriber(settings))
-            runCatching {
-                c.practice.analyzeAndSave(
-                    PracticeRepository.Request(null, q.topic, q.text, q.type, PracticeMode.MOCK, r.transcript, r.captureMode, r.audioPath, r.durationMs, r.pauses, r.fromDeviceStt, mockId = u.mockId, captureNote = captureNote),
-                    ai = null, examEpochDay = c.exams.focusEpochDay(), // per-answer AI would be slow and costly during a timed test
-                )
+            val warning = try {
+                val r = capture.stop(c.transcriber(settings))
+                if (r.audioPath != null || r.transcript.isNotBlank()) {
+                    c.practice.analyzeAndSave(
+                        PracticeRepository.Request(null, q.topic, q.text, q.type, PracticeMode.MOCK, r.transcript, r.captureMode, r.audioPath, r.durationMs, r.pauses, r.fromDeviceStt, mockId = u.mockId, captureNote = captureNote),
+                        ai = null, examEpochDay = c.exams.focusEpochDay(), // per-answer AI would be slow and costly during a timed test
+                    )
+                    r.warning
+                } else {
+                    r.warning ?: "저장할 답변을 인식하지 못했습니다."
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                capture.cancel()
+                "현재 답변을 저장하지 못했습니다."
             }
             val nextIndex = u.index + 1
             when {
-                nextIndex >= u.questions.size -> finish()
-                nextIndex == 7 && !u.adjusted -> ui.update { it.copy(phase = MockPhase.ADJUST, index = nextIndex, replaysLeft = 1, error = r.warning) }
-                else -> { ui.update { it.copy(phase = MockPhase.QUESTION, index = nextIndex, replaysLeft = 1, error = r.warning) }; playQuestion(first = true) }
+                endTest || nextIndex >= u.questions.size -> finishTest(warning)
+                nextIndex == 7 && !u.adjusted -> ui.update { it.copy(phase = MockPhase.ADJUST, index = nextIndex, replaysLeft = 1, error = warning) }
+                else -> { ui.update { it.copy(phase = MockPhase.QUESTION, index = nextIndex, replaysLeft = 1, error = warning) }; playQuestion(first = true) }
             }
         }
     }
@@ -196,15 +224,41 @@ class MockViewModel(app: Application) : AndroidViewModel(app) {
         if (u.index + 1 >= u.questions.size) finish() else { ui.update { it.copy(index = it.index + 1, replaysLeft = 1) }; playQuestion(first = true) }
     }
 
-    fun finish() = viewModelScope.launch {
+    fun finish(saveCurrentAnswer: Boolean = false) {
+        val phase = ui.value.phase
+        if (phase != MockPhase.QUESTION && phase != MockPhase.RECORDING) return
+        if (phase == MockPhase.RECORDING && saveCurrentAnswer) {
+            finishAnswer(endTest = true)
+            return
+        }
+        ui.update { it.copy(phase = MockPhase.SAVING) }
+        if (phase == MockPhase.RECORDING) capture.cancel()
+        viewModelScope.launch { finishTest() }
+    }
+
+    private suspend fun finishTest(answerWarning: String? = null) {
         timer?.cancel()
-        capture.cancel(); c.tts.stop()
+        c.tts.stop()
         val u = ui.value
-        val attempts = c.dao.attemptsForMock(u.mockId)
-        val report = buildReport(attempts, u.testElapsedMs)
-        c.dao.mock(u.mockId)?.let { c.dao.updateMock(it.copy(finishedAt = System.currentTimeMillis(), reportJson = appJson.encodeToString(MockReport.serializer(), report))) }
-        c.settings.update { it.copy(focusTopics = report.focusTopics.toSet()) }
-        ui.update { it.copy(phase = MockPhase.REPORT, report = report) }
+        var report: MockReport? = null
+        var reportWarning: String? = null
+        try {
+            val attempts = c.dao.attemptsForMock(u.mockId)
+            val result = buildReport(attempts, u.testElapsedMs)
+            report = result
+            if (attempts.isNotEmpty()) {
+                val mock = checkNotNull(c.dao.mock(u.mockId))
+                c.dao.updateMock(mock.copy(finishedAt = System.currentTimeMillis(), reportJson = appJson.encodeToString(MockReport.serializer(), result)))
+                c.settings.update { it.copy(focusTopics = result.focusTopics.toSet()) }
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            reportWarning = if (report == null) "리포트를 불러오지 못했습니다." else "리포트 저장을 마치지 못했습니다."
+        }
+        ui.update {
+            it.copy(phase = MockPhase.REPORT, report = report, error = listOfNotNull(answerWarning, reportWarning).joinToString("\n").ifBlank { null })
+        }
     }
 
     fun reset() { capture.cancel(); ui.value = MockUi(count = ui.value.count) }
@@ -231,7 +285,7 @@ class MockViewModel(app: Application) : AndroidViewModel(app) {
         val next = listOf(
             "Day 1: ${focus.getOrNull(0) ?: "약한 주제"} 스크립트 Keyword → Blind 3회",
             "Day 2: ${weakTypes.firstOrNull() ?: "과거 경험"} 유형 자유 발화 3문항 + 롤플레이 1세트",
-            "Day 3: ${focus.getOrNull(1) ?: "돌발 주제"} 응용 챌린지 + 미니 모의시험 7문항",
+            "Day 3: ${focus.getOrNull(1) ?: "돌발 주제"} 응용 챌린지 + 미니 모의시험 ${MockTestBuilder.MINI_QUESTION_COUNT}문항",
         )
         return MockReport(
             totalSpeechMs = a.sumOf { it.effectiveSpeechMs }, totalDurationMs = elapsed,
@@ -253,14 +307,26 @@ fun MockScreen() {
     val c = LocalContainer.current
     val context = LocalContext.current
     val settings by c.settings.flow.collectAsState(initial = Settings())
-    val perm = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { if (it) vm.toggleMic() }
+    var confirmEnd by remember(ui.phase) { mutableStateOf(false) }
+    var micDenied by rememberSaveable { mutableStateOf(false) }
+    fun hasMicPermission() = ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
+    val perm = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        micDenied = !granted
+        if (granted) vm.toggleMic()
+    }
     val owner = LocalLifecycleOwner.current
     DisposableEffect(owner) {
-        val obs = LifecycleEventObserver { _, e -> if (e == Lifecycle.Event.ON_STOP) vm.onBackground() }
+        val obs = LifecycleEventObserver { _, e ->
+            if (e == Lifecycle.Event.ON_STOP) vm.onBackground()
+            if (e == Lifecycle.Event.ON_RESUME && hasMicPermission()) micDenied = false
+        }
         owner.lifecycle.addObserver(obs); onDispose { owner.lifecycle.removeObserver(obs) }
     }
 
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+    val scroll = rememberScrollState()
+    LaunchedEffect(ui.mockId, ui.phase == MockPhase.REPORT) { scroll.scrollTo(0) }
+    val startMini = { vm.start(MockTestBuilder.MINI_QUESTION_COUNT) }
+    Column(Modifier.fillMaxSize().verticalScroll(scroll).padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
         when (ui.phase) {
             MockPhase.SETUP -> {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -270,26 +336,34 @@ fun MockScreen() {
                 SectionCard {
                     Text("Survey: ${settings.surveyTopics.joinToString()} · Self Assessment ${settings.selfLevel}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Spacer(Modifier.height(8.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { listOf(12, 15).forEach { n -> Pill("${n}문항", ui.count == n) { vm.setCount(n) } } }
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        listOf(MockTestBuilder.MINI_QUESTION_COUNT, 12, 15).forEach { n ->
+                            val label = if (n == MockTestBuilder.MINI_QUESTION_COUNT) "미니 ${n}문항" else "${n}문항"
+                            Pill(label, ui.count == n) { vm.setCount(n) }
+                        }
+                    }
                 }
                 Button(onClick = { vm.start() }, modifier = Modifier.fillMaxWidth().height(56.dp)) { Text("시작") }
+                ui.error?.let { Banner(it, tone = MaterialTheme.colorScheme.error) }
                 val mocks by c.dao.mocksFlow().collectAsState(initial = emptyList())
                 mocks.firstOrNull { it.reportJson != null }?.let { m ->
-                    runCatching { appJson.decodeFromString(MockReport.serializer(), m.reportJson!!) }.getOrNull()?.let { ReportView(it, past = true) }
+                    runCatching { appJson.decodeFromString(MockReport.serializer(), m.reportJson!!) }.getOrNull()?.let { ReportView(it, past = true, onStartMini = startMini) }
                 }
             }
+            MockPhase.STARTING -> CircularProgressIndicator(Modifier.align(Alignment.CenterHorizontally))
             MockPhase.QUESTION, MockPhase.RECORDING, MockPhase.SAVING -> {
                 val q = ui.questions.getOrNull(ui.index)
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text("Q${ui.index + 1} / ${ui.questions.size}", style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
-                    val remain = (40 * 60_000L - ui.testElapsedMs)
+                    val minutes = if (ui.count == MockTestBuilder.MINI_QUESTION_COUNT) 20 else 40
+                    val remain = minutes * 60_000L - ui.testElapsedMs
                     Text(if (remain >= 0) "남은 시간 ${formatMs(remain)}" else "시간 초과 ${formatMs(-remain)}", color = if (remain < 5 * 60_000) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 LinearProgressIndicator(progress = { ui.index.toFloat() / ui.questions.size.coerceAtLeast(1) }, modifier = Modifier.fillMaxWidth())
                 if (q != null) SectionCard {
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) { SourceTag(q.stage); SourceTag(q.source) }
                     Spacer(Modifier.height(8.dp))
-                    var show by androidx.compose.runtime.remember(q.no) { androidx.compose.runtime.mutableStateOf(false) }
+                    var show by remember(q.no) { mutableStateOf(false) }
                     TextButton(onClick = { show = !show }) { Text(if (show) "질문 숨기기" else "질문 보기") }
                     if (show) Text(q.text, style = EnglishReading)
                     Row {
@@ -301,14 +375,25 @@ fun MockScreen() {
                 Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
                     if (ui.phase == MockPhase.SAVING) CircularProgressIndicator()
                     else MicButton(ui.phase == MockPhase.RECORDING) {
-                        if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) vm.toggleMic() else perm.launch(Manifest.permission.RECORD_AUDIO)
+                        if (hasMicPermission()) {
+                            micDenied = false
+                            vm.toggleMic()
+                        } else perm.launch(Manifest.permission.RECORD_AUDIO)
                     }
                     Spacer(Modifier.height(8.dp))
-                    Text(if (ui.phase == MockPhase.RECORDING) "${formatMs(ui.answerElapsedMs)} · 누르면 다음 문항" else "답변 시작", style = MaterialTheme.typography.labelLarge)
+                    val micLabel = when (ui.phase) {
+                        MockPhase.RECORDING -> "${formatMs(ui.answerElapsedMs)} · 누르면 다음 문항"
+                        MockPhase.SAVING -> "저장 중"
+                        else -> "답변 시작"
+                    }
+                    Text(micLabel, style = MaterialTheme.typography.labelLarge)
                     if (ui.phase == MockPhase.RECORDING && ui.answerElapsedMs > 150_000) Text("2분 넘음", color = MaterialTheme.colorScheme.tertiary, style = MaterialTheme.typography.labelSmall)
                 }
+                if (micDenied) MicPermissionBanner()
                 ui.error?.let { Banner(it, tone = MaterialTheme.colorScheme.error) }
-                TextButton(onClick = { vm.finish() }) { Text("종료하고 리포트 보기") }
+                TextButton(enabled = ui.phase != MockPhase.SAVING, onClick = {
+                    if (ui.phase == MockPhase.RECORDING) confirmEnd = true else vm.finish()
+                }) { Text("종료하고 리포트 보기") }
             }
             MockPhase.ADJUST -> {
                 Text("난이도 재조정", style = MaterialTheme.typography.headlineSmall)
@@ -317,17 +402,45 @@ fun MockScreen() {
                 Button(onClick = { vm.adjust(MockTestBuilder.Adjust.HARDER) }, modifier = Modifier.fillMaxWidth()) { Text("어려운 질문") }
             }
             MockPhase.REPORT -> {
-                ui.report?.let { ReportView(it, past = false) }
-                Button(onClick = { vm.reset() }, modifier = Modifier.fillMaxWidth()) { Text("새 모의시험") }
+                ui.error?.let { Banner(it, tone = MaterialTheme.colorScheme.error) }
+                ui.report?.let { ReportView(it, past = false, onStartMini = startMini) }
+                Button(onClick = { vm.reset() }, modifier = Modifier.fillMaxWidth()) {
+                    Text(if (ui.report?.answered == 0) "다시 시작" else "새 모의시험")
+                }
             }
         }
+    }
+
+    if (confirmEnd && ui.phase == MockPhase.RECORDING) {
+        AlertDialog(
+            onDismissRequest = { confirmEnd = false },
+            title = { Text("모의시험을 종료할까요?") },
+            text = { Text("지금 녹음 중인 답변을 저장할 수 있습니다.") },
+            confirmButton = {
+                Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Button(onClick = { confirmEnd = false; vm.finish(saveCurrentAnswer = true) }, modifier = Modifier.fillMaxWidth()) {
+                        Text("저장하고 종료")
+                    }
+                    OutlinedButton(onClick = { confirmEnd = false; vm.finish() }, modifier = Modifier.fillMaxWidth()) {
+                        Text("버리고 종료")
+                    }
+                    TextButton(onClick = { confirmEnd = false }, modifier = Modifier.fillMaxWidth()) {
+                        Text("계속 답변")
+                    }
+                }
+            },
+        )
     }
 }
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun ReportView(r: MockReport, past: Boolean) {
+private fun ReportView(r: MockReport, past: Boolean, onStartMini: () -> Unit) {
     SectionCard(title = if (past) "지난 모의시험 리포트" else "모의시험 리포트", trailing = { InfoButton(InfoTopics.MOCK) }) {
+        if (r.answered == 0) {
+            Text("저장된 답변이 없습니다.", style = MaterialTheme.typography.bodyMedium)
+            return@SectionCard
+        }
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             MetricTile("답변", "${r.answered}문항")
             MetricTile("전체 발화", formatMs(r.totalSpeechMs))
@@ -352,5 +465,6 @@ private fun ReportView(r: MockReport, past: Boolean) {
         Text("다음 3일 계획", style = MaterialTheme.typography.titleSmall)
         r.next3Days.forEach { Bullet(it) }
         Spacer(Modifier.height(6.dp))
+        OutlinedButton(onClick = onStartMini) { Text("미니 모의시험 시작") }
     }
 }

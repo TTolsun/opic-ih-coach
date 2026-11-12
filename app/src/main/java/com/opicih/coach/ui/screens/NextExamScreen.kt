@@ -2,6 +2,9 @@ package com.opicih.coach.ui.screens
 
 import com.opicih.coach.learning.lastExamDate
 import com.opicih.coach.learning.lastSatDate
+import com.opicih.coach.learning.debriefExamRow
+import com.opicih.coach.learning.debriefRegistration
+import com.opicih.coach.data.repo.ExamRepository
 import com.opicih.coach.learning.rulesOf
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -30,6 +33,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -88,7 +92,6 @@ fun NextExamScreen(onOpenSettings: () -> Unit) {
     val retake = RetakeSummaries.of(s, regs, today)
     val advice = RetestAdvisor.advise(today, last, rulesOf(s, retake.waiverAvailable), readiness)
     val debriefDate = lastSatDate(regs, today) ?: last
-    val examRow = exams.firstOrNull { it.epochDay == debriefDate.toEpochDay() }
 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
         message?.let { Banner(it, "닫기", tone = MaterialTheme.colorScheme.primary) { message = null } }
@@ -158,11 +161,38 @@ fun NextExamScreen(onOpenSettings: () -> Unit) {
             Bullet(if (s.examSlots.isEmpty()) "회차 제한 없음 (원하는 날짜 응시 가능으로 계산)" else "사내 회차: ${s.slotDates().joinToString()}")
         }
 
-        val debriefReg = regs.firstOrNull { it.date == debriefDate && it.type != ExamType.UNKNOWN &&
-            (it.state == RegistrationStatus.REGISTERED || it.state == RegistrationStatus.COMPLETED) }
-        if (debriefReg?.type == ExamType.SAIL) SailDebriefCard(debriefReg, today, examRow)
-        else DebriefCard(debriefDate, today, examRow, s)
+        DebriefForm(debriefDate, today, exams, debriefRegistration(regs, debriefDate), s)
         Spacer(Modifier.height(24.dp))
+    }
+}
+
+@Composable
+fun ExamDebriefScreen(date: LocalDate, registrationId: Long?) {
+    val c = LocalContainer.current
+    val settings by c.settings.flow.collectAsState(initial = null)
+    val exams by c.dao.examsFlow().collectAsState(initial = null)
+    val registrations by c.exams.flow.collectAsState(initial = null)
+    val s = settings ?: return
+    val rows = exams ?: return
+    val regs = registrations ?: return
+    val registration = registrationId?.let { debriefRegistration(regs, date, it) }
+
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp)) {
+        if (registrationId != null && registration == null) {
+            Text("복기할 시험을 찾지 못했습니다.")
+        } else {
+            DebriefForm(date, ExamRepository.nowKst().toLocalDate(), rows, registration, s)
+        }
+        Spacer(Modifier.height(24.dp))
+    }
+}
+
+@Composable
+private fun DebriefForm(date: LocalDate, today: LocalDate, exams: List<ExamEntity>, registration: ExamRegistrationEntity?, s: Settings) {
+    val row = debriefExamRow(exams, date, registration)
+    key(date, registration?.id) {
+        if (registration?.type == ExamType.SAIL) SailDebriefCard(registration, today, row)
+        else DebriefCard(date, today, row, s)
     }
 }
 

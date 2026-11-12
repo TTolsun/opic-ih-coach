@@ -57,6 +57,7 @@ import com.opicih.coach.data.db.ExamRegistrationEntity
 import com.opicih.coach.data.db.ExamType
 import com.opicih.coach.data.prefs.Settings
 import com.opicih.coach.data.repo.ExamRepository
+import java.time.LocalDate
 import com.opicih.coach.learning.DayPlan
 import com.opicih.coach.learning.ExamSchedule
 import com.opicih.coach.learning.PlanTask
@@ -83,10 +84,11 @@ fun HomeScreen(
     onMorning: () -> Unit,
     onScript: (Long) -> Unit,
     onMock: () -> Unit,
-    onScripts: () -> Unit,
+    onReviewRevisions: () -> Unit,
     onCoach: () -> Unit,
     onSettings: () -> Unit,
     onNextExam: () -> Unit,
+    onDebrief: (LocalDate, Long?) -> Unit,
     onExams: () -> Unit = {},
     /** Opens speaking with the task's PracticeMode name (null = default; SAIL_CONVERSATION = SAIL screen). */
     onSpeakMode: (String?) -> Unit = { onSpeak() },
@@ -104,7 +106,7 @@ fun HomeScreen(
     fun open(t: PlanTask) = when (t.type) {
         TaskType.MORNING -> onMorning()
         TaskType.MOCK -> onMock()
-        TaskType.IMPROVE -> onScripts()
+        TaskType.IMPROVE -> onReviewRevisions()
         TaskType.REVIEW, TaskType.SPEAK, TaskType.FREE, TaskType.ROLEPLAY -> onSpeakMode(t.mode)
     }
 
@@ -159,11 +161,13 @@ fun HomeScreen(
         }
 
         st.debriefDue?.let { d ->
-            Banner("${d.monthValue}/${d.dayOfMonth} ${st.debriefType} 시험 복기 (5분)".replace("  ", " "), "복기", tone = MaterialTheme.colorScheme.secondary, onAction = onNextExam)
+            Banner("${d.monthValue}/${d.dayOfMonth} ${st.debriefType} 시험 복기 (5분)".replace("  ", " "), "복기", tone = MaterialTheme.colorScheme.secondary) {
+                onDebrief(d, st.debriefRegistrationId)
+            }
         }
 
         if (st.pendingRevisions > 0) {
-            Banner("승인 대기 개선안 ${st.pendingRevisions}개", "검토", tone = MaterialTheme.colorScheme.primary, onAction = onScripts)
+            Banner("승인 대기 개선안 ${st.pendingRevisions}개", "검토", tone = MaterialTheme.colorScheme.primary, onAction = onReviewRevisions)
         }
 
         // 3) Status: one card, one caveat.

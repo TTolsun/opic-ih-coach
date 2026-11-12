@@ -13,6 +13,8 @@ data class QuestionSource(val topic: String, val text: String, val type: String,
  * Questions are AI-generated practice items or the user's own lists, never claimed to be official.
  */
 object MockTestBuilder {
+    const val MINI_QUESTION_COUNT = 7
+
     enum class Adjust { EASIER, SAME, HARDER }
 
     fun build(pool: List<QuestionSource>, survey: Set<String>, count: Int, selfLevel: Int, adjust: Adjust = Adjust.SAME, seed: Long = System.currentTimeMillis()): List<MockQuestion> {

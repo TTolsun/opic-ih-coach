@@ -2,6 +2,8 @@ package com.opicih.coach.ui.screens
 
 import com.opicih.coach.learning.lastExamDate
 import com.opicih.coach.learning.lastSatDate
+import com.opicih.coach.learning.debriefExamRow
+import com.opicih.coach.learning.debriefRegistration
 import com.opicih.coach.learning.rulesOf
 import com.opicih.coach.learning.conversationReports
 import android.app.Application
@@ -11,7 +13,6 @@ import com.opicih.coach.App
 import com.opicih.coach.data.db.DailyLogEntity
 import com.opicih.coach.data.db.ExamEntity
 import com.opicih.coach.data.db.ExamRegistrationEntity
-import com.opicih.coach.data.db.ExamType
 import com.opicih.coach.data.db.MockTestEntity
 import com.opicih.coach.data.db.PracticeAttemptEntity
 import com.opicih.coach.data.db.ScriptEntity
@@ -62,6 +63,7 @@ data class HomeState(
     val debriefDue: LocalDate? = null,
     /** Exam type label of [debriefDue] (e.g. "SAIL"), empty when unknown. */
     val debriefType: String = "",
+    val debriefRegistrationId: Long? = null,
     val nextExam: NextExamSummary? = null,
     /** Nearest registered exam (header). Null = none registered. */
     val focusExam: ExamRegistrationEntity? = null,
@@ -108,11 +110,11 @@ fun buildHomeState(
     val last = lastExamDate(exams, today, reg)
     // Debrief the most recent exam of any type; on exam day it appears only after the exam has ended.
     val sat = lastSatDate(reg, today) ?: last
-    val satRow = exams.firstOrNull { it.epochDay == sat.toEpochDay() }
+    val debriefReg = debriefRegistration(reg, sat)
+    val satRow = debriefExamRow(exams, sat, debriefReg)
     val debriefDue = sat.takeIf {
         !today.isBefore(it) && satRow?.debriefAt == null && day - it.toEpochDay() <= 7 && (it != today || focusExam?.date != today)
     }
-    val debriefType = reg.firstOrNull { it.date == sat && it.type != ExamType.UNKNOWN }?.type?.label.orEmpty()
     val sinceMs = last.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
     val retake = com.opicih.coach.learning.RetakeSummaries.of(s, reg, today)
     val advice = RetestAdvisor.advise(today, last, rulesOf(s, retake.waiverAvailable), ProgressCalculator.readiness(attempts, logs, last.toEpochDay(), sinceMs, mocks))
@@ -132,7 +134,8 @@ fun buildHomeState(
         lastMock = mocks.firstOrNull(),
         alarmNeedsExact = s.alarmEnabled && s.useExactAlarm,
         debriefDue = debriefDue,
-        debriefType = debriefType,
+        debriefType = debriefReg?.type?.label.orEmpty(),
+        debriefRegistrationId = debriefReg?.id,
         nextExam = nextExam,
         focusExam = focusExam,
         regs = reg,

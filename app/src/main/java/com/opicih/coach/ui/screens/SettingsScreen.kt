@@ -65,6 +65,7 @@ import com.opicih.coach.ui.LocalContainer
 import com.opicih.coach.ui.components.Banner
 import com.opicih.coach.ui.components.Pill
 import com.opicih.coach.ui.components.SectionCard
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.LocalDate
@@ -83,6 +84,9 @@ fun SettingsScreen(onExams: () -> Unit = {}) {
     val studiedMs by c.studyTime.flow.collectAsState(initial = 0L)
     var message by remember { mutableStateOf<String?>(null) }
     var confirmWipe by remember { mutableStateOf(false) }
+    var confirmDeleteAudio by remember { mutableStateOf(false) }
+    var deletingAudio by remember { mutableStateOf(false) }
+    var audioDeleteMessage by remember { mutableStateOf<String?>(null) }
     var refresh by remember { mutableIntStateOf(0) }
 
     fun save(block: (Settings) -> Settings) = scope.launch {
@@ -311,15 +315,16 @@ fun SettingsScreen(onExams: () -> Unit = {}) {
             Text("녹음 저장 용량: ${usage / 1024 / 1024}MB · 보관 ${s.audioRetentionDays}일", style = MaterialTheme.typography.bodyMedium)
             Slider(s.audioRetentionDays.toFloat(), { v -> save { it.copy(audioRetentionDays = v.toInt()) } }, valueRange = 1f..60f)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedButton(onClick = { scope.launch { val n = c.backup.purgeAudio(s.audioRetentionDays); message = "오래된 녹음 ${n}개 삭제"; refresh++ } }) { Text("정리") }
-                OutlinedButton(onClick = { scope.launch { c.backup.deleteAllAudio(); message = "녹음 파일을 모두 삭제했습니다."; refresh++ } }) { Text("녹음 전체 삭제") }
+                OutlinedButton(enabled = !deletingAudio, onClick = { scope.launch { val n = c.backup.purgeAudio(s.audioRetentionDays); message = "오래된 녹음 ${n}개 삭제"; refresh++ } }) { Text("정리") }
+                OutlinedButton(enabled = !deletingAudio, onClick = { confirmDeleteAudio = true }) { Text("녹음 전체 삭제") }
             }
+            audioDeleteMessage?.let { Banner(it, "닫기") { audioDeleteMessage = null } }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Button(onClick = { exportLauncher.launch("opic-coach-backup-${LocalDate.now()}.json") }) { Text("백업") }
                 OutlinedButton(onClick = { importLauncher.launch(arrayOf("application/json", "application/octet-stream", "text/plain")) }) { Text("복원") }
             }
             Text("시험 일정도 백업됩니다. 녹음 파일과 API 키는 백업되지 않습니다.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            OutlinedButton(onClick = { confirmWipe = true }) { Text("모든 학습 데이터 삭제", color = MaterialTheme.colorScheme.error) }
+            OutlinedButton(enabled = !deletingAudio, onClick = { confirmWipe = true }) { Text("모든 학습 데이터 삭제", color = MaterialTheme.colorScheme.error) }
         }
         Spacer(Modifier.height(24.dp))
     }
@@ -352,6 +357,34 @@ fun SettingsScreen(onExams: () -> Unit = {}) {
             )
         }
     }
+    if (confirmDeleteAudio) AlertDialog(
+        onDismissRequest = { confirmDeleteAudio = false },
+        title = { Text("녹음을 모두 삭제할까요?") },
+        text = { Text("기기에 저장된 연습·모의시험 녹음 파일을 모두 삭제합니다. 삭제한 녹음은 복구할 수 없습니다.") },
+        confirmButton = {
+            TextButton(onClick = {
+                if (deletingAudio) return@TextButton
+                confirmDeleteAudio = false
+                deletingAudio = true
+                audioDeleteMessage = null
+                scope.launch {
+                    try {
+                        c.backup.deleteAllAudio()
+                        audioDeleteMessage = "녹음 파일을 모두 삭제했습니다."
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (_: Exception) {
+                        audioDeleteMessage = "녹음 파일을 모두 삭제하지 못했습니다."
+                    } finally {
+                        refresh++
+                        deletingAudio = false
+                    }
+                }
+            }) { Text("영구 삭제", color = MaterialTheme.colorScheme.error) }
+        },
+        dismissButton = { TextButton(onClick = { confirmDeleteAudio = false }) { Text("취소") } },
+    )
+
     if (confirmWipe) AlertDialog(
         onDismissRequest = { confirmWipe = false },
         title = { Text("모든 학습 데이터 삭제") },

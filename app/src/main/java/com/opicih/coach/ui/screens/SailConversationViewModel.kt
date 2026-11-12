@@ -162,10 +162,13 @@ class SailConversationViewModel(app: Application) : AndroidViewModel(app) {
 
     /** No answer: counts as a turn with an empty answer, the next question becomes simpler. */
     fun skip() {
+        if (_ui.value.phase == ConvPhase.THINKING) return
         if (_ui.value.phase == ConvPhase.LISTENING) capture.cancel()
+        askJob?.cancel()
+        c.tts.stop()
         tick?.cancel()
         _ui.update { it.copy(phase = ConvPhase.THINKING, showTyped = false, error = null) }
-        viewModelScope.launch { handleAnswer("", null, typed = true) }
+        viewModelScope.launch { handleAnswer("", null, typed = false) }
     }
 
     private suspend fun handleAnswer(answer: String, r: CaptureResult?, typed: Boolean) {
@@ -221,7 +224,7 @@ class SailConversationViewModel(app: Application) : AndroidViewModel(app) {
 
     private suspend fun finish(turns: List<ConvTurn>) {
         var report = ConversationScoring.report(turns)
-        if (useAi() && turns.any { it.answer.isNotBlank() }) {
+        if (report.answeredTurns > 0 && useAi()) {
             val ai = c.realAi(c.settings.current())
             if (ai != null) {
                 countAiCall()
@@ -242,10 +245,10 @@ class SailConversationViewModel(app: Application) : AndroidViewModel(app) {
 
     /** Ends early with the turns answered so far. */
     fun endNow() {
+        if (_ui.value.phase == ConvPhase.THINKING) return
         if (_ui.value.phase == ConvPhase.LISTENING) capture.cancel()
         tick?.cancel(); askJob?.cancel(); c.tts.stop()
         val turns = _ui.value.turns
-        if (turns.isEmpty()) { _ui.update { ConvUi(targetTurns = it.targetTurns, aiAvailable = it.aiAvailable) }; return }
         _ui.update { it.copy(phase = ConvPhase.THINKING) }
         viewModelScope.launch { finish(turns) }
     }

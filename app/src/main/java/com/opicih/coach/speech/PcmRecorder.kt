@@ -82,12 +82,22 @@ class PcmRecorder {
         val f = output ?: return null
         running = false
         job?.join()
-        job = null; record = null
+        job = null; record = null; output = null
         val list = synchronized(rms) { rms.toList() }
-        return withContext(Dispatchers.IO) { if (f.exists() && f.length() > 44) Result(f, list.size * FRAME_MS, list) else null }
+        return withContext(Dispatchers.IO) {
+            if (f.length() > 44) Result(f, list.size * FRAME_MS, list)
+            else {
+                f.delete()
+                null
+            }
+        }
     }
 
-    fun cancel() { stopInternal(); output?.delete() }
+    fun cancel() {
+        stopInternal()
+        output?.delete()
+        output = null
+    }
 
     private fun stopInternal() {
         running = false

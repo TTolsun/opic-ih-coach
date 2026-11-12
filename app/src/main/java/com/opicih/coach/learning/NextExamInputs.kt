@@ -40,6 +40,18 @@ fun lastSatDate(regs: List<ExamRegistrationEntity>, today: LocalDate): LocalDate
     regs.filter { it.state == RegistrationStatus.REGISTERED || it.state == RegistrationStatus.COMPLETED }
         .mapNotNull { it.date }.filter { !it.isAfter(today) }.maxOrNull()
 
+internal fun debriefRegistration(regs: List<ExamRegistrationEntity>, date: LocalDate, registrationId: Long? = null): ExamRegistrationEntity? =
+    regs.firstOrNull {
+        it.date == date && it.type != ExamType.UNKNOWN && (registrationId == null || it.id == registrationId) &&
+            (it.state == RegistrationStatus.REGISTERED || it.state == RegistrationStatus.COMPLETED)
+    }
+
+internal fun debriefExamRow(exams: List<ExamEntity>, date: LocalDate, registration: ExamRegistrationEntity?): ExamEntity? {
+    val rows = exams.filter { it.epochDay == date.toEpochDay() }
+    return rows.firstOrNull { it.id == registration?.legacyExamId }
+        ?: rows.firstOrNull { (it.type == ExamType.SAIL.name) == (registration?.type == ExamType.SAIL) }
+}
+
 /** OPIc advice rules: the official policy; a waiver only when one is available and the user plans to use it. */
 fun rulesOf(s: Settings, waiverAvailable: Boolean = false) = RetestAdvisor.Rules(
     policy = ExamPolicy.opic(), resultLagDays = s.resultLagDays, useWaiver = s.planWithWaiver && waiverAvailable,
@@ -51,4 +63,4 @@ fun rulesOf(s: Settings, waiverAvailable: Boolean = false) = RetestAdvisor.Rules
 fun conversationReports(sessions: List<ExamTrainingSessionEntity>): List<ConversationReport> =
     sessions.filter { it.finishedAt != null }.mapNotNull { s ->
         s.summaryJson?.let { runCatching { appJson.decodeFromString(ConversationReport.serializer(), it) }.getOrNull() }
-    }.take(10)
+    }.filter { it.answeredTurns > 0 }.take(10)

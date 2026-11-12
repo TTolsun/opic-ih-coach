@@ -1,5 +1,8 @@
 package com.opicih.coach.ui.components
 
+import android.content.Intent
+import android.net.Uri
+import android.provider.Settings
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -35,6 +38,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.semantics.semantics
@@ -178,6 +182,14 @@ fun Bullet(text: String, color: Color = MaterialTheme.colorScheme.onSurface, mar
     Row(Modifier.padding(vertical = 3.dp)) {
         Text(mark, color = color, modifier = Modifier.width(18.dp), fontWeight = FontWeight.Bold)
         Text(text, style = MaterialTheme.typography.bodyMedium, color = color)
+    }
+}
+
+@Composable
+fun MicPermissionBanner() {
+    val context = LocalContext.current
+    Banner("마이크 권한이 필요합니다.", "권한 설정") {
+        context.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", context.packageName, null)))
     }
 }
 
