@@ -94,14 +94,22 @@ interface AppDao {
 
     // ---- Chunks
     @Query("SELECT * FROM chunks ORDER BY id") suspend fun chunks(): List<ChunkEntity>
+    @Query("SELECT * FROM chunks WHERE id = :id") suspend fun chunk(id: Long): ChunkEntity?
     @Insert suspend fun insertChunks(c: List<ChunkEntity>)
     @Update suspend fun updateChunk(c: ChunkEntity)
+    @Query("SELECT * FROM morning_reviews WHERE chunkId = :chunkId ORDER BY id")
+    suspend fun morningReviews(chunkId: Long): List<MorningReviewEntity>
+    @Insert suspend fun insertMorningReview(review: MorningReviewEntity)
+    @Update suspend fun updateMorningReview(review: MorningReviewEntity)
 
     // ---- Daily logs
     @Query("SELECT * FROM daily_logs WHERE epochDay = :day") suspend fun dailyLog(day: Long): DailyLogEntity?
     @Query("SELECT * FROM daily_logs ORDER BY epochDay DESC") fun dailyLogsFlow(): Flow<List<DailyLogEntity>>
     @Query("SELECT * FROM daily_logs ORDER BY epochDay DESC") suspend fun dailyLogs(): List<DailyLogEntity>
     @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun upsertDailyLog(d: DailyLogEntity)
+    @Insert(onConflict = OnConflictStrategy.IGNORE) suspend fun ensureDailyLog(log: DailyLogEntity)
+    @Query("UPDATE daily_logs SET chunksReviewed = chunksReviewed + 1, morningDone = morningDone OR :finished WHERE epochDay = :day")
+    suspend fun applyMorningProgress(day: Long, finished: Boolean)
 
     // ---- Mock tests
     @Insert suspend fun insertMock(m: MockTestEntity): Long

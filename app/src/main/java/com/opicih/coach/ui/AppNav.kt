@@ -108,7 +108,7 @@ fun AppNav(startRoute: String?, onRouteConsumed: () -> Unit) {
     LaunchedEffect(startRoute) {
         if (startRoute != null) {
             when (startRoute) {
-                "morning" -> nav.navigate("morning")
+                "morning" -> nav.navigate("morning") { launchSingleTop = true }
                 "speaking" -> nav.goTab("speaking")
                 "nextExam" -> nav.navigate("nextExam")
                 "listen" -> nav.navigate("listen") { launchSingleTop = true }
@@ -119,7 +119,7 @@ fun AppNav(startRoute: String?, onRouteConsumed: () -> Unit) {
 
     Scaffold(
         topBar = {
-            if (!isTab) CenterAlignedTopAppBar(
+            if (!isTab && route != "morning") CenterAlignedTopAppBar(
                 title = { Text(titles[route] ?: "") },
                 navigationIcon = { IconButton(onClick = { nav.popBackStack() }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "뒤로") } },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = MaterialTheme.colorScheme.background),
@@ -147,7 +147,7 @@ fun AppNav(startRoute: String?, onRouteConsumed: () -> Unit) {
             composable("home") {
                 HomeScreen(
                     onSpeak = { nav.goTab("speaking") },
-                    onMorning = { nav.navigate("morning") },
+                    onMorning = { nav.navigate("morning") { launchSingleTop = true } },
                     onScript = { nav.navigate("script/$it") },
                     onMock = { nav.goTab("mock") },
                     onScripts = { nav.goTab("scripts") },
@@ -207,7 +207,10 @@ fun AppNav(startRoute: String?, onRouteConsumed: () -> Unit) {
             composable("listen") { ListenScreen(onOpenSettings = { nav.navigate("settings") }) }
             composable("nextExam") { NextExamScreen(onOpenSettings = { nav.navigate("settings") }) }
             composable("morning") {
-                MorningScreen(onReviewScript = { nav.navigate("speaking?scriptId=$it&mode=${PracticeMode.BLIND.name}") }, onDone = { nav.popBackStack() })
+                MorningScreen(
+                    onReviewScript = { nav.navigate("speaking?scriptId=$it&mode=${PracticeMode.BLIND.name}") },
+                    onExit = { nav.popBackStack() },
+                )
             }
         }
     }

@@ -9,16 +9,18 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import java.io.File
 import java.sql.Connection
 import java.sql.DriverManager
+import java.sql.SQLException
 
 /**
  * Runs the production migration SQL (MigrationSql) against a real SQLite database built from Room's exported
- * v1 schema, then checks the result against Room's exported v7 schema and that no user data was lost.
+ * v1 schema, then checks the result against Room's exported v8 schema and that no user data was lost.
  * This replaces an instrumented MigrationTestHelper run, which needs a device.
  */
 class MigrationTest {
@@ -60,23 +62,25 @@ class MigrationTest {
             "VALUES ('T', 'Q', 'OTHER', 'FREE', 'I went to Busan', 'LIVE_STT', 60000, 50000, 1, 90, 100, 70, '{}', '{}', 'LOCAL', $it)") }
         exec("INSERT INTO error_patterns (`key`, category, example, correction, count, lastSeen) VALUES ('go-went', 'GRAMMAR', 'I go', 'I went', 4, 1)")
         exec("INSERT INTO chunks (phrase, meaningKo, example, category, srsStep, dueEpochDay, lastResult, failCount, source) VALUES ('to be honest', '솔직히', 'ex', 'opener', 3, 20410, 'OK', 1, 'AI_SAMPLE')")
+        exec("INSERT INTO daily_logs VALUES (20409, 10000, 3, 2, 5, 1, 1)")
         // 2026-02-20 with a result (a real sitting) and 2026-11-14 without anything (only a plan in v1).
         exec("INSERT INTO exams (epochDay, type, resultGrade, note) VALUES (${java.time.LocalDate.of(2026, 2, 20).toEpochDay()}, 'FIRST', 'IM2', '')")
         exec("INSERT INTO exams (epochDay, type, resultGrade, note) VALUES (${java.time.LocalDate.of(2026, 11, 14).toEpochDay()}, 'RETAKE', NULL, '')")
     }
 
-    private fun migrateToV7() {
+    private fun migrateToV8() {
         MigrationSql.V1_TO_V2.forEach(::exec)
         MigrationSql.V2_TO_V3.forEach(::exec)
         MigrationSql.V3_TO_V4.forEach(::exec)
         MigrationSql.V4_TO_V5.forEach(::exec)
         MigrationSql.V5_TO_V6.forEach(::exec)
         MigrationSql.V6_TO_V7.forEach(::exec)
+        MigrationSql.V7_TO_V8.forEach(::exec)
     }
 
-    @Test fun v1ToV7MatchesRoomSchema() {
-        migrateToV7()
-        for (e in entities(7)) {
+    @Test fun v1ToV8MatchesRoomSchema() {
+        migrateToV8()
+        for (e in entities(8)) {
             val table = e["tableName"]!!.jsonPrimitive.content
             val expected = e["fields"]!!.jsonArray.associate { f ->
                 val o = f.jsonObject
@@ -97,7 +101,7 @@ class MigrationTest {
     }
 
     @Test fun keepsAllUserData() {
-        migrateToV7()
+        migrateToV8()
         assertEquals(23, count("scripts"))
         assertEquals(1, count("script_revisions", "status = 'PENDING'"))
         assertEquals(1, count("script_revisions", "status = 'APPROVED'"))
@@ -106,6 +110,8 @@ class MigrationTest {
         assertEquals(5, count("attempts", "speakingReviewDueEpochDay IS NULL AND transcript = 'I went to Busan'"))
         assertEquals(1, count("error_patterns", "count = 4"))
         assertEquals(1, count("chunks", "srsStep = 3 AND dueEpochDay = 20410"))
+        assertEquals(1, count("daily_logs", "epochDay = 20409 AND speakingMs = 10000 AND attempts = 3 AND scriptsReviewed = 2 AND chunksReviewed = 5 AND mockDone = 1 AND morningDone = 1"))
+        assertEquals(0, count("morning_reviews"))
         assertEquals(2, count("exams"))
         assertEquals(0, count("word_lookups"))
         assertEquals(0, count("sentence_frames"))
@@ -115,7 +121,7 @@ class MigrationTest {
     }
 
     @Test fun oldExamsBecomeReviewRowsNotFacts() {
-        migrateToV7()
+        migrateToV8()
         assertEquals(2, count("exam_registrations"))
         assertEquals(2, count("exam_registrations", "examType = 'UNKNOWN' AND needsReview = 1 AND sourceType = 'MIGRATED' AND legacyExamId IS NOT NULL"))
         // Only the row with a result is treated as a sitting; the bare v1 date stays a plan.
@@ -138,8 +144,21 @@ class MigrationTest {
 
     @Test fun emptyExamsTableMigrates() {
         exec("DELETE FROM exams")
-        migrateToV7()
+        migrateToV8()
         assertEquals(0, count("exam_registrations"))
         assertTrue(count("exam_status_events") == 0 && count("exam_training_sessions") == 0)
+    }
+
+    @Test fun routinePositionIsUniqueAndRestoringChunksClearsTheirReviewHistory() {
+        migrateToV8()
+        exec("PRAGMA foreign_keys = ON")
+        val insert = "INSERT INTO morning_reviews (routineId, itemIndex, chunkId, reviewedDay, success, initialStep)"
+        exec("$insert VALUES ('routine', 0, 1, 20409, 1, 3)")
+        exec("$insert VALUES ('routine', 5, 1, 20409, 0, NULL)")
+        assertThrows(SQLException::class.java) { exec("$insert VALUES ('routine', 5, 1, 20409, 1, NULL)") }
+        assertEquals(2, count("morning_reviews"))
+        exec("DELETE FROM chunks")
+        assertEquals(0, count("morning_reviews"))
+        assertEquals(1, count("daily_logs", "epochDay = 20409 AND chunksReviewed = 5 AND morningDone = 1"))
     }
 }

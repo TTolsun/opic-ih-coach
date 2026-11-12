@@ -1,6 +1,7 @@
 package com.opicih.coach.data.db
 
 import androidx.room.Entity
+import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
 
@@ -202,6 +203,27 @@ data class ErrorPatternEntity(
     val correction: String,
     val count: Int = 1,
     val lastSeen: Long = System.currentTimeMillis(),
+)
+
+@Entity(
+    tableName = "morning_reviews",
+    indices = [Index(value = ["routineId", "itemIndex"], unique = true), Index("chunkId")],
+    foreignKeys = [ForeignKey(
+        entity = ChunkEntity::class,
+        parentColumns = ["id"],
+        childColumns = ["chunkId"],
+        onDelete = ForeignKey.CASCADE,
+    )],
+)
+data class MorningReviewEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val routineId: String,
+    val itemIndex: Int,
+    val chunkId: Long,
+    val reviewedDay: Long,
+    val examDay: Long?,
+    val success: Boolean,
+    val initialStep: Int?,
 )
 
 @Entity(tableName = "chunks")
