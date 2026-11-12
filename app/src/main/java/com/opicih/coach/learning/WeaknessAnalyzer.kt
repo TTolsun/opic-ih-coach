@@ -84,15 +84,16 @@ object WeaknessAnalyzer {
 
         // Conversation signals (SAIL practice reports).
         if (conversations.isNotEmpty()) {
-            val turns = conversations.sumOf { it.turns }
+            val turns = conversations.filter { it.avgLatencyMs != null }.sumOf { it.answeredTurns }
             val slow = conversations.sumOf { it.slowStarts }
             if (turns >= MIN_SAMPLES && slow * 3 >= turns) {
                 out += Weakness(SharedSpeakingCompetency.SPONTANEOUS_RESPONSE, "대화 연습 ${turns}턴 중 ${slow}턴에서 답변 시작이 3초를 넘음", (slow.toFloat() / turns).coerceAtMost(1f), turns)
             }
-            val onTopic = conversations.filter { it.turns >= 2 }
-            if (onTopic.isNotEmpty() && onTopic.sumOf { it.turns } >= MIN_SAMPLES) {
+            val onTopic = conversations.filter { it.answeredTurns >= 2 }
+            val onTopicSamples = onTopic.sumOf { it.answeredTurns }
+            if (onTopicSamples >= MIN_SAMPLES) {
                 val avg = onTopic.map { it.onTopicRatio }.average().toFloat()
-                if (avg < 0.6f) out += Weakness(SharedSpeakingCompetency.FOLLOWUP_HANDLING, "추가 질문에 질문 단어를 받아 답한 비율 ${(avg * 100).toInt()}%", 1f - avg, onTopic.sumOf { it.turns })
+                if (avg < 0.6f) out += Weakness(SharedSpeakingCompetency.FOLLOWUP_HANDLING, "추가 질문에 질문 단어를 받아 답한 비율 ${(avg * 100).toInt()}%", 1f - avg, onTopicSamples)
             }
             val repeated = conversations.count { it.repeatedPhrases.isNotEmpty() }
             if (repeated >= 2) {

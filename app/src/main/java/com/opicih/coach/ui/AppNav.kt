@@ -42,6 +42,7 @@ import androidx.navigation.navArgument
 import com.opicih.coach.AppContainer
 import com.opicih.coach.data.db.PracticeMode
 import com.opicih.coach.ui.screens.CoachScreen
+import com.opicih.coach.ui.screens.ExamDebriefScreen
 import com.opicih.coach.ui.screens.ExamsScreen
 import com.opicih.coach.ui.screens.FramesScreen
 import com.opicih.coach.ui.screens.HomeScreen
@@ -57,6 +58,7 @@ import com.opicih.coach.ui.screens.ScriptEditScreen
 import com.opicih.coach.ui.screens.ScriptsScreen
 import com.opicih.coach.ui.screens.SettingsScreen
 import com.opicih.coach.ui.screens.SpeakingScreen
+import java.time.LocalDate
 
 val LocalContainer = staticCompositionLocalOf<AppContainer> { error("AppContainer not provided") }
 
@@ -74,6 +76,7 @@ private val titles = mapOf(
     "script/{id}" to "스크립트", "scriptEdit/{id}" to "스크립트 편집", "import" to "스크립트 가져오기",
     "settings" to "설정", "nextExam" to "다음 OPIc 추천", "exams" to "시험 일정", "sail" to "SAIL 대화 연습", "morning" to "아침 표현 루틴", "coach" to "AI 코치",
     "listen" to "스크립트 듣기", "review/{id}" to "다시 말하기",
+    "pendingRevisions" to "승인 대기 개선안", "examDebrief/{day}/{registrationId}" to "시험 복기",
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -150,10 +153,11 @@ fun AppNav(startRoute: String?, onRouteConsumed: () -> Unit) {
                     onMorning = { nav.navigate("morning") { launchSingleTop = true } },
                     onScript = { nav.navigate("script/$it") },
                     onMock = { nav.goTab("mock") },
-                    onScripts = { nav.goTab("scripts") },
+                    onReviewRevisions = { nav.navigate("pendingRevisions") },
                     onCoach = { nav.navigate("coach") },
                     onSettings = { nav.navigate("settings") },
                     onNextExam = { nav.navigate("nextExam") },
+                    onDebrief = { date, registrationId -> nav.navigate("examDebrief/${date.toEpochDay()}/${registrationId ?: 0L}") },
                     onExams = { nav.navigate("exams") },
                     onSpeakingReview = { nav.navigate("review/$it") { launchSingleTop = true } },
                     onSpeakMode = { m ->
@@ -165,8 +169,17 @@ fun AppNav(startRoute: String?, onRouteConsumed: () -> Unit) {
                     },
                 )
             }
-            composable("scripts") {
-                ScriptsScreen(onOpen = { nav.navigate("script/$it") }, onNew = { nav.navigate("scriptEdit/0") }, onImport = { nav.navigate("import") }, onFrames = { nav.navigate("frames") }, onListen = { nav.navigate("listen") })
+            listOf("scripts", "pendingRevisions").forEach { listRoute ->
+                composable(listRoute) {
+                    ScriptsScreen(
+                        onOpen = { nav.navigate("script/$it") },
+                        onNew = { nav.navigate("scriptEdit/0") },
+                        onImport = { nav.navigate("import") },
+                        onFrames = { nav.navigate("frames") },
+                        onListen = { nav.navigate("listen") },
+                        pendingOnly = listRoute == "pendingRevisions",
+                    )
+                }
             }
             composable(
                 "speaking?scriptId={scriptId}&mode={mode}",
@@ -206,6 +219,13 @@ fun AppNav(startRoute: String?, onRouteConsumed: () -> Unit) {
             composable("coach") { CoachScreen() }
             composable("listen") { ListenScreen(onOpenSettings = { nav.navigate("settings") }) }
             composable("nextExam") { NextExamScreen(onOpenSettings = { nav.navigate("settings") }) }
+            composable(
+                "examDebrief/{day}/{registrationId}",
+                arguments = listOf(navArgument("day") { type = NavType.LongType }, navArgument("registrationId") { type = NavType.LongType }),
+            ) { e ->
+                val args = requireNotNull(e.arguments)
+                ExamDebriefScreen(LocalDate.ofEpochDay(args.getLong("day")), args.getLong("registrationId").takeIf { it > 0L })
+            }
             composable("morning") {
                 MorningScreen(
                     onReviewScript = { nav.navigate("speaking?scriptId=$it&mode=${PracticeMode.BLIND.name}") },
@@ -218,7 +238,7 @@ fun AppNav(startRoute: String?, onRouteConsumed: () -> Unit) {
 
 /** Routes whose open time counts as study (not home / progress / settings / exams / nextExam / import / scriptEdit). */
 internal fun isStudyRoute(route: String?): Boolean = route != null && (
-    route == "scripts" || route == "script/{id}" || route == "review/{id}" ||
+    route == "scripts" || route == "pendingRevisions" || route == "script/{id}" || route == "review/{id}" ||
         listOf("speaking", "mock", "sail", "coach", "morning").any { route.startsWith(it) }
     )
 

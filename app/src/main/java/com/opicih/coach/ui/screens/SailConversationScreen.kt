@@ -133,7 +133,7 @@ fun SailConversationScreen(vm: SailConversationViewModel = viewModel()) {
                 if (ui.showTyped) TypedAnswer(vm::submitTyped)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedButton(onClick = vm::skip, enabled = ui.phase != ConvPhase.THINKING) { Text("건너뛰기") }
-                    OutlinedButton(onClick = vm::endNow) { Text("여기서 끝내기") }
+                    OutlinedButton(onClick = vm::endNow, enabled = ui.phase != ConvPhase.THINKING) { Text("여기서 끝내기") }
                 }
                 if (ui.turns.isNotEmpty()) SectionCard(title = "지금까지의 대화") { ui.turns.forEach { TurnRow(it) } }
             }
@@ -156,7 +156,7 @@ private fun TypedAnswer(onSubmit: (String) -> Unit) {
 private fun TurnRow(t: ConvTurn) {
     Column(Modifier.padding(vertical = 6.dp)) {
         Row { Text("Q", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary); Spacer(Modifier.padding(4.dp)); Text(t.question, style = MaterialTheme.typography.bodyMedium) }
-        Text(t.answer.ifBlank { "(답변 없음)" }, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(t.answer.ifBlank { "건너뜀" }, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         val m = t.metrics
         val meta = listOfNotNull(
             t.origin.label,
@@ -174,6 +174,15 @@ private fun TurnRow(t: ConvTurn) {
 private fun ReportCard(r: ConversationReport, turns: List<ConvTurn>, aiCalls: Int) {
     SectionCard(title = "대화 피드백", trailing = { SourceTag("학습용 참고") }) {
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            MetricTile("답변", "${r.answeredTurns}턴")
+            MetricTile("건너뜀", "${r.skippedTurns}턴")
+        }
+        Spacer(Modifier.height(10.dp))
+        if (r.answeredTurns == 0) {
+            Text("기록된 답변이 없습니다.", style = MaterialTheme.typography.bodyMedium)
+            return@SectionCard
+        }
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             MetricTile("답변 시작", r.avgLatencyMs?.let { "%.1f초".format(it / 1000f) } ?: "측정 불가", hint = if (r.slowStarts > 0) "3초 초과 ${r.slowStarts}회" else null)
             MetricTile("평균 단어", "${r.avgWords}")
             MetricTile("긴 멈춤", "${r.longPauses}회")
@@ -181,9 +190,11 @@ private fun ReportCard(r: ConversationReport, turns: List<ConvTurn>, aiCalls: In
             MetricTile("질문 대응", "${(r.onTopicRatio * 100).toInt()}%", hint = "단어 겹침 기준")
         }
         Spacer(Modifier.height(10.dp))
-        Text("잘한 점", style = MaterialTheme.typography.labelLarge)
-        r.strengths.forEach { Bullet(it, color = MaterialTheme.colorScheme.secondary) }
-        Spacer(Modifier.height(6.dp))
+        if (r.strengths.isNotEmpty()) {
+            Text("잘한 점", style = MaterialTheme.typography.labelLarge)
+            r.strengths.forEach { Bullet(it, color = MaterialTheme.colorScheme.secondary) }
+            Spacer(Modifier.height(6.dp))
+        }
         Text("우선 고칠 점", style = MaterialTheme.typography.labelLarge)
         if (r.fixes.isEmpty()) Bullet("이번 대화에서 규칙상 크게 걸린 항목은 없습니다.")
         r.fixes.forEach { Bullet(it, color = MaterialTheme.colorScheme.tertiary, mark = "!") }
@@ -191,6 +202,6 @@ private fun ReportCard(r: ConversationReport, turns: List<ConvTurn>, aiCalls: In
     r.aiSummary?.let { s ->
         SectionCard(title = "Gemini 종합 피드백", trailing = { SourceTag("AI · 호출 ${aiCalls}회") }) { Text(s, style = MaterialTheme.typography.bodyMedium) }
     }
-    SectionCard(title = "대화 기록") { turns.forEach { TurnRow(it) } }
-    SectionCard(title = "측정 한계") { r.limits.forEach { Bullet(it, color = MaterialTheme.colorScheme.onSurfaceVariant) } }
+    if (turns.isNotEmpty()) SectionCard(title = "대화 기록") { turns.forEach { TurnRow(it) } }
+    if (r.answeredTurns > 0) SectionCard(title = "측정 한계") { r.limits.forEach { Bullet(it, color = MaterialTheme.colorScheme.onSurfaceVariant) } }
 }

@@ -125,7 +125,7 @@ class ScriptRepository(private val db: AppDatabase) {
     }
 
     /** Saves parsed scripts, keeps the raw import text, and links near-duplicates. */
-    suspend fun importParsed(fileName: String, mime: String, raw: String, parsed: List<ParsedScript>): Int {
+    suspend fun importParsed(fileName: String, mime: String, raw: String, parsed: List<ParsedScript>): Int = db.withTransaction {
         val importId = dao.insertImport(ImportSourceEntity(fileName = fileName, mime = mime, rawText = raw.take(2_000_000), parsedCount = parsed.size))
         val today = LocalDate.now().toEpochDay()
         parsed.forEach { p ->
@@ -138,7 +138,7 @@ class ScriptRepository(private val db: AppDatabase) {
             )
         }
         relink()
-        return parsed.size
+        parsed.size
     }
 
     suspend fun relink() {

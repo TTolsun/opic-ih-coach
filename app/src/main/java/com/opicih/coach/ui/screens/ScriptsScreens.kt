@@ -72,7 +72,8 @@ import com.opicih.coach.data.db.ScriptVersion
 import com.opicih.coach.data.prefs.Settings
 import com.opicih.coach.learning.GradeTargets
 import com.opicih.coach.importer.ImportService
-import com.opicih.coach.importer.ParsedScript
+import com.opicih.coach.importer.ImportException
+import com.opicih.coach.importer.ImportResult
 import com.opicih.coach.importer.QuestionClassifier
 import com.opicih.coach.ui.LocalContainer
 import com.opicih.coach.ui.components.Banner
@@ -82,38 +83,55 @@ import com.opicih.coach.ui.components.Pill
 import com.opicih.coach.ui.components.SectionCard
 import com.opicih.coach.ui.components.SourceTag
 import com.opicih.coach.ui.theme.EnglishReading
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 
 @Composable
-fun ScriptsScreen(onOpen: (Long) -> Unit, onNew: () -> Unit, onImport: () -> Unit, onFrames: () -> Unit, onListen: () -> Unit) {
+fun ScriptsScreen(
+    onOpen: (Long) -> Unit,
+    onNew: () -> Unit,
+    onImport: () -> Unit,
+    onFrames: () -> Unit,
+    onListen: () -> Unit,
+    pendingOnly: Boolean = false,
+) {
     val c = LocalContainer.current
     // null = 아직 로딩 전. 빈 목록으로 먼저 그리면 복원된 스크롤 위치가 0으로 초기화된다.
     val loadedScripts by c.dao.scriptsFlow().collectAsState(initial = null)
-    val pending by c.dao.pendingRevisionsFlow().collectAsState(initial = emptyList())
+    val pending by c.dao.pendingRevisionsFlow().collectAsState(initial = null)
     var query by rememberSaveable { mutableStateOf("") }
     val scripts = loadedScripts ?: return
-    val pendingIds = pending.map { it.scriptId }.toSet()
-    val filtered = scripts.filter { query.isBlank() || (it.title + it.topic + it.question + it.original).contains(query, true) }
+    if (pendingOnly && pending == null) return
+    val pendingIds = pending.orEmpty().map { it.scriptId }.toSet()
+    val listed = if (pendingOnly) scripts.filter { it.id in pendingIds } else scripts
+    val filtered = listed.filter { query.isBlank() || (it.title + it.topic + it.question + it.original).contains(query, true) }
 
     Box(Modifier.fillMaxSize()) {
         LazyColumn(Modifier.fillMaxSize().padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             item {
                 Spacer(Modifier.height(12.dp))
                 OutlinedTextField(query, { query = it }, leadingIcon = { Icon(Icons.Filled.Search, null) }, placeholder = { Text("검색") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-                Spacer(Modifier.height(8.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    FilledTonalButton(onClick = onImport) { Icon(Icons.Filled.FileOpen, null); Spacer(Modifier.width(6.dp)); Text("가져오기") }
-                    OutlinedButton(onClick = onNew) { Icon(Icons.Filled.Edit, null); Spacer(Modifier.width(6.dp)); Text("직접 작성") }
-                    OutlinedButton(onClick = onFrames) { Text("문장 틀") }
-                }
-                if (scripts.isNotEmpty()) {
+                if (!pendingOnly) {
                     Spacer(Modifier.height(8.dp))
-                    FilledTonalButton(onClick = onListen, modifier = Modifier.fillMaxWidth()) { Icon(Icons.Filled.Headphones, null); Spacer(Modifier.width(6.dp)); Text("소리로 듣기 (하루 종일 재생)") }
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        FilledTonalButton(onClick = onImport) { Icon(Icons.Filled.FileOpen, null); Spacer(Modifier.width(6.dp)); Text("가져오기") }
+                        OutlinedButton(onClick = onNew) { Icon(Icons.Filled.Edit, null); Spacer(Modifier.width(6.dp)); Text("직접 작성") }
+                        OutlinedButton(onClick = onFrames) { Text("문장 틀") }
+                    }
+                    if (scripts.isNotEmpty()) {
+                        Spacer(Modifier.height(8.dp))
+                        FilledTonalButton(onClick = onListen, modifier = Modifier.fillMaxWidth()) { Icon(Icons.Filled.Headphones, null); Spacer(Modifier.width(6.dp)); Text("소리로 듣기 (하루 종일 재생)") }
+                    }
                 }
-                if (scripts.isEmpty()) {
+                if (filtered.isEmpty()) {
                     Spacer(Modifier.height(16.dp))
-                    Text("스크립트가 없습니다.", style = MaterialTheme.typography.bodyMedium)
+                    val emptyMessage = when {
+                        pendingOnly && listed.isEmpty() -> "승인을 기다리는 개선안이 없습니다."
+                        listed.isEmpty() -> "스크립트가 없습니다."
+                        else -> "검색 결과가 없습니다."
+                    }
+                    Text(emptyMessage, style = MaterialTheme.typography.bodyMedium)
                 }
             }
             filtered.groupBy { it.topic }.forEach { (topic, list) ->
@@ -354,29 +372,80 @@ fun ImportScreen(onDone: () -> Unit) {
     var raw by rememberSaveable { mutableStateOf("") }
     var fileName by rememberSaveable { mutableStateOf("붙여넣기") }
     var mime by rememberSaveable { mutableStateOf("text/plain") }
-    var parsed by remember { mutableStateOf<List<ParsedScript>>(emptyList()) }
+    var preview by remember { mutableStateOf<ImportResult?>(null) }
+    var needsReanalysis by rememberSaveable { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     var busy by remember { mutableStateOf(false) }
 
+    fun runImportAction(failureMessage: String, action: suspend () -> Unit) {
+        if (busy) return
+        busy = true
+        error = null
+        scope.launch {
+            try {
+                action()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: ImportException) {
+                error = e.message ?: failureMessage
+            } catch (_: Exception) {
+                error = failureMessage
+            } finally {
+                busy = false
+            }
+        }
+    }
+
+    fun showPreview(result: ImportResult) {
+        needsReanalysis = false
+        preview = result.takeIf { it.scripts.isNotEmpty() }
+        if (preview == null) error = "인식된 스크립트가 없습니다."
+    }
+
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
         if (uri == null) return@rememberLauncherForActivityResult
-        busy = true; error = null
-        scope.launch {
-            runCatching { c.importer.readUri(uri) }
-                .onSuccess { r -> raw = r.rawText; fileName = r.fileName; mime = r.mime; parsed = r.scripts }
-                .onFailure { e -> error = e.message ?: "가져오기 실패" }
-            busy = false
+        runImportAction("파일을 읽지 못했습니다.") {
+            val result = c.importer.readUri(uri)
+            raw = result.rawText
+            fileName = result.fileName
+            mime = result.mime
+            showPreview(result)
         }
     }
 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text("TXT · MD · PDF · DOCX", style = MaterialTheme.typography.bodySmall)
         Button(onClick = { picker.launch(ImportService.MIME_TYPES) }, enabled = !busy) { Icon(Icons.Filled.FileOpen, null); Spacer(Modifier.width(6.dp)); Text("파일 선택") }
-        OutlinedTextField(raw, { raw = it; fileName = "붙여넣기"; mime = "text/plain" }, label = { Text("또는 여기에 붙여넣기") }, minLines = 8, maxLines = 14, modifier = Modifier.fillMaxWidth())
-        OutlinedButton(enabled = raw.isNotBlank() && !busy, onClick = { scope.launch { parsed = c.importer.parseText(raw, fileName) } }) { Text("분석하기") }
+        OutlinedTextField(
+            value = raw,
+            onValueChange = { edited ->
+                if (!busy && edited != raw) {
+                    needsReanalysis = needsReanalysis || preview != null
+                    preview = null
+                    raw = edited
+                    fileName = "붙여넣기"
+                    mime = "text/plain"
+                    error = null
+                }
+            },
+            enabled = !busy,
+            label = { Text("또는 여기에 붙여넣기") },
+            minLines = 8,
+            maxLines = 14,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        OutlinedButton(enabled = raw.isNotBlank() && !busy, onClick = {
+            runImportAction("스크립트를 분석하지 못했습니다.") {
+                showPreview(ImportResult(fileName, mime, raw, c.importer.parseText(raw, fileName)))
+            }
+        }) { Text("분석하기") }
         if (busy) CircularProgressIndicator()
         error?.let { Banner(it, tone = MaterialTheme.colorScheme.error) }
-        if (parsed.isNotEmpty()) {
+        if (needsReanalysis && raw.isNotBlank() && !busy && error == null) {
+            Text("수정한 내용을 다시 분석하세요.", style = MaterialTheme.typography.bodySmall)
+        }
+        preview?.let { result ->
+            val parsed = result.scripts
             SectionCard(title = "인식된 스크립트 ${parsed.size}개") {
                 parsed.take(40).forEach { p ->
                     Text("${p.topic} · ${p.title}", style = MaterialTheme.typography.titleSmall)
@@ -385,8 +454,11 @@ fun ImportScreen(onDone: () -> Unit) {
                 }
                 if (parsed.size > 40) Text("외 ${parsed.size - 40}개")
             }
-            Button(onClick = {
-                scope.launch { c.scripts.importParsed(fileName, mime, raw, parsed); onDone() }
+            Button(enabled = !busy, onClick = {
+                if (preview == result) runImportAction("스크립트를 저장하지 못했습니다.") {
+                    c.scripts.importParsed(result.fileName, result.mime, result.rawText, parsed)
+                    onDone()
+                }
             }, modifier = Modifier.fillMaxWidth()) { Icon(Icons.Filled.Add, null); Spacer(Modifier.width(6.dp)); Text("${parsed.size}개 가져오기") }
         }
     }

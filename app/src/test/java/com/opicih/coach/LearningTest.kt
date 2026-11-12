@@ -186,6 +186,14 @@ class MockTestBuilderTest {
         assertEquals(12, r.size)
         assertEquals(q.take(7), r.take(7))
     }
+
+    @Test fun miniMockBuildsSevenUniqueQuestions() {
+        val questions = MockTestBuilder.build(pool, setOf("Movies", "Park & Music"), MockTestBuilder.MINI_QUESTION_COUNT, 4, seed = 3)
+
+        assertEquals((1..7).toList(), questions.map { it.no })
+        assertEquals(7, questions.map { it.text }.distinct().size)
+        assertEquals("SELF_INTRO", questions.first().type)
+    }
 }
 
 /** The bundled seed files must stay parseable (they are loaded on first launch). */

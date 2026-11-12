@@ -1,10 +1,7 @@
 package com.opicih.coach.ui.screens
 
 import android.Manifest
-import android.content.Intent
 import android.content.pm.PackageManager
-import android.net.Uri
-import android.provider.Settings as AndroidSettings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
@@ -79,6 +76,7 @@ import com.opicih.coach.ui.components.Bullet
 import com.opicih.coach.ui.components.LevelBar
 import com.opicih.coach.ui.components.MetricTile
 import com.opicih.coach.ui.components.MicButton
+import com.opicih.coach.ui.components.MicPermissionBanner
 import com.opicih.coach.ui.components.Pill
 import com.opicih.coach.ui.components.SectionCard
 import com.opicih.coach.ui.components.SourceTag
@@ -111,8 +109,10 @@ fun SpeakingScreen(scriptId: Long?, mode: PracticeMode?, reviewId: Long? = null,
         if (granted) vm.toggleMic()
     }
     fun onMic() {
-        if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) vm.toggleMic()
-        else permLauncher.launch(Manifest.permission.RECORD_AUDIO)
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
+            micDenied = false
+            vm.toggleMic()
+        } else permLauncher.launch(Manifest.permission.RECORD_AUDIO)
     }
 
     var showPicker by remember { mutableStateOf(false) }
@@ -121,9 +121,7 @@ fun SpeakingScreen(scriptId: Long?, mode: PracticeMode?, reviewId: Long? = null,
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
         ModeSelector(ui.mode) { vm.setMode(it) }
 
-        if (micDenied) Banner("마이크 권한이 필요합니다.", "권한 설정") {
-            context.startActivity(Intent(AndroidSettings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:" + context.packageName)))
-        }
+        if (micDenied) MicPermissionBanner()
 
         val q = ui.question
         if (q == null) {

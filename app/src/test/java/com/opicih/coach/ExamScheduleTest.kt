@@ -21,6 +21,8 @@ import com.opicih.coach.learning.ExamSchedule
 import com.opicih.coach.learning.Focus
 import com.opicih.coach.learning.PlanGenerator
 import com.opicih.coach.learning.TaskType
+import com.opicih.coach.learning.debriefExamRow
+import com.opicih.coach.learning.debriefRegistration
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -43,6 +45,21 @@ private fun reg(
 ) = ExamRegistrationEntity(id = id, examType = type.name, dateLocal = date, datePrecision = precision.name, startTimeLocal = start, endTimeLocal = end, status = status.name)
 
 class ExamScheduleTest {
+
+    @Test fun debriefUsesTheRequestedRegistrationOnASharedExamDay() {
+        val day = LocalDate.of(2026, 11, 11)
+        val opic = reg(1L, ExamType.OPIC, day.toString(), RegistrationStatus.COMPLETED)
+        val sail = reg(2L, ExamType.SAIL, day.toString(), RegistrationStatus.COMPLETED).copy(legacyExamId = 22L)
+        val cancelled = reg(3L, ExamType.SAIL, day.toString(), RegistrationStatus.CANCELLED)
+        val registrations = listOf(opic, sail, cancelled)
+        val opicRow = ExamEntity(id = 11L, epochDay = day.toEpochDay(), type = "RETAKE")
+        val sailRow = ExamEntity(id = 22L, epochDay = day.toEpochDay(), type = "SAIL")
+
+        assertEquals(sail, debriefRegistration(registrations, day, sail.id))
+        assertNull(debriefRegistration(registrations, day, cancelled.id))
+        assertEquals(sailRow, debriefExamRow(listOf(opicRow, sailRow), day, sail))
+        assertNull(debriefExamRow(listOf(opicRow), day, sail))
+    }
 
     @Test fun nearestExamOnNov7IsSail() {
         val now = kst(2026, 11, 7)

@@ -177,22 +177,25 @@ data class ConversationReport(
     val weakCompetencies: List<String>,
     val aiSummary: String? = null,
     val limits: List<String> = emptyList(),
+    val answeredTurns: Int = turns,
+    val skippedTurns: Int = turns - answeredTurns,
 )
 
 object ConversationScoring {
     const val SLOW_START_MS = 3000L
 
     fun report(turns: List<ConvTurn>): ConversationReport {
-        val measured = turns.mapNotNull { it.metrics?.responseLatencyMs }
+        val answers = turns.filter { it.answer.isNotBlank() }
+        val measured = answers.mapNotNull { it.metrics?.responseLatencyMs }
         val avgLatency = measured.takeIf { it.isNotEmpty() }?.average()?.toLong()
         val slow = measured.count { it > SLOW_START_MS }
-        val words = turns.map { TextNormalizer.words(it.answer).size }
+        val words = answers.map { TextNormalizer.words(it.answer).size }
         val avgWords = if (words.isEmpty()) 0 else words.average().toInt()
-        val pauses = turns.sumOf { it.metrics?.longPauses ?: 0 }
-        val connectors = turns.sumOf { DiscourseAnalyzer.analyze(it.answer).connectorCount }
-        val perAnswer = if (turns.isEmpty()) 0f else connectors.toFloat() / turns.size
-        val repeated = repeatedPhrases(turns.map { it.answer })
-        val onTopic = if (turns.isEmpty()) 0f else turns.count { overlaps(it.question, it.answer) }.toFloat() / turns.size
+        val pauses = answers.sumOf { it.metrics?.longPauses ?: 0 }
+        val connectors = answers.sumOf { DiscourseAnalyzer.analyze(it.answer).connectorCount }
+        val perAnswer = if (answers.isEmpty()) 0f else connectors.toFloat() / answers.size
+        val repeated = repeatedPhrases(answers.map { it.answer })
+        val onTopic = if (answers.isEmpty()) 0f else answers.count { overlaps(it.question, it.answer) }.toFloat() / answers.size
 
         val strengths = mutableListOf<String>()
         val fixes = mutableListOf<String>()
@@ -202,23 +205,24 @@ object ConversationScoring {
             if (slow > 0) { fixes += "답변 시작이 3초를 넘은 질문이 ${slow}개였습니다. \"That's a good question. Let me think…\" 같은 시작 문장으로 먼저 입을 여세요."; weak += "SPONTANEOUS_RESPONSE" }
         }
         if (avgWords >= 40) strengths += "답변당 평균 ${avgWords}단어로 충분히 길게 말했습니다."
-        else if (turns.isNotEmpty()) { fixes += "답변당 평균 ${avgWords}단어로 짧습니다. 답 → 이유 → 구체적 예시 순서로 2~3문장을 더하세요."; weak += "COHERENCE" }
-        if (pauses >= turns.size && turns.isNotEmpty()) { fixes += "2초 이상 멈춘 횟수가 ${pauses}회였습니다. 멈출 때 \"you know\", \"I mean\" 대신 짧은 연결어(so, and then)를 쓰는 연습을 하세요."; weak += "FLUENCY" }
-        if (perAnswer < 1f && turns.isNotEmpty()) { fixes += "연결어(because, so, but, for example)가 답변당 ${"%.1f".format(perAnswer)}개입니다. 답변마다 2개 이상 넣어 보세요."; weak += "COHERENCE" }
+        else if (answers.isNotEmpty()) { fixes += "답변당 평균 ${avgWords}단어로 짧습니다. 답 → 이유 → 구체적 예시 순서로 2~3문장을 더하세요."; weak += "COHERENCE" }
+        if (pauses >= answers.size && answers.isNotEmpty()) { fixes += "2초 이상 멈춘 횟수가 ${pauses}회였습니다. 멈출 때 \"you know\", \"I mean\" 대신 짧은 연결어(so, and then)를 쓰는 연습을 하세요."; weak += "FLUENCY" }
+        if (perAnswer < 1f && answers.isNotEmpty()) { fixes += "연결어(because, so, but, for example)가 답변당 ${"%.1f".format(perAnswer)}개입니다. 답변마다 2개 이상 넣어 보세요."; weak += "COHERENCE" }
         else if (perAnswer >= 2f) strengths += "연결어를 답변당 ${"%.1f".format(perAnswer)}개 사용해 문장을 이어 갔습니다."
         if (repeated.isNotEmpty()) { fixes += "같은 표현을 여러 번 반복했습니다: ${repeated.take(3).joinToString { "\"$it\"" }}. 다른 표현으로 바꿔 말해 보세요."; weak += "VOCABULARY" }
-        if (onTopic < 0.6f && turns.size >= 2) { fixes += "질문에 나온 단어를 답변에서 다시 쓰지 않은 경우가 많습니다. 첫 문장에서 질문을 받아 말하면(\"The hardest part was…\") 대응이 분명해집니다."; weak += "FOLLOWUP_HANDLING" }
-        if (strengths.isEmpty() && turns.isNotEmpty()) strengths += "${turns.size}턴 대화를 끝까지 이어 갔습니다."
+        if (onTopic < 0.6f && answers.size >= 2) { fixes += "질문에 나온 단어를 답변에서 다시 쓰지 않은 경우가 많습니다. 첫 문장에서 질문을 받아 말하면(\"The hardest part was…\") 대응이 분명해집니다."; weak += "FOLLOWUP_HANDLING" }
 
         return ConversationReport(
-            turns = turns.size, avgLatencyMs = avgLatency, slowStarts = slow, totalSpeechMs = turns.sumOf { it.metrics?.speechMs ?: 0 },
+            turns = turns.size, avgLatencyMs = avgLatency, slowStarts = slow, totalSpeechMs = answers.sumOf { it.metrics?.speechMs ?: 0 },
+            answeredTurns = answers.size,
+            skippedTurns = turns.size - answers.size,
             avgWords = avgWords, longPauses = pauses, connectorsPerAnswer = perAnswer, repeatedPhrases = repeated, onTopicRatio = onTopic,
             strengths = strengths.take(2), fixes = fixes.take(3), weakCompetencies = weak.distinct(),
             limits = listOf(
                 "학습용 참고 지표입니다. SAIL 공식 등급 예측이 아닙니다.",
                 "발음과 억양은 측정하지 않습니다. 단어 수와 반복 표현은 기기 음성 인식 결과를 기준으로 하므로 실제와 다를 수 있습니다.",
                 "답변 시작 시간은 질문 음성이 끝난 뒤 마이크가 처음 목소리를 감지한 시점까지입니다. 마이크 준비 시간(약 0.3초)이 포함됩니다.",
-            ) + if (turns.any { it.typed }) listOf("직접 입력한 답변은 시간 지표에서 제외했습니다.") else emptyList(),
+            ) + if (answers.any { it.typed }) listOf("직접 입력한 답변은 시간 지표에서 제외했습니다.") else emptyList(),
         )
     }
 

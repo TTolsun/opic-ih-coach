@@ -209,6 +209,7 @@ fun ProgressScreen(onNextExam: () -> Unit = {}) {
 
     if (showExam) {
         var date by remember { mutableStateOf(LocalDate.now().toString()) }
+        var dateInvalid by remember { mutableStateOf(false) }
         var grade by remember { mutableStateOf("") }
         var note by remember { mutableStateOf("") }
         AlertDialog(
@@ -216,14 +217,25 @@ fun ProgressScreen(onNextExam: () -> Unit = {}) {
             title = { Text("시험 결과 입력") },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedTextField(date, { date = it }, label = { Text("응시일 (YYYY-MM-DD)") }, singleLine = true)
+                    OutlinedTextField(
+                        value = date,
+                        onValueChange = { date = it; dateInvalid = false },
+                        label = { Text("응시일 (YYYY-MM-DD)") },
+                        singleLine = true,
+                        isError = dateInvalid,
+                        supportingText = if (dateInvalid) ({ Text("올바른 응시일을 입력하세요.") }) else null,
+                    )
                     OutlinedTextField(grade, { grade = it }, label = { Text("등급 (예: IM2, IM3, IH)") }, singleLine = true)
                     OutlinedTextField(note, { note = it }, label = { Text("메모 (나온 주제 등)") })
                 }
             },
             confirmButton = {
                 TextButton(onClick = {
-                    val d = runCatching { LocalDate.parse(date.trim()) }.getOrNull() ?: return@TextButton
+                    val d = runCatching { LocalDate.parse(date.trim()) }.getOrNull()
+                    if (d == null) {
+                        dateInvalid = true
+                        return@TextButton
+                    }
                     showExam = false
                     scope.launch {
                         c.dao.insertExam(ExamEntity(epochDay = d.toEpochDay(), type = if (exams.isEmpty()) "FIRST" else "RETAKE", resultGrade = grade.ifBlank { null }, note = note))
