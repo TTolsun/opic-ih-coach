@@ -71,4 +71,15 @@ object MigrationSql {
             "`ko` TEXT NOT NULL, `createdAt` INTEGER NOT NULL)",
         "CREATE INDEX IF NOT EXISTS `index_script_segments_scriptId` ON `script_segments` (`scriptId`)",
     )
+
+    val V6_TO_V7 = listOf("ALTER TABLE `attempts` ADD COLUMN `speakingReviewDueEpochDay` INTEGER")
+
+    val V7_TO_V8 = listOf(
+        "CREATE TABLE IF NOT EXISTS `morning_reviews` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+            "`routineId` TEXT NOT NULL, `itemIndex` INTEGER NOT NULL, `chunkId` INTEGER NOT NULL, `reviewedDay` INTEGER NOT NULL, " +
+            "`examDay` INTEGER, `success` INTEGER NOT NULL, `initialStep` INTEGER, " +
+            "FOREIGN KEY(`chunkId`) REFERENCES `chunks`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "CREATE UNIQUE INDEX IF NOT EXISTS `index_morning_reviews_routineId_itemIndex` ON `morning_reviews` (`routineId`, `itemIndex`)",
+        "CREATE INDEX IF NOT EXISTS `index_morning_reviews_chunkId` ON `morning_reviews` (`chunkId`)",
+    )
 }

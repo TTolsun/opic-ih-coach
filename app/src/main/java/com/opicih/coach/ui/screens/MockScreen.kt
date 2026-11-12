@@ -48,6 +48,8 @@ import com.opicih.coach.data.db.PracticeMode
 import com.opicih.coach.data.db.QuestionType
 import com.opicih.coach.data.prefs.Settings
 import com.opicih.coach.data.repo.PracticeRepository
+import com.opicih.coach.data.repo.measuredScore
+import com.opicih.coach.learning.ScoreKind
 import com.opicih.coach.data.repo.appJson
 import com.opicih.coach.learning.CapturePolicy
 import com.opicih.coach.learning.Focus
@@ -89,6 +91,7 @@ data class MockReport(
     val weaknesses: List<String>,
     val focusTopics: List<String>,
     val next3Days: List<String>,
+    val flowScore: Boolean = false,
 )
 
 enum class MockPhase { SETUP, QUESTION, RECORDING, SAVING, ADJUST, REPORT }
@@ -210,21 +213,20 @@ class MockViewModel(app: Application) : AndroidViewModel(app) {
 
     private fun buildReport(a: List<PracticeAttemptEntity>, elapsed: Long): MockReport {
         val metrics = a.mapNotNull { c.practice.decodeMetrics(it) }
-        val byType = a.groupBy { QuestionType.of(it.questionType).label }.mapValues { (_, l) -> l.map { it.score }.average().toInt() }
+        val scored = a.mapNotNull { attempt -> attempt.measuredScore()?.let { attempt to it } }
+        val byType = scored.groupBy { QuestionType.of(it.first.questionType).label }
+            .mapValues { (_, group) -> group.map { it.second }.average().toInt() }
         val past = metrics.sumOf { it.discourse.pastCount }; val present = metrics.sumOf { it.discourse.presentCount }; val future = metrics.sumOf { it.discourse.futureCount }
         val avgConn = if (metrics.isEmpty()) 0f else metrics.map { it.discourse.connectorCount }.average().toFloat()
         val strengths = mutableListOf<String>(); val weak = mutableListOf<String>()
         // A type is either a strength (>= 60) or a weakness, never both.
-        byType.entries.filter { it.value >= 60 }.sortedByDescending { it.value }.take(2).forEach { strengths += "${it.key} 유형 평균 ${it.value}점" }
-        byType.entries.filter { it.value < 60 }.sortedBy { it.value }.take(2).forEach { weak += "${it.key} 유형 평균 ${it.value}점" }
+        byType.entries.filter { it.value >= 60 }.sortedByDescending { it.value }.take(2).forEach { strengths += "${it.key} 유형 발화 흐름 평균 ${it.value}점" }
+        byType.entries.filter { it.value < 60 }.sortedBy { it.value }.take(2).forEach { weak += "${it.key} 유형 발화 흐름 평균 ${it.value}점" }
         if (strengths.isEmpty() && a.isNotEmpty()) strengths += "${a.size}문항을 시간 안에 끝까지 답했습니다."
         if (a.size < 5) weak.add(0, "답한 문항이 ${a.size}개뿐이라 리포트 신뢰도가 낮습니다. 다음에는 끝까지 진행하세요.")
-        if (a.isNotEmpty() && a.all { it.wordCount == 0 }) weak.add(0, "텍스트 전사가 없어 내용·시제·연결 분석은 0으로 표시됩니다 (녹음 우선 모드).")
-        if (future == 0) weak += "미래 시제 사용 0회"
-        if (avgConn < 3) weak += "답변당 연결 표현 평균 ${"%.1f".format(avgConn)}회 (문장 나열 경향)"
-        val short = a.count { it.wordCount in 1..59 }
-        if (short > 0) weak += "60단어 미만 짧은 답변 ${short}개"
-        val focus = a.groupBy { it.topic }.mapValues { (_, l) -> l.map { it.score }.average() }.entries.sortedBy { it.value }.take(3).map { it.key }
+        if (a.isNotEmpty() && a.all { it.wordCount == 0 }) weak.add(0, "전사가 없어 답변 내용을 확인할 수 없습니다.")
+        val focus = scored.groupBy { it.first.topic }.mapValues { (_, group) -> group.map { it.second }.average() }
+            .entries.sortedBy { it.value }.take(3).map { it.key }
         val weakTypes = byType.entries.sortedBy { it.value }.map { it.key }
         val next = listOf(
             "Day 1: ${focus.getOrNull(0) ?: "약한 주제"} 스크립트 Keyword → Blind 3회",
@@ -236,7 +238,7 @@ class MockViewModel(app: Application) : AndroidViewModel(app) {
             longPauses = a.sumOf { it.longPauseCount }, answered = a.size, byType = byType,
             avgWords = if (a.isEmpty()) 0 else a.map { it.wordCount }.average().toInt(),
             timeFrames = mapOf("과거" to past, "현재" to present, "미래" to future), avgConnectors = avgConn,
-            strengths = strengths, weaknesses = weak.take(4), focusTopics = focus, next3Days = next,
+            strengths = strengths, weaknesses = weak.take(4), focusTopics = focus, next3Days = next, flowScore = true,
         )
     }
 
@@ -336,7 +338,10 @@ private fun ReportView(r: MockReport, past: Boolean) {
         }
         Spacer(Modifier.height(8.dp))
         Text("시제 사용: " + r.timeFrames.entries.joinToString { "${it.key} ${it.value}" }, style = MaterialTheme.typography.bodyMedium)
-        Text("유형별 점수: " + r.byType.entries.joinToString { "${it.key} ${it.value}" }, style = MaterialTheme.typography.bodySmall)
+        if (r.byType.isNotEmpty()) {
+            val label = if (r.flowScore) ScoreKind.FLOW_LABEL else "점수"
+            Text("유형별 $label · " + r.byType.entries.joinToString { "${it.key} ${it.value}점" }, style = MaterialTheme.typography.bodySmall)
+        }
         Spacer(Modifier.height(8.dp))
         Text("강점", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.secondary)
         r.strengths.forEach { Bullet(it) }

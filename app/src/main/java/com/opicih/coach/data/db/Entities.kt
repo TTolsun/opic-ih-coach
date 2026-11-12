@@ -1,6 +1,7 @@
 package com.opicih.coach.data.db
 
 import androidx.room.Entity
+import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
 
@@ -18,7 +19,7 @@ enum class QuestionType(val label: String) {
     DESCRIPTION("묘사"),
     ROUTINE("루틴/습관"),
     PAST_EXPERIENCE("과거 경험"),
-    COMPARISON("과거·현재 비교"),
+    COMPARISON("비교"),
     ROLEPLAY("롤플레이"),
     ISSUE("이슈/사회"),
     UNEXPECTED("돌발"),
@@ -185,6 +186,8 @@ data class PracticeAttemptEntity(
     val createdAt: Long = System.currentTimeMillis(),
     /** v3: groups the turns of one exam training session (e.g. a SAIL conversation). */
     val trainingSessionId: Long? = null,
+    /** A pending review of this exact free-speaking question. Null when unscheduled or completed. */
+    val speakingReviewDueEpochDay: Long? = null,
 ) {
     /** Measured speech time, or the whole answer duration when speech was not measured. */
     val effectiveSpeechMs: Long get() = if (speechMs > 0) speechMs else durationMs
@@ -200,6 +203,27 @@ data class ErrorPatternEntity(
     val correction: String,
     val count: Int = 1,
     val lastSeen: Long = System.currentTimeMillis(),
+)
+
+@Entity(
+    tableName = "morning_reviews",
+    indices = [Index(value = ["routineId", "itemIndex"], unique = true), Index("chunkId")],
+    foreignKeys = [ForeignKey(
+        entity = ChunkEntity::class,
+        parentColumns = ["id"],
+        childColumns = ["chunkId"],
+        onDelete = ForeignKey.CASCADE,
+    )],
+)
+data class MorningReviewEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val routineId: String,
+    val itemIndex: Int,
+    val chunkId: Long,
+    val reviewedDay: Long,
+    val examDay: Long?,
+    val success: Boolean,
+    val initialStep: Int?,
 )
 
 @Entity(tableName = "chunks")

@@ -88,11 +88,11 @@ import com.opicih.coach.ui.components.GlossaryText
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
-fun SpeakingScreen(scriptId: Long?, mode: PracticeMode?, onOpenFrames: () -> Unit = {}) {
+fun SpeakingScreen(scriptId: Long?, mode: PracticeMode?, reviewId: Long? = null, onOpenFrames: () -> Unit = {}) {
     val vm: SpeakingViewModel = viewModel()
     val ui by vm.ui.collectAsStateWithLifecycle()
     val context = LocalContext.current
-    LaunchedEffect(scriptId, mode) { vm.configure(scriptId, mode) }
+    LaunchedEffect(scriptId, mode, reviewId) { vm.configure(scriptId, mode, reviewId) }
 
     // Stop the mic when the app goes to background (call, home button, screen off).
     val owner = LocalLifecycleOwner.current
@@ -127,7 +127,7 @@ fun SpeakingScreen(scriptId: Long?, mode: PracticeMode?, onOpenFrames: () -> Uni
 
         val q = ui.question
         if (q == null) {
-            SectionCard { Text("질문을 불러오는 중입니다.") }
+            SectionCard { Text(ui.error ?: "질문을 불러오는 중입니다.") }
             return@Column
         }
 

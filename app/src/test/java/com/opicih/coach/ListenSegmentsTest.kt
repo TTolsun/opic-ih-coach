@@ -134,7 +134,7 @@ class SegmentBackupTest {
         assertEquals(seg, seg.toBackup().toEntity())
         val snap = BackupManager.Snapshot(segments = listOf(seg.toBackup()))
         val back = BackupManager.decode(BackupManager.encode(snap))
-        assertEquals(6, back.version)
+        assertEquals(BackupManager.CURRENT_VERSION, back.version)
         assertEquals(seg, back.segments.single().toEntity())
     }
 

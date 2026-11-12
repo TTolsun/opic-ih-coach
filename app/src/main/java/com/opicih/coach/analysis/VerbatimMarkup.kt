@@ -25,12 +25,15 @@ object VerbatimMarkup {
 
     private val TAG = Regex("\\[(self-correction|abandoned)]", RegexOption.IGNORE_CASE)
     private val ANY_BRACKET = Regex("\\[[^\\]]{1,30}]")
-    private val SPACES = Regex("\\s+")
+    private val HORIZONTAL_SPACES = Regex("[^\\S\\r\\n]+")
 
-    private fun tidy(s: String) = ANY_BRACKET.replace(s, " ").replace(SPACES, " ").trim()
+    private fun tidy(s: String) = ANY_BRACKET.replace(s, " ").replace("\r\n", "\n").replace('\r', '\n')
+        .lineSequence().joinToString("\n") { HORIZONTAL_SPACES.replace(it, " ").trim() }.trim()
+
+    private fun lastBoundary(s: String): Int = s.indexOfLast { it in ".!?\r\n" }
 
     /** 마지막 문장 부호까지를 남기고 그 뒤(아직 끝나지 않은 부분)를 버립니다. 부호가 없으면 전부 버립니다. */
-    private fun dropUnfinishedTail(s: String): String = s.substring(0, s.indexOfLast { it == '.' || it == '!' || it == '?' } + 1)
+    private fun dropUnfinishedTail(s: String): String = s.substring(0, lastBoundary(s) + 1)
 
     fun parse(text: String): VerbatimParse {
         var selfCorrections = 0
@@ -43,9 +46,9 @@ object VerbatimMarkup {
             if (m.groupValues[1].equals("abandoned", ignoreCase = true)) {
                 abandoned++
                 // 같은 문장에서 마지막 문장 부호 뒤부터가 끝맺지 못한 부분입니다.
-                val fragment = tidy(before.substring(before.indexOfLast { it == '.' || it == '!' || it == '?' } + 1))
+                val fragment = tidy(before.substring(lastBoundary(before) + 1))
                 if (fragment.isNotEmpty()) fragments += fragment.takeLast(MAX_FRAGMENT)
-                uncorrected.append(before)
+                uncorrected.append(before).append(';')
             } else {
                 selfCorrections++
                 // 고치기 전의 첫 시도는 학습자가 스스로 바로잡은 것이므로 시제 오류로 세지 않습니다.

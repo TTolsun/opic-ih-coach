@@ -75,13 +75,16 @@ fun NextExamScreen(onOpenSettings: () -> Unit) {
     val exams by c.dao.examsFlow().collectAsState(initial = emptyList())
     val attempts by c.dao.attemptsFlow().collectAsState(initial = emptyList())
     val logs by c.dao.dailyLogsFlow().collectAsState(initial = emptyList())
+    val mocks by c.dao.mocksFlow().collectAsState(initial = emptyList())
     val regs by c.exams.flow.collectAsState(initial = emptyList())
     var message by remember { mutableStateOf<String?>(null) }
 
     val today = LocalDate.now()
     val last = lastExamDate(exams, today, regs)
     val sinceMs = last.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
-    val readiness = ProgressCalculator.readiness(attempts, logs, last.toEpochDay(), sinceMs)
+    val readiness = remember(attempts, logs, last, sinceMs, mocks) {
+        ProgressCalculator.readiness(attempts, logs, last.toEpochDay(), sinceMs, mocks)
+    }
     val retake = RetakeSummaries.of(s, regs, today)
     val advice = RetestAdvisor.advise(today, last, rulesOf(s, retake.waiverAvailable), readiness)
     val debriefDate = lastSatDate(regs, today) ?: last

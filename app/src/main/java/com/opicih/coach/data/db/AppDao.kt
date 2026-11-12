@@ -43,6 +43,43 @@ interface AppDao {
     /** Same question in the same mode only: a memorize-stage read-aloud score is not comparable to a blind answer. */
     @Query("SELECT * FROM attempts WHERE questionText = :q AND mode = :mode ORDER BY createdAt DESC LIMIT 5")
     suspend fun recentForQuestion(q: String, mode: String): List<PracticeAttemptEntity>
+    @Query("SELECT DISTINCT questionText FROM attempts WHERE wordCount > 0 OR speechMs > 0")
+    suspend fun answeredQuestionTexts(): List<String>
+
+    @Query("""
+        UPDATE attempts SET speakingReviewDueEpochDay = :due
+        WHERE id = :id AND mode = 'FREE' AND (wordCount > 0 OR speechMs > 0)
+        AND NOT EXISTS (
+            SELECT 1 FROM attempts AS pending
+            WHERE pending.mode = 'FREE' AND pending.questionText = attempts.questionText
+            AND pending.speakingReviewDueEpochDay IS NOT NULL
+        )
+    """)
+    suspend fun scheduleSpeakingReview(id: Long, due: Long): Int
+
+    @Query("""
+        SELECT MIN(speakingReviewDueEpochDay) FROM attempts
+        WHERE mode = 'FREE' AND questionText = :question
+    """)
+    suspend fun speakingReviewDate(question: String): Long?
+
+    @Query("""
+        SELECT * FROM attempts WHERE mode = 'FREE' AND speakingReviewDueEpochDay IS NOT NULL
+        ORDER BY speakingReviewDueEpochDay, id
+    """)
+    fun speakingReviewsFlow(): Flow<List<PracticeAttemptEntity>>
+
+    @Query("""
+        SELECT * FROM attempts WHERE id = :id AND mode = 'FREE' AND speakingReviewDueEpochDay <= :today
+    """)
+    suspend fun dueSpeakingReview(id: Long, today: Long): PracticeAttemptEntity?
+
+    @Query("""
+        UPDATE attempts SET speakingReviewDueEpochDay = NULL
+        WHERE id = :id AND mode = 'FREE' AND questionText = :question AND speakingReviewDueEpochDay <= :today
+    """)
+    suspend fun finishSpeakingReview(id: Long, question: String, today: Long): Int
+
     @Query("SELECT * FROM attempts WHERE mockId = :mockId ORDER BY createdAt") suspend fun attemptsForMock(mockId: Long): List<PracticeAttemptEntity>
     @Query("SELECT * FROM attempts WHERE audioPath IS NOT NULL AND createdAt < :before")
     suspend fun attemptsWithAudioBefore(before: Long): List<PracticeAttemptEntity>
@@ -57,14 +94,22 @@ interface AppDao {
 
     // ---- Chunks
     @Query("SELECT * FROM chunks ORDER BY id") suspend fun chunks(): List<ChunkEntity>
+    @Query("SELECT * FROM chunks WHERE id = :id") suspend fun chunk(id: Long): ChunkEntity?
     @Insert suspend fun insertChunks(c: List<ChunkEntity>)
     @Update suspend fun updateChunk(c: ChunkEntity)
+    @Query("SELECT * FROM morning_reviews WHERE chunkId = :chunkId ORDER BY id")
+    suspend fun morningReviews(chunkId: Long): List<MorningReviewEntity>
+    @Insert suspend fun insertMorningReview(review: MorningReviewEntity)
+    @Update suspend fun updateMorningReview(review: MorningReviewEntity)
 
     // ---- Daily logs
     @Query("SELECT * FROM daily_logs WHERE epochDay = :day") suspend fun dailyLog(day: Long): DailyLogEntity?
     @Query("SELECT * FROM daily_logs ORDER BY epochDay DESC") fun dailyLogsFlow(): Flow<List<DailyLogEntity>>
     @Query("SELECT * FROM daily_logs ORDER BY epochDay DESC") suspend fun dailyLogs(): List<DailyLogEntity>
     @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun upsertDailyLog(d: DailyLogEntity)
+    @Insert(onConflict = OnConflictStrategy.IGNORE) suspend fun ensureDailyLog(log: DailyLogEntity)
+    @Query("UPDATE daily_logs SET chunksReviewed = chunksReviewed + 1, morningDone = morningDone OR :finished WHERE epochDay = :day")
+    suspend fun applyMorningProgress(day: Long, finished: Boolean)
 
     // ---- Mock tests
     @Insert suspend fun insertMock(m: MockTestEntity): Long

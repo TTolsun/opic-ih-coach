@@ -80,14 +80,44 @@ class VerbatimTest {
         assertEquals(0, TenseErrorDetector.count(""))
     }
 
-    @Test fun aPastMarkerDoesNotReachTheNextSentence() {
+    @Test fun aTrailingFutureMarkerEndsTheInheritedPastContext() {
         assertEquals(0, TenseErrorDetector.count("Last year I visited Jeju. I go there again next month."))
+        assertEquals(0, TenseErrorDetector.count("Last year I visited Jeju. I'll stay there and I go hiking."))
+        assertEquals(1, TenseErrorDetector.count("Yesterday I met Will at the station. I see his new bike."))
     }
 
-    @Test fun longUnpunctuatedSpeechIsCheckedInChunks() {
+    @Test fun currentTimeSwitchEndsPastContextWithoutHidingAnEarlierError() {
+        val hits = TenseErrorDetector.find(
+            "Yesterday I go to the library, but now I see my friends at the cafe. I have coffee here. Yesterday I eat lunch there.",
+        )
+        assertEquals(listOf("go", "eat"), hits.map { it.verb })
+        assertTrue(hits.first().sentence.contains("I go to the library"))
+        assertEquals(0, TenseErrorDetector.count("Last weekend I went to the library. Now I go to the cafe. I see my friends there."))
+    }
+
+    @Test fun directQuotesHaveTheirOwnTimeContext() {
+        val text = "Yesterday I said, “Now I go home. I see the door.” Then I see my friend."
+        assertEquals(listOf("Then I see my friend."), TenseErrorDetector.find(text).map { it.sentence })
+        assertEquals(0, TenseErrorDetector.count("\"Yesterday I go to the library.\" I see the cafe."))
+        assertEquals(0, TenseErrorDetector.count("Yesterday she said, 'I don't know where I am.'"))
+    }
+
+    @Test fun pastContextDoesNotCrossAParagraphOrCreateAnErrorAcrossSentences() {
+        val newParagraph = "Yesterday I went to Jeju.\r\n\r\nI see the sea from my window."
+        assertEquals(0, counts(newParagraph, verbatim = true).localTense)
+        assertEquals(0, TenseErrorDetector.count("Yesterday I went to Jeju. I. See the sea!"))
+    }
+
+    @Test fun repetitionDoesNotCrossAQuotedSentenceOrLineBoundary() {
+        assertEquals(0, DiscourseAnalyzer.analyze("She said, “I went yesterday.” Yesterday was sunny.").repeatedWords)
+        assertEquals(0, DiscourseAnalyzer.analyze("I went yesterday.Yesterday was sunny.").repeatedWords)
+        val parsed = VerbatimMarkup.parse("I went yesterday\r\nYesterday was sunny")
+        assertEquals(0, DiscourseAnalyzer.analyze(parsed.clean).repeatedWords)
+    }
+
+    @Test fun futureShiftWorksInLongUnpunctuatedSpeech() {
         val filler = "and we walked along the beach for a very long time with many friends from my old school"
         val text = "last weekend i went to jeju $filler $filler and then next month i plan to go again and i go with my family"
-        // 과거 표지는 첫 덩어리에만 있고, 뒤쪽의 현재형은 오류로 세지 않는다.
         assertEquals(0, TenseErrorDetector.count(text))
     }
 
@@ -121,12 +151,14 @@ class VerbatimTest {
         assertEquals(1, TenseErrorDetector.count("In 2019 I go to Jeju."))
     }
 
-    @Test fun aiTenseCountWinsAndLargerMarkCountIsKept() {
+    @Test fun aiEstimatesDoNotReplaceTranscriptTags() {
         val c = counts("I went [abandoned] there [self-correction] here.", verbatim = true, ai = ai(tense = 3, abandoned = 2, self = 0))
         assertEquals(3, c.tense)
         assertEquals("AI", c.tenseSource)
-        assertEquals(2, c.abandoned)
+        assertEquals(1, c.abandoned)
         assertEquals(1, c.selfCorrection)
+        assertEquals(2, c.aiAbandoned)
+        assertEquals(0, c.aiSelfCorrection)
     }
 
     @Test fun deviceRecognizerTextDoesNotClaimToMeasureSelfCorrectionsOrAbandoned() {
@@ -156,6 +188,8 @@ class VerbatimTest {
         // AI가 0이라고 했으면 규칙 탐지 항목을 노트에 넣지 않는다(횟수와 노트가 어긋나지 않게).
         val zero = ErrorCounts.analyze(raw, verbatimSource = true, ai = ai(tense = 0))
         assertEquals(0, zero.counts.tense)
+        assertEquals(1, zero.counts.localTense)
+        assertEquals(listOf("Last weekend I go to the park."), zero.counts.localTenseExamples)
         assertTrue(zero.notebook.isEmpty())
         // AI가 센 경우에도 AI가 항목을 낸다고 보고 중복해서 넣지 않는다.
         val counted = ErrorCounts.analyze(raw, verbatimSource = true, ai = ai(tense = 1))
@@ -197,6 +231,8 @@ class VerbatimTest {
         val p = Prompts.evalSystem(LearnerProfile.DEFAULT)
         listOf("\"tenseErrors\"", "\"abandonedSentences\"", "\"selfCorrections\"", "[self-correction]", "[abandoned]", "tense_in_past_context")
             .forEach { assertTrue(it, p.contains(it)) }
+        assertTrue(p.contains("next sentence when the same past event continues"))
+        assertTrue(p.contains("speech inside direct quotations"))
     }
 
     @Test fun oldMetricsJsonWithoutCountsStillDecodes() {

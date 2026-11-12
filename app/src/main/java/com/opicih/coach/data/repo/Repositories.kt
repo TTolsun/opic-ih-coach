@@ -14,10 +14,12 @@ import com.opicih.coach.analysis.FeedbackComposer
 import com.opicih.coach.analysis.PauseMetrics
 import com.opicih.coach.analysis.ScriptComparator
 import com.opicih.coach.analysis.TextNormalizer
+import com.opicih.coach.analysis.taskCorrection
+import com.opicih.coach.analysis.withCanonicalKey
 import androidx.room.withTransaction
 import com.opicih.coach.data.db.AppDao
 import com.opicih.coach.data.db.AppDatabase
-import com.opicih.coach.data.db.ChunkEntity
+import com.opicih.coach.data.db.MorningReviewEntity
 import com.opicih.coach.data.db.ContentSource
 import com.opicih.coach.data.db.DailyLogEntity
 import com.opicih.coach.data.db.ErrorPatternEntity
@@ -36,6 +38,7 @@ import com.opicih.coach.learning.CAPTURE_CLOUD_STT
 import com.opicih.coach.learning.MasteryRules
 import com.opicih.coach.learning.ScoreKind
 import com.opicih.coach.learning.SrsScheduler
+import com.opicih.coach.learning.MorningReviewRules
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import java.time.LocalDate
@@ -47,7 +50,19 @@ data class AttemptMetrics(
     val compare: CompareResult? = null,
     /** Tense errors, abandoned sentences and self-corrections (#25). Null in rows saved before this field existed. */
     val errorCounts: ErrorCounts? = null,
-)
+    /** Local transcript score retained even when AI feedback is shown. */
+    val localScore: Int? = null,
+    /** This record uses the flow score. False for memorization scores and older rubric scores. */
+    val speakingFlow: Boolean = false,
+) {
+    companion object {
+        fun from(attempt: PracticeAttemptEntity): AttemptMetrics? =
+            runCatching { appJson.decodeFromString(serializer(), attempt.metricsJson) }.getOrNull()
+    }
+}
+
+fun PracticeAttemptEntity.measuredScore(metrics: AttemptMetrics? = AttemptMetrics.from(this)): Int? =
+    if (metrics?.speakingFlow == true) metrics.localScore else score.takeIf { wordCount > 0 }
 
 data class AnalyzedAttempt(
     val attempt: PracticeAttemptEntity,
@@ -154,15 +169,8 @@ class PracticeRepository(private val db: AppDatabase) {
         val trainingSessionId: Long? = null,
         /** Why the verbatim transcript was not used for an answer that should have had one (#25). Shown as a limit. */
         val captureNote: String? = null,
-    )
-
-    /** Result of analysing one answer, before anything is written. */
-    private class Evaluation(
-        val discourse: DiscourseMetrics,
-        val compare: CompareResult?,
-        val feedback: Feedback,
-        val metrics: AttemptMetrics,
-        val aiError: String?,
+        val speakingReviewId: Long? = null,
+        val missionQuestion: String? = null,
     )
 
     /**
@@ -171,59 +179,89 @@ class PracticeRepository(private val db: AppDatabase) {
      */
     suspend fun analyzeAndSave(req: Request, ai: AiCoach?, examEpochDay: Long?): AnalyzedAttempt {
         // The network call stays outside the transaction.
-        val eval = evaluate(req, ai)
-        return db.withTransaction { persist(req, eval, examEpochDay) }
+        val result = analyze(req, ai)
+        return db.withTransaction { persist(req, result, examEpochDay) }
     }
 
-    /** Local analysis always runs; AI evaluation is attempted only when [ai] is a real AI and falls back on failure. */
-    private suspend fun evaluate(req: Request, ai: AiCoach?): Evaluation {
-        // A verbatim transcript carries [self-correction]/[abandoned] marks. Word counts, tenses and script comparison
-        // use the text without them; the stored transcript and the AI keep the marks.
-        val text = VerbatimMarkup.parse(req.transcript).clean
-        val verbatim = req.captureMode == CAPTURE_CLOUD_STT
-        val discourse = DiscourseAnalyzer.analyze(text)
-        val target = req.target ?: req.script?.studyText?.takeIf { req.mode.comparesToScript }
-        val compare = target?.takeIf { text.isNotBlank() }?.let { ScriptComparator.compare(it, text, req.script?.keywordList().orEmpty()) }
-        val composed = if (text.isBlank() && req.pauses != null && !req.transcriptFromDeviceStt) {
-            FeedbackComposer.acousticOnly(req.pauses)
-        } else {
-            FeedbackComposer.compose(
-                AnalysisInput(req.questionType, target != null, text, discourse, req.pauses, compare, req.transcriptFromDeviceStt, req.requiredTense, ScoreKind.of(req.mode))
+    companion object {
+        /** Local analysis always runs; AI evaluation is attempted only when [ai] is a real AI and falls back on failure. */
+        internal suspend fun analyze(req: Request, ai: AiCoach?): AnalyzedAttempt {
+            // A verbatim transcript carries [self-correction]/[abandoned] marks. Word counts, tenses and script comparison
+            // use the text without them; the stored transcript and the AI keep the marks.
+            val text = VerbatimMarkup.parse(req.transcript).clean
+            val scoreKind = ScoreKind.of(req.mode)
+            val discourse = DiscourseAnalyzer.analyze(text)
+            val verbatim = req.captureMode == CAPTURE_CLOUD_STT && discourse.wordCount > 0
+            val target = req.target ?: req.script?.studyText?.takeIf { req.mode.comparesToScript }
+            val compare = target?.takeIf { text.isNotBlank() }?.let { ScriptComparator.compare(it, text, req.script?.keywordList().orEmpty()) }
+            val composed = if (text.isBlank() && req.pauses != null && !req.transcriptFromDeviceStt) {
+                FeedbackComposer.acousticOnly(req.pauses)
+            } else {
+                FeedbackComposer.compose(
+                    AnalysisInput(
+                        req.questionType, target != null, text, discourse, req.pauses, compare, req.transcriptFromDeviceStt,
+                        req.requiredTense, scoreKind, req.question, req.mission, req.missionQuestion,
+                    )
+                )
+            }
+            val local = composed.copy(limits = composed.limits + listOfNotNull(req.captureNote))
+            var feedback = local
+            var aiError: String? = null
+            if (ai != null && ai.isRealAi && discourse.wordCount >= 5 && local.errors.none { it.key == "question_echo" }) {
+                // 말하기 점수 모드에는 스크립트를 넘기지 않습니다. 넘기면 AI가 원문과 비슷한 답변에 높은 점수를 줄 수 있습니다.
+                val aiTarget = target.takeIf { scoreKind == ScoreKind.MEMORIZATION }
+                ai.evaluate(
+                    EvalInput(
+                        req.question, req.questionType, req.transcript, discourse, req.pauses, aiTarget, req.transcriptFromDeviceStt,
+                        req.mission, req.captureMode, req.requiredTense, req.missionQuestion,
+                    ),
+                ).onSuccess { fb ->
+                    val speaking = scoreKind == ScoreKind.SPEAKING
+                    val errors = fb.errors.map { it.withCanonicalKey() }.filterNot { it.key == "abandoned_sentence" }
+                    val taskFix = errors.firstNotNullOfOrNull { it.taskCorrection(req.transcript) }.takeIf { speaking }
+                    feedback = fb.copy(
+                        score = if (speaking) local.score else fb.score,
+                        scoreMeasured = if (speaking) local.scoreMeasured else fb.scoreMeasured,
+                        fixes = if (taskFix == null) fb.fixes else
+                            (listOf(taskFix) + fb.fixes.filterNot { it.better == taskFix.better }).take(3),
+                        retryMission = taskFix?.better ?: fb.retryMission,
+                        limits = local.limits.filterNot { it == FeedbackComposer.LOCAL_RELEVANCE_LIMIT },
+                        errors = errors,
+                        abandonedSentences = fb.abandonedSentences.takeIf { verbatim },
+                        selfCorrections = fb.selfCorrections.takeIf { verbatim },
+                    )
+                }.onFailure { aiError = it.message }
+            }
+            // The error notebook is built from the same read of the transcript as the counts.
+            val errorAnalysis = ErrorCounts.analyze(req.transcript, verbatim, feedback)
+            feedback = feedback.copy(errors = (feedback.errors + errorAnalysis.notebook).distinctBy { it.key })
+            val metrics = AttemptMetrics(
+                discourse, req.pauses, compare, errorAnalysis.counts,
+                local.score.takeIf { local.scoreMeasured }, speakingFlow = scoreKind == ScoreKind.SPEAKING,
             )
+            val speechMs = req.pauses?.speechMs ?: 0L
+            val attempt = PracticeAttemptEntity(
+                scriptId = req.script?.id, topic = req.topic, questionText = req.question, questionType = req.questionType,
+                mode = req.mode.name, transcript = req.transcript, captureMode = req.captureMode, audioPath = req.audioPath,
+                durationMs = req.durationMs, speechMs = speechMs, longPauseCount = req.pauses?.longPauseCount ?: 0,
+                wordCount = discourse.wordCount, wpm = FeedbackComposer.wpm(discourse.wordCount, speechMs, req.durationMs),
+                coverage = compare?.coverage, score = feedback.score,
+                metricsJson = appJson.encodeToString(AttemptMetrics.serializer(), metrics),
+                feedbackJson = appJson.encodeToString(Feedback.serializer(), feedback),
+                feedbackSource = feedback.source, mockId = req.mockId, trainingSessionId = req.trainingSessionId,
+            )
+            return AnalyzedAttempt(attempt, feedback, metrics, previous = null, aiError = aiError)
         }
-        val local = composed.copy(limits = composed.limits + listOfNotNull(req.captureNote))
-        var feedback = local
-        var aiError: String? = null
-        if (ai != null && ai.isRealAi && discourse.wordCount >= 5) {
-            // 말하기 점수 모드에는 스크립트를 넘기지 않습니다. 넘기면 AI가 원문과 비슷한 답변에 높은 점수를 줄 수 있습니다.
-            val aiTarget = target.takeIf { ScoreKind.of(req.mode) == ScoreKind.MEMORIZATION }
-            ai.evaluate(EvalInput(req.question, req.questionType, req.transcript, discourse, req.pauses, aiTarget, req.transcriptFromDeviceStt, req.mission))
-                .onSuccess { fb -> feedback = fb.copy(limits = local.limits, errors = fb.errors + local.errors) }
-                .onFailure { aiError = it.message }
-        }
-        // The error notebook is built from the same read of the transcript as the counts.
-        val errorAnalysis = ErrorCounts.analyze(req.transcript, verbatim, feedback)
-        feedback = feedback.copy(errors = feedback.errors + errorAnalysis.notebook)
-        return Evaluation(discourse, compare, feedback, AttemptMetrics(discourse, req.pauses, compare, errorAnalysis.counts), aiError)
     }
 
-    private suspend fun persist(req: Request, eval: Evaluation, examEpochDay: Long?): AnalyzedAttempt {
-        val feedback = eval.feedback
-        val compare = eval.compare
-        val speechMs = req.pauses?.speechMs ?: 0L
-        val wpm = FeedbackComposer.wpm(eval.discourse.wordCount, speechMs, req.durationMs)
+    private suspend fun persist(req: Request, result: AnalyzedAttempt, examEpochDay: Long?): AnalyzedAttempt {
+        val (attempt, feedback, metrics) = result
+        val compare = metrics.compare
         val previous = dao.recentForQuestion(req.question, req.mode.name).firstOrNull()
-
-        val attempt = PracticeAttemptEntity(
-            scriptId = req.script?.id, topic = req.topic, questionText = req.question, questionType = req.questionType,
-            mode = req.mode.name, transcript = req.transcript, captureMode = req.captureMode, audioPath = req.audioPath,
-            durationMs = req.durationMs, speechMs = speechMs, longPauseCount = req.pauses?.longPauseCount ?: 0,
-            wordCount = eval.discourse.wordCount, wpm = wpm, coverage = compare?.coverage, score = feedback.score,
-            metricsJson = appJson.encodeToString(AttemptMetrics.serializer(), eval.metrics),
-            feedbackJson = appJson.encodeToString(Feedback.serializer(), feedback),
-            feedbackSource = feedback.source, mockId = req.mockId, trainingSessionId = req.trainingSessionId,
-        )
         val id = dao.insertAttempt(attempt)
+        if (req.mode == PracticeMode.FREE && req.speakingReviewId != null && (attempt.wordCount > 0 || attempt.speechMs > 0)) {
+            dao.finishSpeakingReview(req.speakingReviewId, req.question, ExamRepository.nowKst().toLocalDate().toEpochDay())
+        }
 
         // Daily log: real speaking time, not app-open time.
         val today = LocalDate.now().toEpochDay()
@@ -238,9 +276,17 @@ class PracticeRepository(private val db: AppDatabase) {
         )
 
         // Script mastery + SRS
-        req.script?.takeIf { req.transcript.isNotBlank() }?.let { s ->
-            val m = MasteryRules.apply(s.mastery, s.masteryScore, req.mode, compare?.coverage, feedback.score)
-            val srs = SrsScheduler.next(s.srsStep, SrsScheduler.isSuccess(req.mode, compare?.coverage, feedback.score), today, examEpochDay)
+        val masteryScore = if (req.mode == PracticeMode.VARIATION) {
+            feedback.relevance.takeIf { feedback.source == "AI" }?.let {
+                if (feedback.errors.any { error -> error.key in setOf("task_incomplete", "off_topic_response", "question_echo") }) 0 else it
+            }
+        } else {
+            feedback.score
+        }
+        req.script?.takeIf { req.transcript.isNotBlank() && masteryScore != null }?.let { s ->
+            val evaluatedScore = requireNotNull(masteryScore)
+            val m = MasteryRules.apply(s.mastery, s.masteryScore, req.mode, compare?.coverage, evaluatedScore)
+            val srs = SrsScheduler.next(s.srsStep, SrsScheduler.isSuccess(req.mode, compare?.coverage, evaluatedScore), today, examEpochDay)
             dao.updateScript(s.copy(masteryState = m.state.name, masteryScore = m.score, srsStep = srs.step, dueEpochDay = srs.dueEpochDay, lastReviewedAt = System.currentTimeMillis()))
         }
 
@@ -253,15 +299,20 @@ class PracticeRepository(private val db: AppDatabase) {
                     ?: ErrorPatternEntity(key = key, category = e.category.ifBlank { "GRAMMAR" }, example = e.example, correction = e.correction)
             )
         }
-        return AnalyzedAttempt(attempt.copy(id = id), feedback, eval.metrics, previous, eval.aiError)
+        return result.copy(attempt = attempt.copy(id = id), previous = previous)
     }
 
-    suspend fun reviewChunk(c: ChunkEntity, ok: Boolean, examEpochDay: Long?) {
-        val today = LocalDate.now().toEpochDay()
-        val srs = SrsScheduler.next(c.srsStep, ok, today, examEpochDay)
-        dao.updateChunk(c.copy(srsStep = srs.step, dueEpochDay = srs.dueEpochDay, lastResult = if (ok) "OK" else "FAIL", lastReviewedEpochDay = today, failCount = c.failCount + if (ok) 0 else 1))
-        val log = dao.dailyLog(today) ?: DailyLogEntity(today)
-        dao.upsertDailyLog(log.copy(chunksReviewed = log.chunksReviewed + 1))
+    suspend fun saveMorningReview(review: MorningReviewEntity, finishesRoutine: Boolean) = db.withTransaction {
+        val chunk = checkNotNull(dao.chunk(review.chunkId))
+        val change = MorningReviewRules.change(chunk, dao.morningReviews(chunk.id), review) ?: return@withTransaction
+        if (change.isFirstRating) {
+            dao.insertMorningReview(change.review)
+            dao.ensureDailyLog(DailyLogEntity(review.reviewedDay))
+            dao.applyMorningProgress(review.reviewedDay, finishesRoutine)
+        } else {
+            dao.updateMorningReview(change.review)
+        }
+        dao.updateChunk(change.chunk)
     }
 
     /**
@@ -270,15 +321,12 @@ class PracticeRepository(private val db: AppDatabase) {
      */
     suspend fun deleteAttempt(a: PracticeAttemptEntity) {
         a.audioPath?.let { runCatching { java.io.File(it).delete() } }
-        dao.deleteAttempt(a)
         val day = java.time.Instant.ofEpochMilli(a.createdAt).atZone(java.time.ZoneId.systemDefault()).toLocalDate().toEpochDay()
-        dao.dailyLog(day)?.let { dao.upsertDailyLog(com.opicih.coach.learning.ProgressCalculator.withoutAttempt(it, a)) }
+        db.withTransaction {
+            dao.deleteAttempt(a)
+            dao.dailyLog(day)?.let { dao.upsertDailyLog(com.opicih.coach.learning.ProgressCalculator.withoutAttempt(it, a)) }
+        }
     }
 
-    suspend fun markMorningDone() {
-        val today = LocalDate.now().toEpochDay()
-        val log = dao.dailyLog(today) ?: DailyLogEntity(today)
-        dao.upsertDailyLog(log.copy(morningDone = true))
-    }
-    fun decodeMetrics(a: PracticeAttemptEntity): AttemptMetrics? = runCatching { appJson.decodeFromString(AttemptMetrics.serializer(), a.metricsJson) }.getOrNull()
+    fun decodeMetrics(a: PracticeAttemptEntity): AttemptMetrics? = AttemptMetrics.from(a)
 }

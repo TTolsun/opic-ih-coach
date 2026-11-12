@@ -4,6 +4,7 @@ import com.opicih.coach.analysis.AnalysisInput
 import com.opicih.coach.analysis.DiscourseAnalyzer
 import com.opicih.coach.analysis.FeedbackComposer
 import com.opicih.coach.analysis.PauseAnalyzer
+import com.opicih.coach.analysis.PauseMetrics
 import com.opicih.coach.analysis.ScriptComparator
 import com.opicih.coach.analysis.TextNormalizer
 import com.opicih.coach.data.db.PracticeMode
@@ -138,23 +139,28 @@ class FeedbackComposerTest {
         script?.let { ScriptComparator.compare(it, text) }, transcriptCorrectedBySystem = true,
     )
 
-    @Test fun shortAnswerGetsLengthFixAndAtMostThreeFixes() {
+    @Test fun shortAnswerGetsTaskFeedbackWithoutAWordQuota() {
         val fb = FeedbackComposer.compose(input("I go to the park. It is good."))
         assertTrue(fb.fixes.size in 1..3)
-        assertTrue(fb.fixes.any { it.issue.contains("짧") })
+        assertTrue(fb.fixes.first().issue.contains("과거 경험"))
+        assertTrue(fb.fixes.none { it.issue.contains("짧") })
         assertEquals(2, fb.strengths.size)
         assertTrue(fb.limits.any { it.contains("보정") })
         assertTrue(fb.score in 0..100)
     }
 
-    @Test fun richAnswerScoresHigher() {
+    @Test fun differentTranscriptsWithTheSamePauseEvidenceGetTheSameFlowScore() {
         val rich = "I remember a trip to Gangwon-do last fall. Actually, my friend's family has an apple farm there, so I went to help them. " +
             "Everything was perfect until the afternoon, but suddenly it started pouring rain. We had to run to a small shed, and we waited for an hour. " +
             "While we were waiting, we ate apples and talked a lot, so it turned out to be really fun. Looking back, it was a bittersweet memory. " +
             "These days, I still think about it, and next fall I'm planning to go there again because I miss the view."
-        val a = FeedbackComposer.compose(input(rich)).score
-        val b = FeedbackComposer.compose(input("I went to a farm. It was fun.")).score
-        assertTrue("rich=$a short=$b", a > b + 20)
+        val p = PauseMetrics(30_000, 20_000, 1, 2_200, 500)
+        val a = FeedbackComposer.compose(input(rich).copy(pauses = p))
+        val b = FeedbackComposer.compose(input("I went to a farm. It was fun.").copy(pauses = p))
+        assertTrue(a.scoreMeasured && b.scoreMeasured)
+        assertEquals(a.score, b.score)
+        val uninterrupted = FeedbackComposer.compose(input(rich).copy(pauses = p.copy(longPauseCount = 0, maxPauseMs = 0)))
+        assertTrue(uninterrupted.score > a.score)
     }
 
     @Test fun emptyTranscriptIsHandled() {
@@ -164,8 +170,39 @@ class FeedbackComposerTest {
     }
 
     @Test fun comparisonWithoutPresentIsFlagged() {
-        val fb = FeedbackComposer.compose(input("When I was young, our sofa was small and I jumped on it every day.", type = "COMPARISON"))
-        assertTrue(fb.errors.any { it.key == "comparison_frame_missing" })
+        val answer = input("When I was young, our sofa was small and I jumped on it every day.", type = "COMPARISON")
+        listOf(
+            "Compare your sofa then and now.",
+            "How is your furniture now different from the furniture in your childhood home?",
+        ).forEach { question ->
+            val fb = FeedbackComposer.compose(answer.copy(question = question))
+            assertTrue(question, fb.fixes.first().issue.contains("과거와 현재의 비교"))
+            assertTrue(question, fb.errors.any { it.key == "comparison_frame_missing" })
+        }
+    }
+
+    @Test fun comparingTwoCurrentPlacesDoesNotRequirePastTense() {
+        val fb = FeedbackComposer.compose(
+            input("My local park has lots of trees. The park near work is smaller but quieter.", type = "COMPARISON")
+                .copy(question = "Compare the park near your home with the one near work."),
+        )
+        assertTrue(fb.errors.none { it.key == "comparison_frame_missing" })
+    }
+
+    @Test fun pastExperienceDoesNotNeedFuturePlansOrExperienceMarkers() {
+        val story = "Last May I was on a trip to Rome. My bag fell off a bus. I ran to the next stop and told the driver. " +
+            "He let me look in the back. I found it on a seat and got it back. I felt glad I had my bag."
+        val feedback = FeedbackComposer.compose(
+            input(story).copy(question = "Tell me about a time you lost something on a trip. What happened?"),
+        )
+        assertTrue(feedback.fixes.isEmpty())
+        assertTrue(feedback.retryMission.contains("무슨 일이 있었는지"))
+    }
+
+    @Test fun explicitFutureMissionTakesPrecedenceOverThePastQuestionType() {
+        val feedback = FeedbackComposer.compose(input("I had a ticket for the trip.").copy(requiredTense = "FUTURE"))
+        assertTrue(feedback.errors.none { it.key == "past_tense_missing" })
+        assertTrue(feedback.fixes.any { it.issue.contains("미래 계획") })
     }
 
     @Test fun wpm() {

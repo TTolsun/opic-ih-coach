@@ -42,6 +42,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.ui.Alignment
 import com.opicih.coach.data.prefs.Settings
+import com.opicih.coach.data.repo.AttemptMetrics
+import com.opicih.coach.data.repo.measuredScore
 import com.opicih.coach.analysis.VerbatimMarkup
 import com.opicih.coach.learning.ErrorTrend
 import com.opicih.coach.learning.ProgressCalculator
@@ -95,14 +97,23 @@ fun ProgressScreen(onNextExam: () -> Unit = {}) {
 
         SectionCard(title = "최근 답변 추세 (최대 12회)") {
             // 암기 점수는 외울수록 오르므로, 추세는 즉석에서 말한 답변의 말하기 점수만 보여 줍니다.
-            val recent = withText.filter { it.mode in ScoreKind.SPEAKING_MODES }.take(12).reversed()
-            if (recent.isEmpty()) Text("말하기 점수 기록이 아직 없습니다.", style = MaterialTheme.typography.bodyMedium)
+            val recent = withText.filter { it.mode in ScoreKind.SPEAKING_MODES }.take(12)
+            val scored = recent.mapNotNull { attempt ->
+                val metrics = AttemptMetrics.from(attempt)
+                attempt.measuredScore(metrics)?.let { (metrics?.speakingFlow == true) to it }
+            }
+            if (scored.isEmpty()) Text("측정한 말하기 점수가 없습니다.", style = MaterialTheme.typography.bodyMedium)
             else {
-                Text(ScoreKind.SPEAKING.label, style = MaterialTheme.typography.labelMedium)
-                BarChart(recent.map { it.score.toFloat() }, MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.surfaceContainerHighest, max = 100f)
+                val flow = scored.first().first
+                Text(if (flow) ScoreKind.FLOW_LABEL else ScoreKind.SPEAKING.label, style = MaterialTheme.typography.labelMedium)
+                BarChart(scored.filter { it.first == flow }.map { it.second.toFloat() }.reversed(),
+                    MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.surfaceContainerHighest, max = 100f)
+            }
+            val pauses = recent.mapNotNull { AttemptMetrics.from(it)?.pauses?.takeIf { p -> p.speechMs > 0 } }.reversed()
+            if (pauses.isNotEmpty()) {
                 Spacer(Modifier.height(8.dp))
                 Text("2초 이상 무음 (회)", style = MaterialTheme.typography.labelMedium)
-                BarChart(recent.map { it.longPauseCount.toFloat() }, MaterialTheme.colorScheme.tertiary, MaterialTheme.colorScheme.surfaceContainerHighest)
+                BarChart(pauses.map { it.longPauseCount.toFloat() }, MaterialTheme.colorScheme.tertiary, MaterialTheme.colorScheme.surfaceContainerHighest)
             }
         }
 
@@ -132,7 +143,10 @@ fun ProgressScreen(onNextExam: () -> Unit = {}) {
         SectionCard(title = "주제별 연습") {
             val stats = ProgressCalculator.topicStats(attempts)
             if (stats.isEmpty()) Text("아직 기록이 없습니다.", style = MaterialTheme.typography.bodyMedium)
-            stats.forEach { t -> Bullet("${t.topic}: ${t.attempts}회 · 평균 ${t.avgScore}점 · ${t.avgWords}단어") }
+            stats.forEach { t ->
+                val score = t.avgScore?.let { " · ${if (t.flow) "발화 흐름" else "점수"} 평균 ${it}점" }.orEmpty()
+                Bullet("${t.topic}: ${t.attempts}회$score · 평균 ${t.avgWords}단어")
+            }
         }
 
         SectionCard(title = "반복 오류 노트") {
@@ -154,7 +168,12 @@ fun ProgressScreen(onNextExam: () -> Unit = {}) {
                         val t = java.time.Instant.ofEpochMilli(a.createdAt).atZone(java.time.ZoneId.systemDefault())
                         Text("%d/%d %02d:%02d · %s · %s".format(t.monthValue, t.dayOfMonth, t.hour, t.minute, PracticeMode.of(a.mode).label, a.topic),
                             style = MaterialTheme.typography.bodySmall)
-                        Text(if (a.transcript.isBlank()) "전사 없음 · ${a.speechMs / 1000}초" else "${a.wordCount}단어 · ${ScoreKind.of(a.mode).label} ${a.score}점 · ${VerbatimMarkup.parse(a.transcript).clean.take(40)}",
+                        val metrics = AttemptMetrics.from(a)
+                        val score = a.measuredScore(metrics)?.let {
+                            val label = if (metrics?.speakingFlow == true) ScoreKind.FLOW_LABEL else ScoreKind.of(a.mode).label
+                            " · $label ${it}점"
+                        }.orEmpty()
+                        Text(if (a.transcript.isBlank()) "전사 없음 · ${a.speechMs / 1000}초" else "${a.wordCount}단어$score · ${VerbatimMarkup.parse(a.transcript).clean.take(40)}",
                             style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
                     }
                     IconButton(onClick = { toDelete = a }) { Icon(Icons.Filled.Delete, "기록 삭제") }

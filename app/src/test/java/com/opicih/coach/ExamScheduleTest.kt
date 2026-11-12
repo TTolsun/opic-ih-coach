@@ -318,7 +318,8 @@ class BackupCoverageTest {
     @Test fun roundTripKeepsEveryColumnInPlace() = with(BackupManager.Companion) {
         val attempt = PracticeAttemptEntity(scriptId = 1, topic = "a", questionText = "b", questionType = "c", mode = "d", transcript = "e",
             captureMode = "f", durationMs = 2, speechMs = 3, longPauseCount = 4, wordCount = 5, wpm = 6, coverage = 0.7f, score = 8,
-            metricsJson = "g", feedbackJson = "h", feedbackSource = "i", mockId = 9, createdAt = 10, trainingSessionId = 11)
+            metricsJson = "g", feedbackJson = "h", feedbackSource = "i", mockId = 9, createdAt = 10, trainingSessionId = 11,
+            speakingReviewDueEpochDay = 12)
         assertEquals(attempt, attempt.toBackup().toEntity())
         val script = ScriptEntity(id = 1, topic = "a", title = "b", question = "c", questionType = "d", original = "e", natural = "f",
             ihTarget = "g", shortVersion = "h", keywords = "i", activeVersion = "j", koreanMeaning = "k", difficulty = 2, estSeconds = 3,

@@ -1,5 +1,6 @@
 package com.opicih.coach.learning
 
+import com.opicih.coach.data.prefs.CaptureMode
 import com.opicih.coach.data.prefs.LearnerGrade
 import java.time.LocalDate
 import java.time.temporal.ChronoUnit
@@ -41,12 +42,16 @@ object RetestAdvisor {
         val avgWords: Int,
         /** Average long (2 s+) pauses per recent answer; null when not measured. */
         val avgLongPauses: Float?,
-        /** Average learning score of recent no-script answers. */
-        val avgScore: Int,
-        /** Number of mock tests finished since the last exam, and the best average score among them. */
+        /** Average local score from one capture method. Null when there is no comparable score. */
+        val avgScore: Int?,
+        /** Finished mocks, including mocks without enough scorable answers. */
         val mocksSinceExam: Int,
-        val bestMockScore: Int,
+        val bestMockScore: Int?,
         val recentAnswers: Int,
+        val scoredAnswers: Int = recentAnswers,
+        val scoreCapture: String? = null,
+        val scorableMockAnswers: Int = 0,
+        val scoreIsFlow: Boolean = false,
     )
 
     data class Gate(val id: String, val label: String, val passed: Boolean, val value: String, val target: String, val daysToFix: Int)
@@ -78,18 +83,47 @@ object RetestAdvisor {
      * 준비도 조건. 길이·점수·모의시험 기준은 다음 시험 목표 등급([ReadinessCriteria])에 따라 달라지며,
      * 점수와 길이는 말하기 점수(즉석 답변) 기록만 근거로 합니다.
      */
-    fun gates(r: Readiness, c: ReadinessCriteria = ReadinessCriteria.of(LearnerGrade.IH)): List<Gate> = listOf(
-        Gate("volume", "연습량", r.practiceDays >= 10 || r.speakingMinutes >= 150,
-            "${r.practiceDays}일 · ${r.speakingMinutes}분", "10일 이상 또는 150분", ((10 - r.practiceDays).coerceAtLeast(0)).coerceAtMost(10)),
-        Gate("length", "자유 발화 길이", r.recentAnswers >= 3 && r.avgWords >= c.minWords,
-            if (r.recentAnswers == 0) "기록 없음" else "평균 ${r.avgWords}단어", "평균 ${c.minWords}단어 이상", if (r.avgWords >= c.minWords) 0 else 7),
-        Gate("fluency", "긴 무음", r.avgLongPauses != null && r.avgLongPauses <= 1f,
-            r.avgLongPauses?.let { "답변당 %.1f회".format(it) } ?: "측정 기록 없음", "답변당 1회 이하", 5),
-        Gate("score", "말하기 점수", r.recentAnswers >= 3 && r.avgScore >= c.minScore,
-            if (r.recentAnswers == 0) "기록 없음" else "평균 ${r.avgScore}점", "평균 ${c.minScore}점 이상", if (r.avgScore >= c.minScore) 0 else 7),
-        Gate("mock", "모의시험", r.mocksSinceExam >= 1 && r.bestMockScore >= c.minMockScore,
-            if (r.mocksSinceExam == 0) "없음" else "${r.mocksSinceExam}회 · 최고 ${r.bestMockScore}점", "1회 이상, ${c.minMockScore}점 이상", 3),
-    )
+    fun gates(r: Readiness, c: ReadinessCriteria = ReadinessCriteria.of(LearnerGrade.IH)): List<Gate> {
+        val lengthPassed = r.recentAnswers >= 3 && r.avgWords >= c.minWords
+        // A flow score already reflects the pauses used by the fluency gate.
+        val scorePassed = !r.scoreIsFlow && r.scoredAnswers >= 3 && r.avgScore != null && r.avgScore >= c.minScore
+        val captureLabel = when (r.scoreCapture) {
+            CaptureMode.LIVE_STT.name -> " · ${CaptureMode.LIVE_STT.label}"
+            CAPTURE_CLOUD_STT -> " · 녹음 전사"
+            else -> ""
+        }
+        val mockValue = when {
+            r.mocksSinceExam == 0 -> "없음"
+            r.bestMockScore == null -> "${r.mocksSinceExam}회 · 평가 가능 답변 최대 ${r.scorableMockAnswers}개"
+            else -> "${r.mocksSinceExam}회 · 최고 ${r.bestMockScore}점"
+        }
+        return listOf(
+            Gate(
+                "volume", "연습량", r.practiceDays >= 10 || r.speakingMinutes >= 150,
+                "${r.practiceDays}일 · ${r.speakingMinutes}분", "10일 이상 또는 150분", (10 - r.practiceDays).coerceIn(0, 10),
+            ),
+            Gate(
+                "length", "자유 발화 길이", lengthPassed,
+                if (r.recentAnswers == 0) "기록 없음" else "평균 ${r.avgWords}단어",
+                "평균 ${c.minWords}단어 이상", if (lengthPassed) 0 else 7,
+            ),
+            Gate(
+                "fluency", "긴 무음", r.avgLongPauses != null && r.avgLongPauses <= 1f,
+                r.avgLongPauses?.let { "답변당 %.1f회".format(it) } ?: "측정 기록 없음", "답변당 1회 이하", 5,
+            ),
+            Gate(
+                "score", "로컬 말하기 점수", scorePassed,
+                if (r.scoreIsFlow) "과업 수행 점수 없음" else
+                    r.avgScore?.let { "평균 ${it}점 · ${r.scoredAnswers}개$captureLabel" } ?: "평가 기록 없음",
+                if (r.scoreIsFlow) "과업 수행 평가" else "평균 ${c.minScore}점 이상",
+                if (scorePassed || r.scoreIsFlow) 0 else 7,
+            ),
+            Gate(
+                "mock", "모의시험", r.mocksSinceExam >= 1 && r.bestMockScore != null && r.bestMockScore >= c.minMockScore,
+                mockValue, "1회 이상, ${c.minMockScore}점 이상", 3,
+            ),
+        )
+    }
 
     fun advise(today: LocalDate, lastExam: LocalDate, rules: Rules, readiness: Readiness): Advice {
         // Official counting excludes the exam day: 6/1 exam -> 6/2..6/26 blocked -> 6/27 (D+26) first day.
