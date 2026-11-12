@@ -19,7 +19,7 @@ import com.opicih.coach.analysis.withCanonicalKey
 import androidx.room.withTransaction
 import com.opicih.coach.data.db.AppDao
 import com.opicih.coach.data.db.AppDatabase
-import com.opicih.coach.data.db.ChunkEntity
+import com.opicih.coach.data.db.MorningReviewEntity
 import com.opicih.coach.data.db.ContentSource
 import com.opicih.coach.data.db.DailyLogEntity
 import com.opicih.coach.data.db.ErrorPatternEntity
@@ -38,6 +38,7 @@ import com.opicih.coach.learning.CAPTURE_CLOUD_STT
 import com.opicih.coach.learning.MasteryRules
 import com.opicih.coach.learning.ScoreKind
 import com.opicih.coach.learning.SrsScheduler
+import com.opicih.coach.learning.MorningReviewRules
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import java.time.LocalDate
@@ -301,12 +302,17 @@ class PracticeRepository(private val db: AppDatabase) {
         return result.copy(attempt = attempt.copy(id = id), previous = previous)
     }
 
-    suspend fun reviewChunk(c: ChunkEntity, ok: Boolean, examEpochDay: Long?) {
-        val today = LocalDate.now().toEpochDay()
-        val srs = SrsScheduler.next(c.srsStep, ok, today, examEpochDay)
-        dao.updateChunk(c.copy(srsStep = srs.step, dueEpochDay = srs.dueEpochDay, lastResult = if (ok) "OK" else "FAIL", lastReviewedEpochDay = today, failCount = c.failCount + if (ok) 0 else 1))
-        val log = dao.dailyLog(today) ?: DailyLogEntity(today)
-        dao.upsertDailyLog(log.copy(chunksReviewed = log.chunksReviewed + 1))
+    suspend fun saveMorningReview(review: MorningReviewEntity, finishesRoutine: Boolean) = db.withTransaction {
+        val chunk = checkNotNull(dao.chunk(review.chunkId))
+        val change = MorningReviewRules.change(chunk, dao.morningReviews(chunk.id), review) ?: return@withTransaction
+        if (change.isFirstRating) {
+            dao.insertMorningReview(change.review)
+            dao.ensureDailyLog(DailyLogEntity(review.reviewedDay))
+            dao.applyMorningProgress(review.reviewedDay, finishesRoutine)
+        } else {
+            dao.updateMorningReview(change.review)
+        }
+        dao.updateChunk(change.chunk)
     }
 
     /**
@@ -315,15 +321,12 @@ class PracticeRepository(private val db: AppDatabase) {
      */
     suspend fun deleteAttempt(a: PracticeAttemptEntity) {
         a.audioPath?.let { runCatching { java.io.File(it).delete() } }
-        dao.deleteAttempt(a)
         val day = java.time.Instant.ofEpochMilli(a.createdAt).atZone(java.time.ZoneId.systemDefault()).toLocalDate().toEpochDay()
-        dao.dailyLog(day)?.let { dao.upsertDailyLog(com.opicih.coach.learning.ProgressCalculator.withoutAttempt(it, a)) }
+        db.withTransaction {
+            dao.deleteAttempt(a)
+            dao.dailyLog(day)?.let { dao.upsertDailyLog(com.opicih.coach.learning.ProgressCalculator.withoutAttempt(it, a)) }
+        }
     }
 
-    suspend fun markMorningDone() {
-        val today = LocalDate.now().toEpochDay()
-        val log = dao.dailyLog(today) ?: DailyLogEntity(today)
-        dao.upsertDailyLog(log.copy(morningDone = true))
-    }
     fun decodeMetrics(a: PracticeAttemptEntity): AttemptMetrics? = AttemptMetrics.from(a)
 }
