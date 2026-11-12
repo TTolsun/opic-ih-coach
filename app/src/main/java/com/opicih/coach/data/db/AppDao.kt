@@ -29,8 +29,10 @@ interface AppDao {
     fun revisionsFlow(scriptId: Long): Flow<List<ScriptRevisionEntity>>
     @Query("SELECT * FROM script_revisions WHERE status = 'PENDING'") fun pendingRevisionsFlow(): Flow<List<ScriptRevisionEntity>>
     @Query("SELECT * FROM script_revisions") suspend fun revisions(): List<ScriptRevisionEntity>
+    @Query("SELECT * FROM script_revisions WHERE id = :id") suspend fun revision(id: Long): ScriptRevisionEntity?
     @Insert suspend fun insertRevisions(r: List<ScriptRevisionEntity>)
     @Update suspend fun updateRevision(r: ScriptRevisionEntity)
+    @Delete suspend fun deleteRevisions(r: List<ScriptRevisionEntity>)
     @Query("DELETE FROM script_revisions WHERE scriptId = :scriptId") suspend fun deleteRevisionsFor(scriptId: Long)
 
     // ---- Import sources

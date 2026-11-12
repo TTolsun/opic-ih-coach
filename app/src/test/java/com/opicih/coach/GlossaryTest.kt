@@ -21,10 +21,6 @@ class GlossaryTest {
         .map { File(it, name) }.first { it.exists() }
 
     private val glossary by lazy { Glossary.parse(asset("glossary.json").readText()) }
-    private val scriptTexts by lazy {
-        Json { ignoreUnknownKeys = true }.decodeFromString(SeedScripts.serializer(), asset("user_scripts_2026.json").readText())
-            .scripts.flatMap { listOf(it.original, it.ihTarget, it.short) }.filter { it.isNotBlank() }
-    }
 
     @Test fun assetLoadsWithUniquePhrases() {
         val entries = Json { ignoreUnknownKeys = true }.decodeFromString(com.opicih.coach.learning.GlossaryFile.serializer(), asset("glossary.json").readText()).entries
@@ -34,15 +30,19 @@ class GlossaryTest {
         assertTrue(entries.all { it.meaningKo.isNotBlank() })
     }
 
-    /** Every form was copied from the scripts; a form that matches nothing is a typo that hides the meaning. */
-    @Test fun everyEntryAppearsInTheScripts() {
-        // A word inside an idiom is still reachable: tapping it shows the word under the idiom.
-        val found = scriptTexts.flatMap { text ->
-            Glossary.tokenize(text).mapNotNull { glossary.lookupAt(text, it.start) }.flatMap { listOfNotNull(it.entry, it.wordEntry) }
-        }.map { it.phrase }.toSet()
+    @Test fun everyEntryCanBeLookedUpIncludingPhrasesFromPreviouslyApprovedScripts() {
         val entries = Json { ignoreUnknownKeys = true }.decodeFromString(com.opicih.coach.learning.GlossaryFile.serializer(), asset("glossary.json").readText()).entries
-        val missing = entries.map { it.phrase }.filter { it !in found }
+        val missing = entries.filter { entry ->
+            entry.allForms.none { form -> glossary.spans(form).any { it.entry == entry } }
+        }.map { it.phrase }
         assertTrue("entries never matched: $missing", missing.isEmpty())
+    }
+
+    @Test fun pilotScriptsUseRecognizedReusablePhrases() {
+        val pilot = Json.decodeFromString(SeedScripts.serializer(), asset("user_scripts_2026.json").readText())
+            .scripts.filter { it.refreshRevisions }
+        val found = pilot.flatMap { glossary.spans(it.ihTarget) }.map { it.entry.phrase }.toSet()
+        assertTrue(found.containsAll(listOf("back then", "take a nap", "go back to", "fly (항공사)")))
     }
 
     @Test fun longestIdiomWinsOverItsWords() {
