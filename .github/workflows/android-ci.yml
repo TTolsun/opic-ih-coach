@@ -29,7 +29,7 @@ jobs:
           cache: gradle
 
       - name: Install Android SDK 36
-        run: sdkmanager --install 'platforms;android-36' 'build-tools;35.0.0'
+        run: "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install 'platforms;android-36' 'build-tools;35.0.0'
 
       - name: Run unit tests, Lint, and debug build
         run: bash ./gradlew --no-daemon --continue :app:testDebugUnitTest :app:lintDebug :app:assembleDebug
