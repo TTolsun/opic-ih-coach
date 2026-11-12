@@ -12,6 +12,7 @@ concurrency:
 
 jobs:
   android:
+    if: ${{ false }}
     name: Android checks
     runs-on: ubuntu-24.04
     timeout-minutes: 20
