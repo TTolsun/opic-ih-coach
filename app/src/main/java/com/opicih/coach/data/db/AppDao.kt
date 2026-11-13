@@ -138,6 +138,8 @@ interface AppDao {
     @Insert suspend fun insertStatusEvent(e: ExamStatusEventEntity): Long
     @Insert suspend fun insertStatusEvents(e: List<ExamStatusEventEntity>)
     @Query("DELETE FROM exam_status_events WHERE registrationId = :id") suspend fun deleteStatusEventsFor(id: Long)
+    @Query("SELECT EXISTS(SELECT 1 FROM exam_data_updates WHERE version = :version)") suspend fun hasExamDataUpdate(version: Int): Boolean
+    @Insert suspend fun insertExamDataUpdate(update: ExamDataUpdateEntity)
     @Query("SELECT * FROM exam_training_sessions ORDER BY startedAt DESC") suspend fun trainingSessions(): List<ExamTrainingSessionEntity>
     @Query("SELECT * FROM exam_training_sessions ORDER BY startedAt DESC") fun trainingSessionsFlow(): Flow<List<ExamTrainingSessionEntity>>
     @Insert suspend fun insertTrainingSession(s: ExamTrainingSessionEntity): Long

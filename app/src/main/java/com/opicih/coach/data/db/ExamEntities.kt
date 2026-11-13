@@ -75,7 +75,7 @@ data class ExamRegistrationEntity(
     val registrationCloseAt: String? = null,
     val resultGrade: String? = null,
     val resultPublishedAt: String? = null,
-    /** null = not known. Waiver bookkeeping itself lives in the B-phase ledger. */
+    /** Actual use, recorded when confirmed. null = not known. */
     val waiverUsed: Boolean? = null,
     val memo: String = "",
     val sourceType: String = RegistrationSource.USER.name,
@@ -86,6 +86,8 @@ data class ExamRegistrationEntity(
     val legacyExamId: Long? = null,
     val createdAt: Long = System.currentTimeMillis(),
     val updatedAt: Long = System.currentTimeMillis(),
+    /** Intent for a future sitting. Never affects the actual balance. */
+    val waiverPlanned: Boolean? = null,
 ) {
     val type: ExamType get() = ExamType.of(examType)
     val state: RegistrationStatus get() = RegistrationStatus.of(status)
@@ -118,6 +120,10 @@ data class ExamRegistrationEntity(
         const val DEFAULT_ZONE = "Asia/Seoul"
     }
 }
+
+/** Tracks data updates in the same transaction as their exam records. */
+@Entity(tableName = "exam_data_updates")
+data class ExamDataUpdateEntity(@PrimaryKey val version: Int)
 
 /** Append-only status history, so "cancelled on 11/03" is never confused with a sitting. */
 @Entity(tableName = "exam_status_events", indices = [Index("registrationId")])

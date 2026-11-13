@@ -214,11 +214,13 @@ fun AppNav(startRoute: String?, onRouteConsumed: () -> Unit) {
             }
             composable("import") { ImportScreen(onDone = { nav.popBackStack() }) }
             composable("settings") { SettingsScreen(onExams = { nav.navigate("exams") }) }
-            composable("exams") { ExamsScreen() }
+            composable("exams") { ExamsScreen { date, id -> nav.navigate("examDebrief/${date.toEpochDay()}/$id") } }
             composable("sail") { SailConversationScreen() }
             composable("coach") { CoachScreen() }
             composable("listen") { ListenScreen(onOpenSettings = { nav.navigate("settings") }) }
-            composable("nextExam") { NextExamScreen(onOpenSettings = { nav.navigate("settings") }) }
+            composable("nextExam") {
+                NextExamScreen(onOpenSettings = { nav.navigate("settings") }, onOpenExams = { nav.navigate("exams") })
+            }
             composable(
                 "examDebrief/{day}/{registrationId}",
                 arguments = listOf(navArgument("day") { type = NavType.LongType }, navArgument("registrationId") { type = NavType.LongType }),

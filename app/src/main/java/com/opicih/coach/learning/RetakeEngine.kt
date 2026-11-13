@@ -12,21 +12,16 @@ import java.time.LocalDate
  *   "언어별 최근 응시일로부터 25일 경과 후의 시험에 응시할 수 있다", example D+0 = 6/1, D+1..D+25 (6/2..6/26) blocked,
  *   D+26 (6/27) allowed, "기간 계산 시 응시일 제외", Waiver "150일마다 1회 사용 가능".
  * The regulation does not say whether a waiver is applied automatically or restored after cancel / no-show, so those stay unverified.
- * SAIL is an in-house test with no public rules: everything is an assumption the user can change.
+ * The SAIL retake boundary and waiver availability are based on user confirmation.
  */
 enum class Verification(val label: String) { OFFICIAL("공식 규정"), USER_CONFIRMED("사용자 확인"), UNVERIFIED("미검증") }
-
-enum class WaiverSupport { YES, NO, UNKNOWN }
 
 data class ExamPolicy(
     val type: ExamType,
     /** Blocked days after the exam day (D+1..D+N). The first allowed day is D+N+1. */
     val blockedDays: Int,
-    val waiverSupport: WaiverSupport,
     /** A used waiver comes back after this many days; null = unknown. */
     val waiverRegrantDays: Int?,
-    /** Exams with the same group share the retake limit. */
-    val restrictionGroup: String,
     val source: String,
     val verification: Verification,
 ) {
@@ -39,12 +34,10 @@ data class ExamPolicy(
     companion object {
         const val OPIC_RULE_SOURCE = "OPIc 시험관리규정 제5조 (2026-10-29 시행)"
 
-        fun opic() = ExamPolicy(ExamType.OPIC, 25, WaiverSupport.YES, 150, "ACTFL", OPIC_RULE_SOURCE, Verification.OFFICIAL)
+        fun opic() = ExamPolicy(ExamType.OPIC, 25, 150, OPIC_RULE_SOURCE, Verification.OFFICIAL)
 
-        /** SAIL: the confirmation mail mentions a 25-day rule; the exact counting is not known. */
-        fun sail(blockedDays: Int, userConfirmed: Boolean, sharesWithOpic: Boolean) = ExamPolicy(
-            ExamType.SAIL, blockedDays, WaiverSupport.UNKNOWN, null, if (sharesWithOpic) "ACTFL" else "SAIL",
-            "신청 확인 메일의 25일 규정 안내 (응시일 제외 계산은 OPIc과 같다고 가정)",
+        fun sail(blockedDays: Int, userConfirmed: Boolean) = ExamPolicy(
+            ExamType.SAIL, blockedDays, null, if (userConfirmed) "SAIL 응시자 확인" else "SAIL 재응시 설정",
             if (userConfirmed) Verification.USER_CONFIRMED else Verification.UNVERIFIED,
         )
     }
@@ -62,19 +55,15 @@ data class WaiverState(
 
 object WaiverLedger {
     /**
-     * @param declared balance the user reported (Settings.opicWaivers, -1 = not entered), taken as of [declaredOn]
+     * @param declared balance for this exam type (-1 = not entered), taken as of [declaredOn]
      * Uses are registrations of the type with waiverUsed = true and a date after [declaredOn].
      * A use made before the declaration is already reflected in the declared number.
      */
     fun state(declared: Int, declaredOn: LocalDate, regs: List<ExamRegistrationEntity>, policy: ExamPolicy, today: LocalDate): WaiverState {
         val notes = mutableListOf<String>()
-        if (policy.waiverSupport == WaiverSupport.UNKNOWN) {
-            return WaiverState(null, null, null, listOf("${policy.type.label} Waiver 규정을 알 수 없어 사용 가능하다고 가정하지 않습니다."))
-        }
-        if (policy.waiverSupport == WaiverSupport.NO) return WaiverState(0, null, null, emptyList())
         if (declared < 0) return WaiverState(null, null, null, listOf("보유 Waiver 수를 입력하지 않았습니다."))
 
-        val uses = regs.filter { it.type == policy.type && it.waiverUsed == true }
+        val uses = regs.filter { it.type == policy.type && it.state != RegistrationStatus.PLANNED && it.waiverUsed == true }
             .mapNotNull { r -> r.latestDate?.let { d -> r to d } }
             .filter { (_, d) -> d.isAfter(declaredOn) }
         var active = 0
@@ -89,7 +78,7 @@ object WaiverLedger {
         }
         val regrant = lastUsed?.let { u -> policy.waiverRegrantDays?.let { u.plusDays(it.toLong()) } }
         notes += "보유 수는 ${declaredOn} 기준 사용자 입력값입니다."
-        notes += "접수할 때 Waiver가 자동으로 적용되는지는 시험관리규정에 없습니다. 접수 화면에서 확인하세요."
+        if (policy.type == ExamType.OPIC) notes += "웨이버 적용 여부는 접수 화면에서 확인하세요."
         return WaiverState((declared - active).coerceAtLeast(0), lastUsed, regrant, notes)
     }
 }
@@ -105,12 +94,6 @@ data class RetakePath(
 )
 
 object RetakeEngine {
-    /** Last real sitting that limits [policy]'s type (shared groups included). Cancelled exams never count. */
-    fun lastSitting(regs: List<ExamRegistrationEntity>, policy: ExamPolicy, policies: Map<ExamType, ExamPolicy>): LocalDate? =
-        regs.filter { r -> r.state == RegistrationStatus.COMPLETED && policies[r.type]?.restrictionGroup == policy.restrictionGroup }
-            .mapNotNull { it.latestDate }
-            .maxOrNull()
-
     /**
      * Compares the path without a waiver and (if one is available) the path that spends it on the next sitting.
      * @param latestUseful last sitting day whose result is out before the deadline (deadline - result lag)

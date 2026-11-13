@@ -20,7 +20,7 @@ import java.sql.SQLException
 
 /**
  * Runs the production migration SQL (MigrationSql) against a real SQLite database built from Room's exported
- * v1 schema, then checks the result against Room's exported v8 schema and that no user data was lost.
+ * v1 schema, then checks the result against Room's exported v9 schema and that no user data was lost.
  * This replaces an instrumented MigrationTestHelper run, which needs a device.
  */
 class MigrationTest {
@@ -78,9 +78,14 @@ class MigrationTest {
         MigrationSql.V7_TO_V8.forEach(::exec)
     }
 
-    @Test fun v1ToV8MatchesRoomSchema() {
+    private fun migrateToV9() {
         migrateToV8()
-        for (e in entities(8)) {
+        MigrationSql.V8_TO_V9.forEach(::exec)
+    }
+
+    @Test fun v1ToV9MatchesRoomSchema() {
+        migrateToV9()
+        for (e in entities(9)) {
             val table = e["tableName"]!!.jsonPrimitive.content
             val expected = e["fields"]!!.jsonArray.associate { f ->
                 val o = f.jsonObject
@@ -101,7 +106,7 @@ class MigrationTest {
     }
 
     @Test fun keepsAllUserData() {
-        migrateToV8()
+        migrateToV9()
         assertEquals(23, count("scripts"))
         assertEquals(1, count("script_revisions", "status = 'PENDING'"))
         assertEquals(1, count("script_revisions", "status = 'APPROVED'"))
@@ -121,12 +126,28 @@ class MigrationTest {
     }
 
     @Test fun oldExamsBecomeReviewRowsNotFacts() {
-        migrateToV8()
+        migrateToV9()
         assertEquals(2, count("exam_registrations"))
         assertEquals(2, count("exam_registrations", "examType = 'UNKNOWN' AND needsReview = 1 AND sourceType = 'MIGRATED' AND legacyExamId IS NOT NULL"))
         // Only the row with a result is treated as a sitting; the bare v1 date stays a plan.
         assertEquals(1, count("exam_registrations", "dateLocal = '2026-02-20' AND status = 'COMPLETED' AND resultGrade = 'IM2'"))
         assertEquals(1, count("exam_registrations", "dateLocal = '2026-11-14' AND status = 'PLANNED'"))
+    }
+
+    @Test fun v8ToV9KeepsExistingRegistrationAndLinkedDebrief() {
+        migrateToV8()
+        exec("UPDATE exams SET stuckPoints = 'saved debrief' WHERE id = 2")
+        exec("UPDATE exam_registrations SET examType = 'SAIL', status = 'REGISTERED', dateLocal = '2026-11-11', " +
+            "startTimeLocal = '19:20', endTimeLocal = '20:20', location = 'Dongtan', memo = 'saved memo' WHERE legacyExamId = 2")
+        exec("INSERT INTO exam_status_events (registrationId, toStatus, note, createdAt) " +
+            "SELECT id, 'REGISTERED', 'original event', 1 FROM exam_registrations WHERE legacyExamId = 2")
+        MigrationSql.V8_TO_V9.forEach(::exec)
+        assertEquals(1, count("exam_registrations", "examType = 'SAIL' AND status = 'REGISTERED' AND dateLocal = '2026-11-11' " +
+            "AND startTimeLocal = '19:20' AND endTimeLocal = '20:20' AND location = 'Dongtan' AND memo = 'saved memo' " +
+            "AND legacyExamId = 2 AND waiverPlanned IS NULL AND waiverUsed IS NULL"))
+        assertEquals(1, count("exam_status_events", "toStatus = 'REGISTERED' AND note = 'original event'"))
+        assertEquals(1, count("exams", "id = 2 AND stuckPoints = 'saved debrief'"))
+        assertEquals(0, count("exam_data_updates"))
     }
 
     @Test fun divergedDevelopmentV5DatabaseIsHealedByV5ToV6() {

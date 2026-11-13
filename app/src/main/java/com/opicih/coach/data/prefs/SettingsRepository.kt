@@ -72,20 +72,19 @@ data class Settings(
     // Retake planning (values the app cannot look up; the user confirms them).
     val retakeDays: Int = 25,
     val retakeVerified: Boolean = false,
-    val resultLagDays: Int = 10,
     val gradeDeadline: LocalDate? = LocalDate.of(2026, 12, 31),
     val examSlots: Set<String> = emptySet(),
     val registerLeadDays: Int = 7,
-    /** 1 = v2 exam data has been converted into registrations (runs once). */
+    /** Version of the exam data update applied to these settings. */
     val examBootstrapVersion: Int = 0,
-    /** OPIc waivers the user reports holding; -1 = not entered. Waiver rules themselves are unverified (B phase). */
+    /** Waivers the user reports holding. -1 = not entered. */
     val opicWaivers: Int = -1,
     /** Day the waiver balance above was entered; later waiver uses are subtracted from it. */
     val opicWaiverDeclaredOn: LocalDate = LocalDate.of(2026, 11, 7),
+    val sailWaivers: Int = -1,
+    val sailWaiverDeclaredOn: LocalDate = LocalDate.of(2026, 11, 13),
     /** Plan the next OPIc with a waiver (recommendations are recomputed when this changes). */
     val planWithWaiver: Boolean = false,
-    /** User setting: SAIL and OPIc share one retake limit (default: independent). */
-    val sailSharesOpicLimit: Boolean = false,
     /** Paid AI calls allowed per day for automatic chains (SAIL conversation follow-ups + summaries). */
     val aiDailyCap: Int = 30,
     val aiCallDay: Long = 0,
@@ -179,7 +178,6 @@ internal val SETTINGS_FIELDS: List<PrefField<*, *>> = listOf(
     plain("focusTopics", stringSetPreferencesKey("focus_topics"), { it.focusTopics }) { s, v -> s.copy(focusTopics = v) },
     plain("retakeDays", intPreferencesKey("retake_days"), { it.retakeDays }) { s, v -> s.copy(retakeDays = v) },
     plain("retakeVerified", booleanPreferencesKey("retake_verified"), { it.retakeVerified }) { s, v -> s.copy(retakeVerified = v) },
-    plain("resultLagDays", intPreferencesKey("result_lag_days"), { it.resultLagDays }) { s, v -> s.copy(resultLagDays = v) },
     // Stored as epoch day; "no deadline" (cleared in Settings) is written as -1 and read back as null.
     // The old reader fell back to the default here, so a cleared deadline came back after a restart.
     PrefField<LocalDate?, Long>(
@@ -192,8 +190,9 @@ internal val SETTINGS_FIELDS: List<PrefField<*, *>> = listOf(
     plain("examBootstrapVersion", intPreferencesKey("exam_bootstrap_version"), { it.examBootstrapVersion }) { s, v -> s.copy(examBootstrapVersion = v) },
     plain("opicWaivers", intPreferencesKey("opic_waivers"), { it.opicWaivers }) { s, v -> s.copy(opicWaivers = v) },
     date("opicWaiverDeclaredOn", longPreferencesKey("opic_waiver_declared_on"), { it.opicWaiverDeclaredOn }) { s, v -> s.copy(opicWaiverDeclaredOn = v) },
+    plain("sailWaivers", intPreferencesKey("sail_waivers"), { it.sailWaivers }) { s, v -> s.copy(sailWaivers = v) },
+    date("sailWaiverDeclaredOn", longPreferencesKey("sail_waiver_declared_on"), { it.sailWaiverDeclaredOn }) { s, v -> s.copy(sailWaiverDeclaredOn = v) },
     plain("planWithWaiver", booleanPreferencesKey("plan_with_waiver"), { it.planWithWaiver }) { s, v -> s.copy(planWithWaiver = v) },
-    plain("sailSharesOpicLimit", booleanPreferencesKey("sail_shares_opic_limit"), { it.sailSharesOpicLimit }) { s, v -> s.copy(sailSharesOpicLimit = v) },
     plain("aiDailyCap", intPreferencesKey("ai_daily_cap"), { it.aiDailyCap }) { s, v -> s.copy(aiDailyCap = v) },
     plain("aiCallDay", longPreferencesKey("ai_call_day"), { it.aiCallDay }) { s, v -> s.copy(aiCallDay = v) },
     plain("aiCallCount", intPreferencesKey("ai_call_count"), { it.aiCallCount }) { s, v -> s.copy(aiCallCount = v) },

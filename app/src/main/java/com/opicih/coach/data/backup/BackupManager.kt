@@ -109,13 +109,13 @@ class BackupManager(private val context: Context, private val db: AppDatabase) {
 
         fun ExamRegistrationEntity.toBackup() = BRegistration(id, examType, dateLocal, datePrecision, startTimeLocal, endTimeLocal, zoneId,
             location, status, registrationOpenAt, registrationCloseAt, resultGrade, resultPublishedAt, waiverUsed, memo, sourceType,
-            verifiedAt, needsReview, legacyExamId, createdAt, updatedAt)
+            verifiedAt, needsReview, legacyExamId, createdAt, updatedAt, waiverPlanned)
         fun BRegistration.toEntity() = ExamRegistrationEntity(id = id, examType = examType, dateLocal = dateLocal,
             datePrecision = datePrecision, startTimeLocal = startTimeLocal, endTimeLocal = endTimeLocal, zoneId = zoneId,
             location = location, status = status, registrationOpenAt = registrationOpenAt, registrationCloseAt = registrationCloseAt,
             resultGrade = resultGrade, resultPublishedAt = resultPublishedAt, waiverUsed = waiverUsed, memo = memo,
             sourceType = sourceType, verifiedAt = verifiedAt, needsReview = needsReview, legacyExamId = legacyExamId,
-            createdAt = createdAt, updatedAt = updatedAt)
+            createdAt = createdAt, updatedAt = updatedAt, waiverPlanned = waiverPlanned)
 
         fun ExamStatusEventEntity.toBackup() = BStatusEvent(registrationId, fromStatus, toStatus, effectiveDate, note, createdAt)
         fun BStatusEvent.toEntity() = ExamStatusEventEntity(registrationId = registrationId, fromStatus = fromStatus,
@@ -190,6 +190,7 @@ class BackupManager(private val context: Context, private val db: AppDatabase) {
         val zoneId: String, val location: String, val status: String, val registrationOpenAt: String?, val registrationCloseAt: String?,
         val resultGrade: String?, val resultPublishedAt: String?, val waiverUsed: Boolean?, val memo: String, val sourceType: String,
         val verifiedAt: Long?, val needsReview: Boolean, val legacyExamId: Long?, val createdAt: Long, val updatedAt: Long,
+        val waiverPlanned: Boolean? = null,
     )
     @Serializable data class BStatusEvent(val registrationId: Long, val fromStatus: String?, val toStatus: String, val effectiveDate: String?, val note: String, val createdAt: Long)
     @Serializable data class BLookup(val phrase: String, val scriptId: Long, val surface: String, val sentence: String, val count: Int, val firstAt: Long, val lastAt: Long)
