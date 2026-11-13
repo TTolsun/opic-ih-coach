@@ -358,7 +358,7 @@ class BackupCoverageTest {
         val reg = ExamRegistrationEntity(id = 1, examType = "a", dateLocal = "b", datePrecision = "c", startTimeLocal = "d", endTimeLocal = "e",
             zoneId = "f", location = "g", status = "h", registrationOpenAt = "i", registrationCloseAt = "j", resultGrade = "k",
             resultPublishedAt = "l", waiverUsed = true, memo = "m", sourceType = "n", verifiedAt = 2, needsReview = true, legacyExamId = 3,
-            createdAt = 4, updatedAt = 5)
+            createdAt = 4, updatedAt = 5, waiverPlanned = false)
         assertEquals(reg, reg.toBackup().toEntity())
         val event = ExamStatusEventEntity(registrationId = 1, fromStatus = "a", toStatus = "b", effectiveDate = "c", note = "d", createdAt = 2)
         assertEquals(event, event.toBackup().toEntity())

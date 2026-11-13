@@ -54,7 +54,7 @@ internal fun debriefExamRow(exams: List<ExamEntity>, date: LocalDate, registrati
 
 /** OPIc advice rules: the official policy; a waiver only when one is available and the user plans to use it. */
 fun rulesOf(s: Settings, waiverAvailable: Boolean = false) = RetestAdvisor.Rules(
-    policy = ExamPolicy.opic(), resultLagDays = s.resultLagDays, useWaiver = s.planWithWaiver && waiverAvailable,
+    policy = ExamPolicy.opic(), resultLagDays = ExamResults.OPIC_LAG_DAYS, useWaiver = s.planWithWaiver && waiverAvailable,
     deadline = s.gradeDeadline, slots = s.slotDates(), registerLeadDays = s.registerLeadDays,
     criteria = ReadinessCriteria.of(s.targetGrade),
 )

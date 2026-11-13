@@ -2,18 +2,17 @@ package com.opicih.coach.learning
 
 import com.opicih.coach.data.db.ExamRegistrationEntity
 import com.opicih.coach.data.db.ExamType
+import com.opicih.coach.data.db.RegistrationStatus
 import com.opicih.coach.data.prefs.Settings
 import java.time.LocalDate
 
 /** Everything the screens need about retake limits, computed from settings + registrations. */
 data class RetakeSummary(
-    val opicPolicy: ExamPolicy,
     val sailPolicy: ExamPolicy,
     val opicLast: LocalDate?,
-    val sailLast: LocalDate?,
     val opicWaiver: WaiverState,
+    val sailWaiver: WaiverState,
     val opicPaths: List<RetakePath>,
-    /** SAIL earliest retake under the assumed rule; null before the first SAIL sitting. */
     val sailEarliest: LocalDate?,
     val latestUseful: LocalDate?,
 ) {
@@ -21,24 +20,59 @@ data class RetakeSummary(
 }
 
 object RetakeSummaries {
-    fun policies(s: Settings): Map<ExamType, ExamPolicy> = mapOf(
-        ExamType.OPIC to ExamPolicy.opic(),
-        ExamType.SAIL to ExamPolicy.sail(s.retakeDays, s.retakeVerified, s.sailSharesOpicLimit),
-    )
+    private fun sailPolicy(s: Settings) = ExamPolicy.sail(s.retakeDays, s.retakeVerified)
 
     fun of(s: Settings, regs: List<ExamRegistrationEntity>, today: LocalDate): RetakeSummary {
-        val p = policies(s)
-        val opic = p.getValue(ExamType.OPIC)
-        val sail = p.getValue(ExamType.SAIL)
-        val opicLast = RetakeEngine.lastSitting(regs, opic, p)
-        val sailLast = RetakeEngine.lastSitting(regs, sail, p)
+        val opic = ExamPolicy.opic()
+        val sail = sailPolicy(s)
+        val opicLast = ExamSchedule.lastCompleted(regs, ExamType.OPIC)?.date
+        val sailLast = ExamSchedule.lastCompleted(regs, ExamType.SAIL)?.date
         val waiver = WaiverLedger.state(s.opicWaivers, s.opicWaiverDeclaredOn, regs, opic, today)
-        val latestUseful = s.gradeDeadline?.minusDays(s.resultLagDays.toLong())
+        val latestUseful = ExamResults.latestSitting(ExamType.OPIC, s.gradeDeadline)
         return RetakeSummary(
-            opic, sail, opicLast, sailLast, waiver,
+            sail, opicLast, waiver, WaiverLedger.state(s.sailWaivers, s.sailWaiverDeclaredOn, regs, sail, today),
             RetakeEngine.paths(opic, opicLast, waiver, today, latestUseful),
             sailLast?.let { sail.earliestWithoutWaiver(it) },
             latestUseful,
         )
     }
+
+    /** Estimates each upcoming plan in order, assuming the earlier eligible dates are taken. */
+    fun plannedRetakes(s: Settings, regs: List<ExamRegistrationEntity>, today: LocalDate): Map<Long, PlannedRetake> = buildMap {
+        for (policy in listOf(ExamPolicy.opic(), sailPolicy(s))) {
+            val typed = regs.filter { it.type == policy.type && !it.needsReview }
+            var last = ExamSchedule.lastCompleted(typed, policy.type)?.date
+            val declared = if (policy.type == ExamType.OPIC) s.opicWaivers else s.sailWaivers
+            val declaredOn = if (policy.type == ExamType.OPIC) s.opicWaiverDeclaredOn else s.sailWaiverDeclaredOn
+            val projectedUses = mutableListOf<ExamRegistrationEntity>()
+            for (r in typed.sortedBy { it.date }) {
+                val date = r.date ?: continue
+                if (r.state == RegistrationStatus.REGISTERED) {
+                    if (last == null || date.isAfter(last)) last = date
+                }
+                if (r.state != RegistrationStatus.PLANNED || date.isBefore(today)) continue
+
+                val regularFrom = last?.let(policy::earliestWithoutWaiver)
+                val needsWaiver = regularFrom != null && date.isBefore(regularFrom)
+                val available = WaiverLedger.state(declared, declaredOn, typed + projectedUses, policy, date).available
+                val eligibility = when {
+                    !needsWaiver -> PlanEligibility.REGULAR
+                    last?.isBefore(date) != true -> PlanEligibility.SAME_DAY
+                    r.waiverPlanned != true -> PlanEligibility.WAIVER_REQUIRED
+                    available == null -> PlanEligibility.BALANCE_UNKNOWN
+                    available == 0 -> PlanEligibility.NO_WAIVER_LEFT
+                    else -> PlanEligibility.WITH_WAIVER
+                }
+                put(r.id, PlannedRetake(regularFrom, eligibility))
+                if (eligibility == PlanEligibility.REGULAR || eligibility == PlanEligibility.WITH_WAIVER) last = date
+                if (eligibility == PlanEligibility.WITH_WAIVER) {
+                    projectedUses += r.copy(status = RegistrationStatus.REGISTERED.name, waiverUsed = true)
+                }
+            }
+        }
+    }
 }
+
+enum class PlanEligibility { REGULAR, WITH_WAIVER, SAME_DAY, WAIVER_REQUIRED, BALANCE_UNKNOWN, NO_WAIVER_LEFT }
+
+data class PlannedRetake(val regularFrom: LocalDate?, val eligibility: PlanEligibility)

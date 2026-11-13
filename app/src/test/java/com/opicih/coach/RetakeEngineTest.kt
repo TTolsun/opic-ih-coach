@@ -4,8 +4,11 @@ import com.opicih.coach.data.db.DatePrecision
 import com.opicih.coach.data.db.ExamRegistrationEntity
 import com.opicih.coach.data.db.ExamType
 import com.opicih.coach.data.db.RegistrationStatus
+import com.opicih.coach.data.prefs.Settings
 import com.opicih.coach.learning.ExamPolicy
+import com.opicih.coach.learning.ExamSchedule
 import com.opicih.coach.learning.RetakeEngine
+import com.opicih.coach.learning.RetakeSummaries
 import com.opicih.coach.learning.Verification
 import com.opicih.coach.learning.WaiverLedger
 import com.opicih.coach.learning.WaiverState
@@ -73,11 +76,16 @@ class WaiverLedgerTest {
         assertEquals(1, WaiverLedger.state(1, declaredOn, regs, opic, d(11, 8)).available)
     }
 
-    @Test fun unknownSailWaiverIsNeverAssumed() {
-        val sail = ExamPolicy.sail(25, userConfirmed = false, sharesWithOpic = false)
-        val w = WaiverLedger.state(1, declaredOn, emptyList(), sail, d(11, 8))
-        assertNull(w.available)
-        assertTrue(w.notes.any { it.contains("가정하지 않습니다") })
+    @Test fun sailUseDoesNotChangeOpicBalanceAndHasNoKnownRegrant() {
+        val settings = Settings(opicWaivers = 1, sailWaivers = 1, sailWaiverDeclaredOn = declaredOn)
+        val regs = listOf(
+            reg(ExamType.SAIL, "2026-11-20", RegistrationStatus.COMPLETED, waiver = true),
+            reg(ExamType.OPIC, "2026-11-24", RegistrationStatus.PLANNED, waiver = true).copy(waiverPlanned = true),
+        )
+        val summary = RetakeSummaries.of(settings, regs, d(11, 25))
+        assertEquals(1, summary.opicWaiver.available)
+        assertEquals(0, summary.sailWaiver.available)
+        assertNull(summary.sailWaiver.regrantOn)
     }
 
     @Test fun notEnteredBalance() {
@@ -124,36 +132,25 @@ class RetakePathTest {
     }
 
     @Test fun opicAndSailAreIndependentByDefault() {
-        val sail = ExamPolicy.sail(25, userConfirmed = false, sharesWithOpic = false)
-        val policies = mapOf(ExamType.OPIC to opic, ExamType.SAIL to sail)
+        val sail = ExamPolicy.sail(25, userConfirmed = true)
         val regs = listOf(
             reg(ExamType.OPIC, "2026-02", RegistrationStatus.COMPLETED, precision = DatePrecision.MONTH),
             reg(ExamType.SAIL, "2026-11-11", RegistrationStatus.COMPLETED),
             reg(ExamType.SAIL, "2026-11-18", RegistrationStatus.CANCELLED),
         )
-        assertEquals(d(2, 28), RetakeEngine.lastSitting(regs, opic, policies))
-        assertEquals(d(11, 11), RetakeEngine.lastSitting(regs, sail, policies))
+        val summary = RetakeSummaries.of(Settings(retakeVerified = true), regs, d(11, 13))
+        assertEquals(d(2, 28), summary.opicLast)
+        assertEquals(d(12, 7), summary.sailEarliest)
         assertEquals(d(12, 7), sail.earliestWithoutWaiver(d(11, 11)))
-        assertEquals(Verification.UNVERIFIED, sail.verification)
-    }
-
-    @Test fun sharedLimitWhenTheUserSaysSo() {
-        val sail = ExamPolicy.sail(25, userConfirmed = true, sharesWithOpic = true)
-        val policies = mapOf(ExamType.OPIC to opic, ExamType.SAIL to sail)
-        val regs = listOf(
-            reg(ExamType.OPIC, "2026-02", RegistrationStatus.COMPLETED, precision = DatePrecision.MONTH),
-            reg(ExamType.SAIL, "2026-11-11", RegistrationStatus.COMPLETED),
-        )
-        assertEquals(d(11, 11), RetakeEngine.lastSitting(regs, opic, policies)) // SAIL now limits OPIc too
+        assertEquals(Verification.USER_CONFIRMED, sail.verification)
     }
 
     @Test fun cancelledAndPlannedNeverLimit() {
-        val policies = mapOf(ExamType.OPIC to opic)
         val regs = listOf(
             reg(ExamType.OPIC, "2026-11-20", RegistrationStatus.CANCELLED),
             reg(ExamType.OPIC, "2026-11-25", RegistrationStatus.PLANNED),
             reg(ExamType.OPIC, "2026-11-26", RegistrationStatus.REGISTERED),
         )
-        assertNull(RetakeEngine.lastSitting(regs, opic, policies))
+        assertNull(ExamSchedule.lastCompleted(regs, ExamType.OPIC))
     }
 }

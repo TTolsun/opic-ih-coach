@@ -50,11 +50,11 @@ class SettingsFieldsTest {
             ttsRate = 1.2f, ttsVoice = "voice-x", ttsPitch = 1.1f,
             aiEnabled = true, geminiModel = "m", aiTextConsent = true, cloudSttEnabled = true,
             audioUploadConsent = true, audioRetentionDays = 3, seedVersion = 9,
-            focusTopics = setOf("F"), retakeDays = 30, retakeVerified = true, resultLagDays = 5,
+            focusTopics = setOf("F"), retakeDays = 30, retakeVerified = true,
             gradeDeadline = LocalDate.of(2027, 3, 4), examSlots = setOf("2027-01-05"),
             registerLeadDays = 3, examBootstrapVersion = 1, opicWaivers = 2,
             opicWaiverDeclaredOn = LocalDate.of(2027, 2, 2), planWithWaiver = true,
-            sailSharesOpicLimit = true, aiDailyCap = 5, aiCallDay = 20000L, aiCallCount = 4,
+            sailWaivers = 3, sailWaiverDeclaredOn = LocalDate.of(2027, 2, 3), aiDailyCap = 5, aiCallDay = 20000L, aiCallCount = 4,
             studyBlocksEnabled = false, studyBlocks = "60:10",
             listenQuestionVoice = "q-voice", listenAnswerVoice = "a-voice", listenGapMs = 1200, listenRate = 1.25f,
         )

@@ -284,8 +284,8 @@ private fun PermissionBanners(alarmNeedsExact: Boolean, onSettings: () -> Unit) 
 private fun NextExamHeader(r: ExamRegistrationEntity?, dLabel: String, modifier: Modifier) {
     Column(modifier) {
         if (r == null) {
-            Text("등록된 다음 시험 없음", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Text("시험 추가", style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.primary)
+            Text("접수 완료 일정 없음", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("시험 일정 보기", style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.primary)
             return@Column
         }
         Text("Next Exam: ${r.type.label}", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -304,18 +304,17 @@ private fun NextExamHeader(r: ExamRegistrationEntity?, dLabel: String, modifier:
 private fun ExamStatusCard(regs: List<ExamRegistrationEntity>, now: java.time.ZonedDateTime, s: Settings, plan: DayPlan, onExams: () -> Unit) {
     val today = now.toLocalDate()
     SectionCard(Modifier.clickable(onClick = onExams), title = "시험 현황", trailing = { SourceTag("일정 관리") }) {
-        val nextOpic = ExamSchedule.nextOfType(regs, ExamType.OPIC, now)
-        Bullet("다음 OPIc 일정: " + (nextOpic?.let { "${ExamSchedule.formatWhen(it)} · ${statusLabel(it.state)}" } ?: "미정"))
-        val retake = com.opicih.coach.learning.RetakeSummaries.of(s, regs, today)
-        Bullet("OPIc Waiver: " + when (val n = retake.opicWaiver.available) { null -> "입력 안 됨"; else -> "사용 가능 ${n}회 (사용자 입력 기준)" })
-        retake.opicPaths.firstOrNull { !it.useWaiver }?.earliest?.let { Bullet("OPIc 응시 가능: ${it.monthValue}/${it.dayOfMonth}부터 (공식 규정, 실제 회차 확인 전)") }
-        ExamSchedule.lastCompleted(regs, ExamType.OPIC)?.let { last ->
-            Bullet("마지막 OPIc 응시: ${if (last.exact) last.date.toString() else "${last.registration.dateLocal} (일자 미입력)"}")
+        for (type in ExamType.selectable) {
+            val next = ExamSchedule.nextOfType(regs, type, now)
+            next?.let { Bullet("${type.label} ${it.date?.monthDay() ?: it.dateLocal} · ${it.state.label}") }
         }
-        Bullet("다음 SAIL 응시 가능일: " + (retake.sailEarliest?.let { "${it.monthValue}/${it.dayOfMonth}부터로 가정 (사내 규정 미검증)" } ?: "규정 검증 필요"))
+        val retake = com.opicih.coach.learning.RetakeSummaries.of(s, regs, today)
+        ExamSchedule.lastCompleted(regs, ExamType.SAIL)?.let { last ->
+            last.registration.resultGrade?.let { Bullet("${last.date.monthDay()} SAIL 성적 $it") }
+        }
+        retake.sailEarliest?.takeIf { !it.isBefore(today) }?.let { Bullet("SAIL 일반 재응시 ${it.monthDay()}부터") }
         s.gradeDeadline?.let { d ->
-            val left = java.time.temporal.ChronoUnit.DAYS.between(today, d)
-            Bullet("목표 IH 기한 ${d.monthValue}/${d.dayOfMonth}까지 ${left}일")
+            Bullet("목표 IH · ${d.monthDay()}까지")
         }
         val examMinutes = plan.tasks.filter { it.type != TaskType.MORNING && it.type != TaskType.REVIEW }.sumOf { it.minutes }
         val shared = plan.totalMinutes - examMinutes

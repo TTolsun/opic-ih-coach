@@ -51,6 +51,7 @@ import com.opicih.coach.data.db.ExamType
 import com.opicih.coach.data.db.RegistrationSource
 import com.opicih.coach.data.db.RegistrationStatus
 import com.opicih.coach.learning.ExamPolicy
+import com.opicih.coach.learning.ExamResults
 import com.opicih.coach.learning.ExamSchedule
 import com.opicih.coach.learning.RetakeSummaries
 import com.opicih.coach.learning.RetakeSummary
@@ -71,7 +72,7 @@ import java.time.ZoneId
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun NextExamScreen(onOpenSettings: () -> Unit) {
+fun NextExamScreen(onOpenSettings: () -> Unit, onOpenExams: () -> Unit) {
     val c = LocalContainer.current
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -83,7 +84,8 @@ fun NextExamScreen(onOpenSettings: () -> Unit) {
     val regs by c.exams.flow.collectAsState(initial = emptyList())
     var message by remember { mutableStateOf<String?>(null) }
 
-    val today = LocalDate.now()
+    val now = ExamRepository.nowKst()
+    val today = now.toLocalDate()
     val last = lastExamDate(exams, today, regs)
     val sinceMs = last.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
     val readiness = remember(attempts, logs, last, sinceMs, mocks) {
@@ -96,6 +98,19 @@ fun NextExamScreen(onOpenSettings: () -> Unit) {
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
         message?.let { Banner(it, "닫기", tone = MaterialTheme.colorScheme.primary) { message = null } }
 
+        SectionCard(title = "시험 계획", trailing = { OutlinedButton(onClick = onOpenExams) { Text("일정 보기") } }) {
+            for (type in ExamType.selectable) {
+                val next = ExamSchedule.nextOfType(regs, type, now)
+                Text(
+                    next?.let { "${type.label} · ${it.date?.monthDay() ?: it.dateLocal} · ${it.state.label}" } ?: "${type.label} 일정 미정",
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+            }
+            retake.sailEarliest?.let {
+                Text("SAIL 일반 재응시 ${it.monthDay()}부터", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+
         SectionCard(title = "다음 시험 추천", trailing = { SourceTag("학습용 판단") }) {
             Text(advice.verdict.label, style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.primary)
             Spacer(Modifier.height(8.dp))
@@ -104,7 +119,7 @@ fun NextExamScreen(onOpenSettings: () -> Unit) {
                 MetricTile("재응시 가능", "${advice.earliest.monthValue}/${advice.earliest.dayOfMonth}", hint = if (rulesOf(s, retake.waiverAvailable).useWaiver) "Waiver 사용" else "공식 규정")
                 advice.recommended?.let { MetricTile("추천 응시일", "${it.monthValue}/${it.dayOfMonth}") }
                 advice.registerBy?.let { MetricTile("접수 권장", "${it.monthValue}/${it.dayOfMonth}까지") }
-                advice.latestUseful?.let { MetricTile("마감 전 마지막", "${it.monthValue}/${it.dayOfMonth}", hint = "결과 ${s.resultLagDays}일 가정") }
+                advice.latestUseful?.let { MetricTile("마감 전 마지막", "${it.monthValue}/${it.dayOfMonth}", hint = "발표 예정 D+${ExamResults.OPIC_LAG_DAYS}") }
             }
             Spacer(Modifier.height(10.dp))
             advice.reasons.forEach { Bullet(it) }
@@ -124,11 +139,12 @@ fun NextExamScreen(onOpenSettings: () -> Unit) {
                             c.exams.save(
                                 ExamRegistrationEntity(
                                     examType = ExamType.OPIC.name, dateLocal = rec.toString(), status = RegistrationStatus.PLANNED.name,
+                                    waiverPlanned = rulesOf(s, retake.waiverAvailable).useWaiver,
                                     memo = "학습 추천일을 계획으로 추가함. 실제 접수 가능 회차는 확인 전입니다.", sourceType = RegistrationSource.USER.name,
                                 ),
                                 "추천일을 계획으로 추가",
                             )
-                            message = "$rec OPIc을 '접수 예정 (미확정)'으로 추가했습니다. 실제로 접수하면 시험 일정에서 '접수 완료'로 바꾸세요. 접수 완료 전에는 홈 D-day가 바뀌지 않습니다."
+                            message = "${rec.monthDay()} OPIc을 접수 예정으로 추가했습니다."
                         }
                     }) { Text("계획으로 추가") }
                 }
@@ -155,9 +171,10 @@ fun NextExamScreen(onOpenSettings: () -> Unit) {
 
         SectionCard(title = "적용 중인 규칙", trailing = { OutlinedButton(onClick = onOpenSettings) { Text("수정") } }) {
             Bullet("OPIc: 응시일 다음 날부터 25일 제한, D+26부터 응시 가능 (${ExamPolicy.OPIC_RULE_SOURCE})")
-            Bullet("SAIL: 응시일 다음 날부터 ${s.retakeDays}일 제한으로 가정 · ${if (s.retakeVerified) "사용자 확인" else "사내 규정 미검증"} · OPIc과 ${if (s.sailSharesOpicLimit) "제한 공유" else "독립 계산"}")
-            Bullet("결과 발표까지 ${s.resultLagDays}일 가정 · 접수는 응시 ${s.registerLeadDays}일 전까지로 가정")
-            Bullet("등급 마감일 ${s.gradeDeadline ?: "없음"}")
+            Bullet("SAIL은 응시일 다음 날부터 ${retake.sailPolicy.blockedDays}일 제한 · ${retake.sailPolicy.verification.label}")
+            Bullet("성적 발표 예정 · OPIc D+${ExamResults.OPIC_LAG_DAYS}, SAIL D+${ExamResults.SAIL_LAG_DAYS}")
+            Bullet("OPIc 접수 권장일은 응시 ${s.registerLeadDays}일 전으로 계산합니다.")
+            s.gradeDeadline?.let { Bullet("등급 마감일 ${it.monthDay()}") }
             Bullet(if (s.examSlots.isEmpty()) "회차 제한 없음 (원하는 날짜 응시 가능으로 계산)" else "사내 회차: ${s.slotDates().joinToString()}")
         }
 
@@ -281,7 +298,7 @@ private fun SailDebriefCard(reg: ExamRegistrationEntity, today: LocalDate, row: 
     var stuck by remember(row?.id) { mutableStateOf(row?.stuckPoints.orEmpty()) }
     var tempo by remember(row?.id) { mutableStateOf(SailDebriefNote.tempo(row?.note.orEmpty())) }
     var feeling by remember(row?.id) { mutableIntStateOf(row?.feeling?.takeIf { it > 0 } ?: 3) }
-    var grade by remember(row?.id) { mutableStateOf(row?.resultGrade ?: reg.resultGrade.orEmpty()) }
+    var grade by remember(row?.id, reg.resultGrade) { mutableStateOf(reg.resultGrade ?: row?.resultGrade.orEmpty()) }
     var saved by remember { mutableStateOf<String?>(if (row?.debriefAt != null) "저장된 복기가 있습니다. 수정 후 다시 저장할 수 있습니다." else null) }
 
     SectionCard(title = "${date.monthValue}/${date.dayOfMonth} SAIL 시험 복기", trailing = { SourceTag("정찰 기록") }) {
@@ -321,7 +338,7 @@ private fun RetakePathsCard(r: RetakeSummary, s: Settings, onPlanWithWaiver: (Bo
                 (w.regrantOn?.let { " · 다시 생기는 날 $it" } ?: ""),
             style = MaterialTheme.typography.bodyMedium,
         )
-        Text("기준 응시: ${r.opicLast ?: "기록 없음"}" + (r.latestUseful?.let { " · 결과가 마감 전에 나오는 마지막 응시일 $it (결과 ${s.resultLagDays}일 가정)" } ?: ""),
+        Text("기준 응시 ${r.opicLast ?: "기록 없음"}" + (r.latestUseful?.let { " · 마감 전 마지막 응시일 ${it.monthDay()}" } ?: ""),
             style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Spacer(Modifier.height(8.dp))
         r.opicPaths.forEach { p ->

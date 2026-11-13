@@ -57,6 +57,7 @@ import com.opicih.coach.data.prefs.CaptureMode
 import com.opicih.coach.data.prefs.LearnerGrade
 import com.opicih.coach.learning.latestResultGrade
 import com.opicih.coach.data.prefs.Settings
+import com.opicih.coach.data.repo.ExamRepository
 import com.opicih.coach.data.prefs.StudyLevel
 import com.opicih.coach.ai.GeminiAiCoach
 import com.opicih.coach.data.secure.ApiKeyStore
@@ -124,15 +125,16 @@ fun SettingsScreen(onExams: () -> Unit = {}) {
         }
 
         SectionCard(title = "재응시 규칙 (다음 시험 추천에 사용)", collapsible = true, initiallyExpanded = false) {
-            Text("OPIc은 공식 시험관리규정 제5조를 씁니다: 응시일 다음 날부터 25일 제한, D+26부터 응시 가능, Waiver 150일마다 1회.",
+            Text("OPIc과 SAIL은 재응시 제한과 웨이버를 각각 계산합니다.",
                 style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            NumberRow("OPIc Waiver 보유 수 (${s.opicWaiverDeclaredOn} 기준)", s.opicWaivers.coerceAtLeast(0)) { v ->
-                save { it.copy(opicWaivers = v.coerceIn(0, 5), opicWaiverDeclaredOn = LocalDate.now()) }
+            NumberRow("OPIc 웨이버 보유 수 (${s.opicWaiverDeclaredOn.monthDay()} 기준)", s.opicWaivers.coerceAtLeast(0)) { v ->
+                save { it.copy(opicWaivers = v.coerceIn(0, 5), opicWaiverDeclaredOn = ExamRepository.nowKst().toLocalDate()) }
+            }
+            NumberRow("SAIL 웨이버 보유 수 (${s.sailWaiverDeclaredOn.monthDay()} 기준)", s.sailWaivers.coerceAtLeast(0)) { v ->
+                save { it.copy(sailWaivers = v.coerceIn(0, 5), sailWaiverDeclaredOn = ExamRepository.nowKst().toLocalDate()) }
             }
             NumberRow("SAIL 재응시 제한(일, 응시일 제외)", s.retakeDays) { v -> save { it.copy(retakeDays = v.coerceIn(0, 120)) } }
-            ToggleRow("SAIL 제한을 사내 공지에서 확인함", s.retakeVerified) { v -> save { it.copy(retakeVerified = v) } }
-            ToggleRow("SAIL과 OPIc이 재응시 제한을 공유함 (기본: 독립)", s.sailSharesOpicLimit) { v -> save { it.copy(sailSharesOpicLimit = v) } }
-            NumberRow("결과 발표까지(일)", s.resultLagDays) { v -> save { it.copy(resultLagDays = v.coerceIn(0, 60)) } }
+            ToggleRow("SAIL 재응시 규칙을 확인함", s.retakeVerified) { v -> save { it.copy(retakeVerified = v) } }
             NumberRow("접수 마감: 응시 며칠 전", s.registerLeadDays) { v -> save { it.copy(registerLeadDays = v.coerceIn(0, 60)) } }
             var deadline by remember(s.gradeDeadline) { mutableStateOf(s.gradeDeadline?.toString().orEmpty()) }
             OutlinedTextField(

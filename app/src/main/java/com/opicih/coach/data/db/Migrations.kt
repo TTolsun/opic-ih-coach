@@ -82,4 +82,9 @@ object MigrationSql {
         "CREATE UNIQUE INDEX IF NOT EXISTS `index_morning_reviews_routineId_itemIndex` ON `morning_reviews` (`routineId`, `itemIndex`)",
         "CREATE INDEX IF NOT EXISTS `index_morning_reviews_chunkId` ON `morning_reviews` (`chunkId`)",
     )
+
+    val V8_TO_V9 = listOf(
+        "ALTER TABLE `exam_registrations` ADD COLUMN `waiverPlanned` INTEGER",
+        "CREATE TABLE IF NOT EXISTS `exam_data_updates` (`version` INTEGER NOT NULL, PRIMARY KEY(`version`))",
+    )
 }

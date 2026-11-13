@@ -28,6 +28,16 @@ data class InfoTopic(val title: String, val facts: List<String>)
  * Screens show an ⓘ button that opens this; they do not repeat these sentences inline.
  */
 object InfoTopics {
+    val EXAM_SCHEDULE = InfoTopic(
+        "시험 일정 안내",
+        listOf(
+            "접수 예정은 회차와 좌석을 확인하기 전의 계획입니다. 접수 완료 일정부터 홈의 D-day에 반영됩니다.",
+            "OPIc은 시험 5일 뒤 오후 1시 이후, SAIL은 시험 다음 날에 성적 발표를 예상합니다. 실제 회차 안내를 우선하세요.",
+            "OPIc과 SAIL은 재응시 제한과 웨이버를 각각 계산합니다. 예정 일정의 재응시 가능일은 앞선 일정대로 응시한다고 가정합니다.",
+            "웨이버 사용 예정은 보유 수에 영향을 주지 않습니다. 실제 사용을 기록하면 해당 시험의 보유 수에 반영됩니다.",
+        ),
+    )
+
     val MEASUREMENT = InfoTopic(
         "측정 기준",
         listOf(
