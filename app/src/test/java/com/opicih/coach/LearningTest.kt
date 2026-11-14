@@ -214,7 +214,7 @@ class SeedAssetsTest {
 
     @Test fun contentSeed() {
         val c = json.decodeFromString(SeedContent.serializer(), asset("content.json").readText())
-        assertEquals(7, c.stories.size)
+        assertEquals(9, c.stories.size)
         assertTrue(c.chunks.size >= 40)
         assertTrue(c.questions.size >= 70)
         assertTrue(c.questions.all { it.source == "USER_LIST" || it.source == "AI_GENERATED" })

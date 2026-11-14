@@ -6,7 +6,9 @@
     {"id": "S4", "titleKo": "어린 시절 소파 트램펄린", "summary": "소파 위에서 뛰다 부숨 → 작년에 엄마께 새 소파 선물", "tags": "home,family", "reusableFor": "가구, 집, 가족, 어린 시절, 선물"},
     {"id": "S5", "titleKo": "공원 조깅 충돌", "summary": "음악에 빠져 여성과 충돌, 사과, 지금은 볼륨 낮춤", "tags": "park,music,exercise", "reusableFor": "공원, 음악, 운동, 이어폰/기기"},
     {"id": "S6", "titleKo": "중국 출장", "summary": "고층 빌딩, 고급차, 빈부격차", "tags": "work,travel", "reusableFor": "지리, 직장, 출장, 사회 이슈"},
-    {"id": "S7", "titleKo": "회색 소파와 게임", "summary": "거실 회색 소파, 큰 TV 게임, lose track of time, recharge", "tags": "home,hobby", "reusableFor": "집, 휴가, 루틴, 취미, 가전/기술"}
+    {"id": "S7", "titleKo": "회색 소파와 게임", "summary": "거실 회색 소파, 큰 TV 게임, lose track of time, recharge", "tags": "home,hobby", "reusableFor": "집, 휴가, 루틴, 취미, 가전/기술"},
+    {"id": "S8", "titleKo": "라라랜드", "summary": "좋아하는 로맨스 뮤지컬 영화, 꿈과 현실 사이에서 고민하는 두 주인공, 음악과 춤", "tags": "movie,music", "reusableFor": "영화, 공연, 음악, 좋아하는 배우"},
+    {"id": "S9", "titleKo": "군대 시절 Rain → 지금 BTS", "summary": "군대 시절 댄스 음악과 비(Rain)의 'Rainism'을 좋아함, 들으면 춤추는 기분, 지금은 BTS를 들음", "tags": "music,past", "reusableFor": "음악, 취향 변화, 과거와 현재 비교, 군대"}
   ],
   "errors": [
     {"key": "routine_in_past", "category": "GRAMMAR", "example": "After grabbing popcorn, I found my seat. (루틴)", "correction": "Then I grab some popcorn and find my seat."},

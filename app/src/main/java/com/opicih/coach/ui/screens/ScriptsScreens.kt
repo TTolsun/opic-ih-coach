@@ -208,6 +208,16 @@ fun ScriptDetailScreen(id: Long, onPractice: (Long, PracticeMode) -> Unit, onEdi
                     modifier = Modifier.clickable(onClick = onStories),
                 )
             }
+            // The learner links (or unlinks) stories here, including scripts they imported themselves.
+            var pickStory by remember { mutableStateOf(false) }
+            if (stories.isNotEmpty()) TextButton(onClick = { pickStory = true }) {
+                Text(if (StoryMap.storyIdsOf(s).isEmpty()) "이야기 연결하기" else "이야기 바꾸기")
+            }
+            if (pickStory) StoryPickerDialog(stories, StoryMap.storyIdsOf(s), onDismiss = { pickStory = false }) { ids ->
+                pickStory = false
+                // "" (not null) marks "no story" chosen on purpose, so bundled links are not filled in again.
+                scope.launch { c.dao.updateScript(s.copy(storyIds = ids.joinToString(","), updatedAt = System.currentTimeMillis())) }
+            }
         }
 
         // Practice entry points
@@ -493,4 +503,31 @@ fun ImportScreen(onDone: () -> Unit) {
             }, modifier = Modifier.fillMaxWidth()) { Icon(Icons.Filled.Add, null); Spacer(Modifier.width(6.dp)); Text("${parsed.size}개 가져오기") }
         }
     }
+}
+
+/** Pick the stories an answer tells. Several can be chosen; none is allowed. */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun StoryPickerDialog(
+    stories: List<com.opicih.coach.data.db.StoryEntity>,
+    current: List<String>,
+    onDismiss: () -> Unit,
+    onSave: (List<String>) -> Unit,
+) {
+    var picked by remember { mutableStateOf(current.toSet()) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("이 답변의 이야기") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("이 답변에서 말하는 실제 이야기를 고르세요. 묘사나 습관 답변도 예로 붙일 이야기가 있으면 고릅니다.",
+                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    stories.forEach { st -> Pill(st.titleKo, st.id in picked) { picked = if (st.id in picked) picked - st.id else picked + st.id } }
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = { onSave(stories.map { it.id }.filter { it in picked }) }) { Text("저장") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("취소") } },
+    )
 }

@@ -47,7 +47,7 @@ fun StoriesScreen(onOpenScript: (Long) -> Unit) {
         item {
             Spacer(Modifier.height(12.dp))
             Text(
-                "실제 이야기 ${map.uses.size}개가 답변 ${list.size - map.withoutStory.size}개에 쓰입니다. " +
+                "실제 이야기 ${map.uses.size}개가 답변 ${map.uses.flatMap { it.scripts }.distinctBy { it.id }.size}개에 쓰입니다. " +
                     "새 질문을 받으면 질문에 맞는 이야기를 골라 그 장면으로 답하세요. 문장을 외우기보다 장면과 순서를 기억하는 편이 낫습니다.",
                 style = MaterialTheme.typography.bodyMedium,
             )

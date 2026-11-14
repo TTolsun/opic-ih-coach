@@ -1,5 +1,6 @@
 package com.opicih.coach.learning
 
+import com.opicih.coach.data.db.QuestionType
 import com.opicih.coach.data.db.ScriptEntity
 import com.opicih.coach.data.db.StoryEntity
 
@@ -36,7 +37,8 @@ object StoryMap {
             if (linked.isEmpty()) null else StoryUse(story, linked)
         }
         // A script whose ids point only at missing stories counts as "no story" so it is not silently dropped.
-        val withoutStory = scripts.filter { s -> storyIdsOf(s).none { it in known } }
+        // Roleplay answers follow a call template (ask, solve, …) rather than a personal story, so they are not listed.
+        val withoutStory = scripts.filter { s -> s.questionType != QuestionType.ROLEPLAY.name && storyIdsOf(s).none { it in known } }
         return Result(uses, withoutStory)
     }
 
