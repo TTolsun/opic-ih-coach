@@ -1,5 +1,6 @@
 package com.opicih.coach.data.repo
 
+import com.opicih.coach.analysis.TransferCheck
 import com.opicih.coach.ai.AiCoach
 import com.opicih.coach.ai.EvalInput
 import com.opicih.coach.ai.ScriptInput
@@ -53,6 +54,8 @@ data class AttemptMetrics(
     val localScore: Int? = null,
     /** This record uses the flow score. False for memorization scores and older rubric scores. */
     val speakingFlow: Boolean = false,
+    /** 새 질문 적용 체크 for 바뀐 질문 / 응용 미션. Null for other modes and older rows. */
+    val transfer: TransferCheck? = null,
 ) {
     companion object {
         fun from(attempt: PracticeAttemptEntity): AttemptMetrics? =
@@ -199,15 +202,23 @@ class PracticeRepository(private val db: AppDatabase) {
             val verbatim = req.captureMode == CAPTURE_CLOUD_STT && discourse.wordCount > 0
             val target = req.target ?: req.script?.studyText?.takeIf { req.mode.comparesToScript }
             val compare = target?.takeIf { text.isNotBlank() }?.let { ScriptComparator.compare(it, text, req.script?.keywordList().orEmpty()) }
+            val input = AnalysisInput(
+                req.questionType, target != null, text, discourse, req.pauses, compare, req.transcriptFromDeviceStt,
+                req.requiredTense, scoreKind, req.question, req.mission, req.missionQuestion,
+            )
             val composed = if (text.isBlank() && req.pauses != null && !req.transcriptFromDeviceStt) {
                 FeedbackComposer.acousticOnly(req.pauses)
             } else {
-                FeedbackComposer.compose(
-                    AnalysisInput(
-                        req.questionType, target != null, text, discourse, req.pauses, compare, req.transcriptFromDeviceStt,
-                        req.requiredTense, scoreKind, req.question, req.mission, req.missionQuestion,
-                    )
-                )
+                FeedbackComposer.compose(input)
+            }
+            // Transfer drills are judged as answers to the new question; the script only checks the story came back.
+            val transfer = if ((req.mode == PracticeMode.RANDOM || req.mode == PracticeMode.VARIATION) && text.isNotBlank()) {
+                val reuse = req.script?.studyText?.takeIf { it.isNotBlank() }?.let { study ->
+                    compare?.coverage ?: ScriptComparator.compare(study, text).coverage
+                }
+                TransferCheck.of(input, reuse)
+            } else {
+                null
             }
             val local = composed.copy(limits = composed.limits + listOfNotNull(req.captureNote))
             var feedback = local
@@ -243,6 +254,7 @@ class PracticeRepository(private val db: AppDatabase) {
             val metrics = AttemptMetrics(
                 discourse, req.pauses, compare, errorAnalysis.counts,
                 local.score.takeIf { local.scoreMeasured }, speakingFlow = scoreKind == ScoreKind.SPEAKING,
+                transfer = transfer,
             )
             val speechMs = req.pauses?.speechMs ?: 0L
             val attempt = PracticeAttemptEntity(
@@ -284,14 +296,14 @@ class PracticeRepository(private val db: AppDatabase) {
         val masteryScore = if (req.mode == PracticeMode.VARIATION) {
             feedback.relevance.takeIf { feedback.source == "AI" }?.let {
                 if (feedback.errors.any { error -> error.key in setOf("task_incomplete", "off_topic_response", "question_echo") }) 0 else it
-            }
+            } ?: metrics.transfer?.score // Without AI the local transfer check grades the drill (it used to be skipped).
         } else {
             feedback.score
         }
         req.script?.takeIf { req.transcript.isNotBlank() && masteryScore != null }?.let { s ->
             val evaluatedScore = requireNotNull(masteryScore)
-            val m = MasteryRules.apply(s.mastery, s.masteryScore, req.mode, compare?.coverage, evaluatedScore)
-            val srs = SrsScheduler.next(s.srsStep, SrsScheduler.isSuccess(req.mode, compare?.coverage, evaluatedScore), today, examEpochDay)
+            val m = MasteryRules.apply(s.mastery, s.masteryScore, req.mode, compare?.coverage, evaluatedScore, metrics.transfer)
+            val srs = SrsScheduler.next(s.srsStep, SrsScheduler.isSuccess(req.mode, compare?.coverage, evaluatedScore, metrics.transfer), today, examEpochDay)
             dao.updateScript(s.copy(masteryState = m.state.name, masteryScore = m.score, srsStep = srs.step, dueEpochDay = srs.dueEpochDay, lastReviewedAt = System.currentTimeMillis()))
         }
 

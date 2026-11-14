@@ -61,6 +61,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import com.opicih.coach.learning.StoryMap
+import androidx.compose.runtime.produceState
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.opicih.coach.data.db.ContentSource
@@ -95,6 +97,7 @@ fun ScriptsScreen(
     onImport: () -> Unit,
     onFrames: () -> Unit,
     onListen: () -> Unit,
+    onStories: () -> Unit = {},
     pendingOnly: Boolean = false,
 ) {
     val c = LocalContainer.current
@@ -124,6 +127,8 @@ fun ScriptsScreen(
                     if (scripts.isNotEmpty()) {
                         Spacer(Modifier.height(8.dp))
                         FilledTonalButton(onClick = onListen, modifier = Modifier.fillMaxWidth()) { Icon(Icons.Filled.Headphones, null); Spacer(Modifier.width(6.dp)); Text("소리로 듣기 (하루 종일 재생)") }
+                        Spacer(Modifier.height(8.dp))
+                        OutlinedButton(onClick = onStories, modifier = Modifier.fillMaxWidth()) { Text("이야기 묶음 보기 (어떤 답변이 같은 이야기를 쓰는지)") }
                     }
                 }
                 if (filtered.isEmpty()) {
@@ -164,7 +169,7 @@ fun ScriptsScreen(
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun ScriptDetailScreen(id: Long, onPractice: (Long, PracticeMode) -> Unit, onEdit: (Long) -> Unit, onDeleted: () -> Unit) {
+fun ScriptDetailScreen(id: Long, onPractice: (Long, PracticeMode) -> Unit, onEdit: (Long) -> Unit, onDeleted: () -> Unit, onStories: () -> Unit = {}) {
     val c = LocalContainer.current
     val scope = rememberCoroutineScope()
     val script by c.dao.scriptFlow(id).collectAsState(initial = null)
@@ -192,6 +197,17 @@ fun ScriptDetailScreen(id: Long, onPractice: (Long, PracticeMode) -> Unit, onEdi
             Spacer(Modifier.height(6.dp))
             val dueIn = s.dueEpochDay - LocalDate.now().toEpochDay()
             Text(if (dueIn <= 0) "오늘 복습" else "${dueIn}일 뒤 복습 · 예상 발화 ${s.estSeconds}초", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            // Which real story this answer tells, and where else that story is used (C: 이야기 묶음).
+            val allScripts by c.dao.scriptsFlow().collectAsState(initial = emptyList())
+            val stories by produceState(emptyList<com.opicih.coach.data.db.StoryEntity>()) { value = c.dao.stories() }
+            StoryMap.siblings(s, stories, allScripts).forEach { (story, others) ->
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    "이야기: ${story.titleKo}" + if (others.isEmpty()) "" else " · 다른 답변 ${others.size}개에서도 사용 (${others.joinToString { it.topic }})",
+                    style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.clickable(onClick = onStories),
+                )
+            }
         }
 
         // Practice entry points

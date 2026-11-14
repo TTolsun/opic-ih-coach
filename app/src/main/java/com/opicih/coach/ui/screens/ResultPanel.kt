@@ -117,6 +117,16 @@ internal fun ResultPanel(r: AnalyzedAttempt, ui: SpeakingUi, vm: SpeakingViewMod
             Spacer(Modifier.height(8.dp))
         }
 
+        // 바뀐 질문 / 응용 미션: the four transfer checks come first, because they decide the 응용 가능 step.
+        r.metrics.transfer?.let { t ->
+            Text(if (t.passed) "새 질문 적용: 통과" else "새 질문 적용: ${t.items.count { it.second }}/${t.items.size}",
+                style = MaterialTheme.typography.titleSmall, color = if (t.passed) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.tertiary)
+            t.items.forEach { (label, ok) ->
+                Text((if (ok) "✓ " else "✗ ") + label, style = MaterialTheme.typography.bodyMedium,
+                    color = if (ok) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.tertiary)
+            }
+            Spacer(Modifier.height(8.dp))
+        }
         fb.fixes.firstOrNull()?.let { FocusFix(it) }
         // The retry mission usually asks to add missing sentences, so the first two stay visible here.
         val missing = r.metrics.compare.takeIf { scoreKind == ScoreKind.MEMORIZATION }?.sentences?.filter { !it.covered }.orEmpty()
