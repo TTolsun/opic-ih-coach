@@ -250,6 +250,19 @@ fun ScriptDetailScreen(id: Long, onPractice: (Long, PracticeMode) -> Unit, onEdi
                 SectionCard(title = ScriptVersion.of(r.version).label, trailing = { SourceTag(RevisionOrigin.entries.firstOrNull { it.name == r.origin }?.label ?: r.origin) }) {
                     if (r.version == ScriptVersion.KEYWORDS.name) Text(r.text, style = MaterialTheme.typography.bodyMedium)
                     else GlossaryText(r.text, s.id, style = MaterialTheme.typography.bodyMedium)
+                    val rv = ScriptVersion.of(r.version)
+                    Spacer(Modifier.height(6.dp))
+                    // Length against the original, so a proposal that shortens the answer is visible before approving.
+                    if (rv == ScriptVersion.IH_TARGET || rv == ScriptVersion.NATURAL) {
+                        val words = { t: String -> t.trim().split(Regex("\\s+")).count { it.isNotEmpty() } }
+                        Text("원문 ${words(s.original)}단어 → 개선안 ${GradeTargets.fitLabel(words(r.text), settings.targetGrade)}",
+                            style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    Text(
+                        if (rv.becomesStudyTextOnApprove) "승인하면 이 버전이 학습본이 됩니다. 원문은 그대로 남습니다."
+                        else "승인해도 학습본은 바뀌지 않습니다.",
+                        style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                     if (r.reasonKo.isNotBlank()) {
                         Spacer(Modifier.height(8.dp))
                         Text("변경 이유", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
