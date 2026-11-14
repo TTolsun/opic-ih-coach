@@ -45,6 +45,7 @@ import com.opicih.coach.ui.screens.CoachScreen
 import com.opicih.coach.ui.screens.ExamDebriefScreen
 import com.opicih.coach.ui.screens.ExamsScreen
 import com.opicih.coach.ui.screens.FramesScreen
+import com.opicih.coach.ui.screens.StoriesScreen
 import com.opicih.coach.ui.screens.HomeScreen
 import com.opicih.coach.ui.screens.ListenScreen
 import com.opicih.coach.ui.screens.ImportScreen
@@ -75,7 +76,7 @@ private val tabs = listOf(
 private val titles = mapOf(
     "script/{id}" to "스크립트", "scriptEdit/{id}" to "스크립트 편집", "import" to "스크립트 가져오기",
     "settings" to "설정", "nextExam" to "다음 OPIc 추천", "exams" to "시험 일정", "sail" to "SAIL 대화 연습", "morning" to "아침 표현 루틴", "coach" to "AI 코치",
-    "listen" to "스크립트 듣기", "review/{id}" to "다시 말하기",
+    "listen" to "스크립트 듣기", "review/{id}" to "다시 말하기", "stories" to "이야기 묶음",
     "pendingRevisions" to "승인 대기 개선안", "examDebrief/{day}/{registrationId}" to "시험 복기",
 )
 
@@ -177,6 +178,7 @@ fun AppNav(startRoute: String?, onRouteConsumed: () -> Unit) {
                         onImport = { nav.navigate("import") },
                         onFrames = { nav.navigate("frames") },
                         onListen = { nav.navigate("listen") },
+                        onStories = { nav.navigate("stories") },
                         pendingOnly = listRoute == "pendingRevisions",
                     )
                 }
@@ -196,6 +198,7 @@ fun AppNav(startRoute: String?, onRouteConsumed: () -> Unit) {
                 SpeakingScreen(null, PracticeMode.FREE, reviewId = e.arguments!!.getLong("id"), onOpenFrames = { nav.navigate("frames") })
             }
             composable("frames") { FramesScreen() }
+            composable("stories") { StoriesScreen(onOpenScript = { nav.navigate("script/$it") }) }
             composable("mock") { MockScreen() }
             composable("progress") { ProgressScreen(onNextExam = { nav.navigate("nextExam") }, onExams = { nav.navigate("exams") }) }
             composable("script/{id}", arguments = listOf(navArgument("id") { type = NavType.LongType })) { e ->
@@ -204,6 +207,7 @@ fun AppNav(startRoute: String?, onRouteConsumed: () -> Unit) {
                     onPractice = { sid, m -> nav.navigate("speaking?scriptId=$sid&mode=${m.name}") },
                     onEdit = { nav.navigate("scriptEdit/$it") },
                     onDeleted = { nav.popBackStack() },
+                    onStories = { nav.navigate("stories") },
                 )
             }
             composable("scriptEdit/{id}", arguments = listOf(navArgument("id") { type = NavType.LongType })) { e ->
@@ -240,7 +244,7 @@ fun AppNav(startRoute: String?, onRouteConsumed: () -> Unit) {
 
 /** Routes whose open time counts as study (not home / progress / settings / exams / nextExam / import / scriptEdit). */
 internal fun isStudyRoute(route: String?): Boolean = route != null && (
-    route == "scripts" || route == "pendingRevisions" || route == "script/{id}" || route == "review/{id}" ||
+    route == "scripts" || route == "pendingRevisions" || route == "script/{id}" || route == "review/{id}" || route == "stories" ||
         listOf("speaking", "mock", "sail", "coach", "morning").any { route.startsWith(it) }
     )
 

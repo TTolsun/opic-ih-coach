@@ -274,11 +274,11 @@ class SpeakingViewModel(app: Application) : AndroidViewModel(app) {
             PracticeMode.RANDOM -> {
                 val alt = bank.filter { b -> b.type == s.questionType && (b.topic.contains(s.topic.substringBefore(" "), true) || s.topic.contains(b.topic.substringBefore(" "), true)) && b.text != s.question }
                     .randomOrNull()?.text ?: rephrase(s)
-                QuestionItem(s.topic, alt, s.questionType, "다른 표현 질문", s)
+                QuestionItem(s.topic, alt, s.questionType, PracticeMode.RANDOM.label, s)
             }
             PracticeMode.VARIATION -> {
                 val (mission, tense, question) = variations(s).random()
-                QuestionItem(s.topic, s.question, s.questionType, "응용 챌린지", s, mission, tense, missionQuestion = question)
+                QuestionItem(s.topic, s.question, s.questionType, PracticeMode.VARIATION.label, s, mission, tense, missionQuestion = question)
             }
             else -> QuestionItem(s.topic, s.question, s.questionType, label, s)
         }
