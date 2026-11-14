@@ -18,6 +18,7 @@ import com.opicih.coach.data.db.ScriptEntity
 import com.opicih.coach.data.db.ScriptRevisionEntity
 import com.opicih.coach.data.db.SentenceFrameEntity
 import com.opicih.coach.data.db.ScriptSegmentEntity
+import com.opicih.coach.data.db.StoryEntity
 import com.opicih.coach.data.db.WordLookupEntity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -36,8 +37,8 @@ class BackupManager(private val context: Context, private val db: AppDatabase) {
     companion object {
         /** 1 = learning data only. 2 = adds the exam schedule. 3 = adds mock tests and the columns v2 dropped.
          *  4 = adds script glossary lookups. 5 = adds sentence frames. 6 = adds English-Korean script segments.
-         *  7 = adds pending free-speaking reviews. */
-        const val CURRENT_VERSION = 7
+         *  7 = adds pending free-speaking reviews. 8 = adds stories (the learner can create their own). */
+        const val CURRENT_VERSION = 8
         private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
         fun encode(snap: Snapshot): String = json.encodeToString(Snapshot.serializer(), snap)
         /** Columns missing from older files fall back to the entity defaults. */
@@ -128,6 +129,8 @@ class BackupManager(private val context: Context, private val db: AppDatabase) {
         fun SentenceFrameEntity.toBackup() = BFrame(pattern, hintKo, example, sourceScriptId, origin, status, createdAt)
         fun BFrame.toEntity() = SentenceFrameEntity(pattern = pattern, hintKo = hintKo, example = example, sourceScriptId = sourceScriptId,
             origin = origin, status = status, createdAt = createdAt)
+        fun StoryEntity.toBackup() = BStory(id, titleKo, summary, tags, reusableFor)
+        fun BStory.toEntity() = StoryEntity(id, titleKo, summary, tags, reusableFor)
         fun ScriptSegmentEntity.toBackup() = BSegment(scriptId, version, sourceHash, kind, idx, en, ko, createdAt)
         fun BSegment.toEntity() = ScriptSegmentEntity(scriptId = scriptId, version = version, sourceHash = sourceHash, kind = kind,
             idx = idx, en = en, ko = ko, createdAt = createdAt)
@@ -156,6 +159,8 @@ class BackupManager(private val context: Context, private val db: AppDatabase) {
         val frames: List<BFrame> = emptyList(),
         /** v6: older files have none, so a restore leaves the translations to be generated again. */
         val segments: List<BSegment> = emptyList(),
+        /** v8: stories, including ones the learner made; scripts point at them through storyIds. */
+        val stories: List<BStory> = emptyList(),
     )
 
     // Serializable mirrors of the entities (keeps Room entities free of serialization annotations).
@@ -195,6 +200,7 @@ class BackupManager(private val context: Context, private val db: AppDatabase) {
     @Serializable data class BStatusEvent(val registrationId: Long, val fromStatus: String?, val toStatus: String, val effectiveDate: String?, val note: String, val createdAt: Long)
     @Serializable data class BLookup(val phrase: String, val scriptId: Long, val surface: String, val sentence: String, val count: Int, val firstAt: Long, val lastAt: Long)
     @Serializable data class BFrame(val pattern: String, val hintKo: String, val example: String?, val sourceScriptId: Long?, val origin: String, val status: String, val createdAt: Long)
+    @Serializable data class BStory(val id: String, val titleKo: String, val summary: String, val tags: String, val reusableFor: String)
     @Serializable data class BSegment(val scriptId: Long, val version: String, val sourceHash: String, val kind: String, val idx: Int, val en: String, val ko: String, val createdAt: Long = 0)
     @Serializable data class BTrainingSession(val id: Long, val examType: String, val kind: String, val startedAt: Long, val finishedAt: Long?, val turnCount: Int, val aiCalls: Int, val summaryJson: String?)
 
@@ -215,6 +221,7 @@ class BackupManager(private val context: Context, private val db: AppDatabase) {
             lookups = d.lookups().map { it.toBackup() },
             frames = d.frames().map { it.toBackup() },
             segments = d.segments().map { it.toBackup() },
+            stories = d.stories().map { it.toBackup() },
         )
         context.contentResolver.openOutputStream(uri, "wt")?.use { it.write(encode(snap).toByteArray()) }
             ?: error("백업 파일을 만들 수 없습니다.")
@@ -249,6 +256,9 @@ class BackupManager(private val context: Context, private val db: AppDatabase) {
             // Same reason: segments belong to the script ids that were just restored from this file.
             // Older files have none: keep the current rows (they are validated by hash, so a mismatching one is simply ignored).
             if (snap.version >= 6) { d.clearSegments(); d.insertSegments(snap.segments.map { it.toEntity() }) }
+            // Stories are added or replaced by id, never cleared: bundled ones are reseeded anyway, and an older file
+            // without stories must not remove the ones restored scripts still point at.
+            if (snap.version >= 8) d.insertStories(snap.stories.map { it.toEntity() })
             if (hasSchedule) {
                 d.insertRegistrations(snap.registrations.map { it.toEntity() })
                 d.insertStatusEvents(snap.statusEvents.map { it.toEntity() })

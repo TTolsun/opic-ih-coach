@@ -71,7 +71,8 @@ fun StoriesScreen(onOpenScript: (Long) -> Unit) {
 
 @Composable
 private fun StoryCard(use: StoryMap.StoryUse, onOpenScript: (Long) -> Unit) {
-    SectionCard(title = use.story.titleKo, trailing = { SourceTag("답변 ${use.scripts.size}개") }) {
+    val own = use.story.tags == "user"
+    SectionCard(title = use.story.titleKo, trailing = { SourceTag((if (own) "직접 만듦 · " else "") + "답변 ${use.scripts.size}개") }) {
         if (use.story.summary.isNotBlank()) Text(use.story.summary, style = MaterialTheme.typography.bodyMedium)
         if (use.story.reusableFor.isNotBlank()) {
             Text("이런 질문에 쓸 수 있습니다: ${use.story.reusableFor}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)

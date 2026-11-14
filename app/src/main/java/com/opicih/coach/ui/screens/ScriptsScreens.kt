@@ -199,7 +199,8 @@ fun ScriptDetailScreen(id: Long, onPractice: (Long, PracticeMode) -> Unit, onEdi
             Text(if (dueIn <= 0) "오늘 복습" else "${dueIn}일 뒤 복습 · 예상 발화 ${s.estSeconds}초", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             // Which real story this answer tells, and where else that story is used (C: 이야기 묶음).
             val allScripts by c.dao.scriptsFlow().collectAsState(initial = emptyList())
-            val stories by produceState(emptyList<com.opicih.coach.data.db.StoryEntity>()) { value = c.dao.stories() }
+            // Re-read when the links change, so a story created in the picker shows up right after saving.
+            val stories by produceState(emptyList<com.opicih.coach.data.db.StoryEntity>(), s.storyIds) { value = c.dao.stories() }
             StoryMap.siblings(s, stories, allScripts).forEach { (story, others) ->
                 Spacer(Modifier.height(6.dp))
                 Text(
@@ -213,7 +214,10 @@ fun ScriptDetailScreen(id: Long, onPractice: (Long, PracticeMode) -> Unit, onEdi
             if (stories.isNotEmpty()) TextButton(onClick = { pickStory = true }) {
                 Text(if (StoryMap.storyIdsOf(s).isEmpty()) "이야기 연결하기" else "이야기 바꾸기")
             }
-            if (pickStory) StoryPickerDialog(stories, StoryMap.storyIdsOf(s), onDismiss = { pickStory = false }) { ids ->
+            if (pickStory) StoryPickerDialog(
+                stories, StoryMap.storyIdsOf(s), onDismiss = { pickStory = false },
+                onCreate = { story -> c.dao.insertStories(listOf(story)) },
+            ) { ids ->
                 pickStory = false
                 // "" (not null) marks "no story" chosen on purpose, so bundled links are not filled in again.
                 scope.launch { c.dao.updateScript(s.copy(storyIds = ids.joinToString(","), updatedAt = System.currentTimeMillis())) }
@@ -505,29 +509,56 @@ fun ImportScreen(onDone: () -> Unit) {
     }
 }
 
-/** Pick the stories an answer tells. Several can be chosen; none is allowed. */
+/**
+ * Pick the stories an answer tells. Several can be chosen; none is allowed. A new story can be written here too;
+ * it is stored on the device only (id "U…", tags "user") and included in backups.
+ */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun StoryPickerDialog(
     stories: List<com.opicih.coach.data.db.StoryEntity>,
     current: List<String>,
     onDismiss: () -> Unit,
+    onCreate: suspend (com.opicih.coach.data.db.StoryEntity) -> Unit,
     onSave: (List<String>) -> Unit,
 ) {
+    val scope = rememberCoroutineScope()
+    var list by remember { mutableStateOf(stories) }
     var picked by remember { mutableStateOf(current.toSet()) }
+    var newTitle by remember { mutableStateOf("") }
+    var newSummary by remember { mutableStateOf("") }
+    var newTopics by remember { mutableStateOf("") }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("이 답변의 이야기") },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            // Scrolls: with nine stories and the keyboard open, the form and buttons did not fit on a phone screen.
+            Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text("이 답변에서 말하는 실제 이야기를 고르세요. 묘사나 습관 답변도 예로 붙일 이야기가 있으면 고릅니다.",
                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    stories.forEach { st -> Pill(st.titleKo, st.id in picked) { picked = if (st.id in picked) picked - st.id else picked + st.id } }
+                    list.forEach { st -> Pill(st.titleKo, st.id in picked) { picked = if (st.id in picked) picked - st.id else picked + st.id } }
                 }
+                HorizontalDivider(Modifier.padding(vertical = 4.dp))
+                Text("새 이야기 만들기", style = MaterialTheme.typography.labelLarge)
+                OutlinedTextField(newTitle, { newTitle = it }, label = { Text("이야기 이름 (예: 어릴 적 치과)") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(newSummary, { newSummary = it }, label = { Text("장면 요약 (무슨 일이 있었는지)") }, minLines = 2, modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(newTopics, { newTopics = it }, label = { Text("쓸 수 있는 주제 (예: 병원, 어린 시절)") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                TextButton(enabled = newTitle.isNotBlank(), onClick = {
+                    val story = com.opicih.coach.data.db.StoryEntity(
+                        id = "U${System.currentTimeMillis()}", titleKo = newTitle.trim(), summary = newSummary.trim(),
+                        tags = "user", reusableFor = newTopics.trim(),
+                    )
+                    scope.launch {
+                        onCreate(story)
+                        list = list + story
+                        picked = picked + story.id
+                        newTitle = ""; newSummary = ""; newTopics = ""
+                    }
+                }) { Text("만들고 선택") }
             }
         },
-        confirmButton = { TextButton(onClick = { onSave(stories.map { it.id }.filter { it in picked }) }) { Text("저장") } },
+        confirmButton = { TextButton(onClick = { onSave(list.map { it.id }.filter { it in picked }) }) { Text("저장") } },
         dismissButton = { TextButton(onClick = onDismiss) { Text("취소") } },
     )
 }

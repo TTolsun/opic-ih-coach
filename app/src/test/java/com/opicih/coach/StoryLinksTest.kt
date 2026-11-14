@@ -1,5 +1,6 @@
 package com.opicih.coach
 
+import com.opicih.coach.data.backup.BackupManager
 import com.opicih.coach.data.db.ContentSource
 import com.opicih.coach.data.db.QuestionType
 import com.opicih.coach.data.db.ScriptEntity
@@ -49,5 +50,14 @@ class StoryLinksTest {
             questionType = QuestionType.ROLEPLAY.name)
         val stories = content.stories.map { StoryEntity(it.id, it.titleKo, it.summary, it.tags, it.reusableFor) }
         assertTrue(StoryMap.build(stories, listOf(roleplay)).withoutStory.isEmpty())
+    }
+
+    @Test fun learnerMadeStoriesSurviveABackupRoundTrip() = with(BackupManager.Companion) {
+        val own = StoryEntity("U1731560000000", "어릴 적 치과", "충치 치료가 무서웠음", "user", "병원, 어린 시절")
+        val back = decode(encode(BackupManager.Snapshot(stories = listOf(own.toBackup()))))
+        assertEquals(8, back.version)
+        assertEquals(listOf(own), back.stories.map { it.toEntity() })
+        // A version-7 file has no stories field; it still decodes and restores none.
+        assertTrue(decode("""{"version":7}""").stories.isEmpty())
     }
 }
