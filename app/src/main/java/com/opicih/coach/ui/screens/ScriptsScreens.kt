@@ -204,7 +204,7 @@ fun ScriptDetailScreen(id: Long, onPractice: (Long, PracticeMode) -> Unit, onEdi
             StoryMap.siblings(s, stories, allScripts).forEach { (story, others) ->
                 Spacer(Modifier.height(6.dp))
                 Text(
-                    "이야기: ${story.titleKo}" + if (others.isEmpty()) "" else " · 다른 답변 ${others.size}개에서도 사용 (${others.joinToString { it.topic }})",
+                    "이야기: ${story.titleKo}" + if (others.isEmpty()) "" else " · 다른 답변 ${others.size}개에서도 사용 (${others.map { it.topic }.distinct().joinToString()})",
                     style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.clickable(onClick = onStories),
                 )
