@@ -197,7 +197,7 @@ fun AppNav(startRoute: String?, onRouteConsumed: () -> Unit) {
             }
             composable("frames") { FramesScreen() }
             composable("mock") { MockScreen() }
-            composable("progress") { ProgressScreen(onNextExam = { nav.navigate("nextExam") }) }
+            composable("progress") { ProgressScreen(onNextExam = { nav.navigate("nextExam") }, onExams = { nav.navigate("exams") }) }
             composable("script/{id}", arguments = listOf(navArgument("id") { type = NavType.LongType })) { e ->
                 ScriptDetailScreen(
                     id = e.arguments!!.getLong("id"),
@@ -213,7 +213,7 @@ fun AppNav(startRoute: String?, onRouteConsumed: () -> Unit) {
                 }
             }
             composable("import") { ImportScreen(onDone = { nav.popBackStack() }) }
-            composable("settings") { SettingsScreen(onExams = { nav.navigate("exams") }) }
+            composable("settings") { SettingsScreen() }
             composable("exams") { ExamsScreen { date, id -> nav.navigate("examDebrief/${date.toEpochDay()}/$id") } }
             composable("sail") { SailConversationScreen() }
             composable("coach") { CoachScreen() }

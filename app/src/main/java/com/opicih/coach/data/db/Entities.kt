@@ -130,14 +130,15 @@ data class ImportSourceEntity(
     val importedAt: Long = System.currentTimeMillis(),
 )
 
+/** [label] is the one name shown for a mode everywhere (speaking tab, script detail, records). */
 enum class PracticeMode(val label: String, val usesScript: Boolean) {
-    READ_LISTEN("Read & Listen", true),
-    SHADOWING("Shadowing", true),
+    READ_LISTEN("듣고 읽기", true),
+    SHADOWING("따라 말하기", true),
     FILL_BLANK("빈칸 채우기", true),
     KEYWORD("키워드 말하기", true),
-    BLIND("Blind", true),
-    RANDOM("다른 표현 질문", true),
-    VARIATION("응용 챌린지", true),
+    BLIND("안 보고 말하기", true),
+    RANDOM("바뀐 질문", true),
+    VARIATION("응용 미션", true),
     FREE("자유 발화", false),
     MOCK("모의시험", false),
     /** One turn of a SAIL practice conversation (v3). */

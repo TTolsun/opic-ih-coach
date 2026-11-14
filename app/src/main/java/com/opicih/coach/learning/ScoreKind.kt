@@ -11,7 +11,8 @@ import com.opicih.coach.data.db.PracticeMode
  * 종류는 시도 기록에 저장된 mode에서 항상 같은 값으로 정해지므로, 별도 열 없이도 과거 기록이 같은 기준으로 분류됩니다.
  */
 enum class ScoreKind(val label: String) {
-    MEMORIZATION("암기 점수"),
+    // "암기 점수" read wrong on 안 보고 말하기 (인출 stage); the score measures how much of the script came back.
+    MEMORIZATION("스크립트 재현 점수"),
     SPEAKING("말하기 점수");
 
     companion object {

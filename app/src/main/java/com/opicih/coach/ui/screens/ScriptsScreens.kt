@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -114,10 +115,11 @@ fun ScriptsScreen(
                 OutlinedTextField(query, { query = it }, leadingIcon = { Icon(Icons.Filled.Search, null) }, placeholder = { Text("검색") }, singleLine = true, modifier = Modifier.fillMaxWidth())
                 if (!pendingOnly) {
                     Spacer(Modifier.height(8.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        FilledTonalButton(onClick = onImport) { Icon(Icons.Filled.FileOpen, null); Spacer(Modifier.width(6.dp)); Text("가져오기") }
-                        OutlinedButton(onClick = onNew) { Icon(Icons.Filled.Edit, null); Spacer(Modifier.width(6.dp)); Text("직접 작성") }
-                        OutlinedButton(onClick = onFrames) { Text("문장 틀") }
+                    // Equal widths so the row ends where the search field and cards end.
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        FilledTonalButton(onClick = onImport, modifier = Modifier.weight(1f), contentPadding = PaddingValues(horizontal = 8.dp)) { Icon(Icons.Filled.FileOpen, null); Spacer(Modifier.width(4.dp)); Text("가져오기", maxLines = 1) }
+                        OutlinedButton(onClick = onNew, modifier = Modifier.weight(1f), contentPadding = PaddingValues(horizontal = 8.dp)) { Icon(Icons.Filled.Edit, null); Spacer(Modifier.width(4.dp)); Text("직접 작성", maxLines = 1) }
+                        OutlinedButton(onClick = onFrames, modifier = Modifier.weight(1f), contentPadding = PaddingValues(horizontal = 8.dp)) { Text("문장 틀", maxLines = 1) }
                     }
                     if (scripts.isNotEmpty()) {
                         Spacer(Modifier.height(8.dp))
@@ -142,7 +144,8 @@ fun ScriptsScreen(
                     SectionCard(Modifier.clickable { onOpen(s.id) }) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(s.title, style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
-                            if (s.id in pendingIds) SourceTag("개선안 대기", MaterialTheme.colorScheme.primary)
+                            // Muted: when most scripts have a proposal waiting, a primary-colored badge on every card was noise.
+                            if (s.id in pendingIds) SourceTag("개선안 대기")
                         }
                         Text(s.question, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2)
                         Spacer(Modifier.height(6.dp))
@@ -184,13 +187,16 @@ fun ScriptDetailScreen(id: Long, onPractice: (Long, PracticeMode) -> Unit, onEdi
             }
             Spacer(Modifier.height(8.dp))
             Text("${s.topic} · ${s.title}", style = MaterialTheme.typography.titleLarge)
-            Text(s.question, style = EnglishReading, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            // The question is a caption here, not reading material, so it uses a tighter line height than EnglishReading.
+            Text(s.question, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Spacer(Modifier.height(6.dp))
             val dueIn = s.dueEpochDay - LocalDate.now().toEpochDay()
             Text(if (dueIn <= 0) "오늘 복습" else "${dueIn}일 뒤 복습 · 예상 발화 ${s.estSeconds}초", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
 
         // Practice entry points
-        Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        // FlowRow: a scrolling row cut "키워드" off at the screen edge with no sign that it scrolled.
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             listOf(PracticeMode.READ_LISTEN, PracticeMode.SHADOWING, PracticeMode.FILL_BLANK, PracticeMode.KEYWORD, PracticeMode.BLIND, PracticeMode.RANDOM, PracticeMode.VARIATION).forEach { m ->
                 Pill(m.label, false) { onPractice(s.id, m) }
             }
@@ -198,7 +204,7 @@ fun ScriptDetailScreen(id: Long, onPractice: (Long, PracticeMode) -> Unit, onEdi
 
         // Versions
         SectionCard(title = "버전") {
-            Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 ScriptVersion.entries.forEach { v -> Pill(v.label + if (s.active == v) " ✓" else "", tab == v) { pickedTab = v } }
             }
             Spacer(Modifier.height(10.dp))
@@ -238,14 +244,10 @@ fun ScriptDetailScreen(id: Long, onPractice: (Long, PracticeMode) -> Unit, onEdi
         val pending = revisions.filter { it.status == RevisionStatus.PENDING.name }
         if (pending.isNotEmpty()) {
             Text("승인 대기 개선안", style = MaterialTheme.typography.titleMedium)
+            // The original used to be printed in full inside every proposal card; it is one tab away in 버전.
+            Text("원본과 비교하려면 위 '버전'에서 원본을 고르세요.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             pending.forEach { r ->
                 SectionCard(title = ScriptVersion.of(r.version).label, trailing = { SourceTag(RevisionOrigin.entries.firstOrNull { it.name == r.origin }?.label ?: r.origin) }) {
-                    if (r.version != ScriptVersion.KEYWORDS.name) {
-                        Text("원본", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text(s.original, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        HorizontalDivider(Modifier.padding(vertical = 8.dp))
-                        Text("개선안", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
-                    }
                     if (r.version == ScriptVersion.KEYWORDS.name) Text(r.text, style = MaterialTheme.typography.bodyMedium)
                     else GlossaryText(r.text, s.id, style = MaterialTheme.typography.bodyMedium)
                     if (r.reasonKo.isNotBlank()) {

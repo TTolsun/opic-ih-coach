@@ -153,6 +153,7 @@ object FeedbackComposer {
             input.scoreKind == ScoreKind.SPEAKING -> speakingFlow(input)
             else -> score(input)
         }
+        val slips = ArticleSlips.find(input.transcript)
         val strengths = buildList {
             if (scriptCompare != null && scriptCompare.coverage >= 0.7f) {
                 add("스크립트 핵심 내용의 ${(scriptCompare.coverage * 100).toInt()}%를 전달했습니다.")
@@ -169,6 +170,11 @@ object FeedbackComposer {
                 add(FixItem("질문 문장이 그대로 인식됐습니다.", "질문의 요점에 답하는 문장이 필요합니다.", task.retryMission()))
             }
             missingFrame?.let { add(it) }
+            // A known repeated slip comes before coverage and pauses: it is one word to fix on the retry.
+            if (slips.isNotEmpty()) {
+                add(FixItem("관사 a가 빠졌습니다: \"${slips.first().found}\"", "셀 수 있는 명사 하나를 말할 때는 앞에 a를 붙입니다.",
+                    slips.joinToString(" / ") { it.correction }))
+            }
             if (scriptCompare != null && scriptCompare.coverage < 0.5f) {
                 val missed = scriptCompare.sentences.filter { !it.covered }.take(2).joinToString(" / ") { shorten(it.sentence) }
                 add(FixItem("스크립트 핵심 내용의 ${(scriptCompare.coverage * 100).toInt()}%를 말했습니다.", missed,
@@ -199,6 +205,7 @@ object FeedbackComposer {
             relevance = 0.takeIf { echoed },
             errors = buildList {
                 if (echoed) add(ErrorItem("question_echo", "CONTENT", shorten(input.transcript, 80), task.retryMission()))
+                slips.forEach { add(ErrorItem(ArticleSlips.KEY, "GRAMMAR", it.found, it.correction)) }
                 if (missingFrame != null && task.requiresPastAndPresent) {
                     add(ErrorItem("comparison_frame_missing", "CONTENT", missingFrame.issue, missingFrame.better))
                 }

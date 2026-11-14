@@ -44,6 +44,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -112,7 +115,11 @@ fun HomeScreen(
 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
         Row(verticalAlignment = Alignment.Top) {
-            NextExamHeader(st.focusExam, plan?.dLabel.orEmpty(), Modifier.weight(1f).clickable(onClick = onExams))
+            // With nothing registered yet, the nearest planned exam is shown instead of "접수 완료 일정 없음",
+            // which contradicted the planned OPIc listed in 시험 현황 right below.
+            val planned = if (st.focusExam != null) null else ExamType.selectable.mapNotNull { ExamSchedule.nextOfType(st.regs, it, st.now) }
+                .filter { it.date != null }.minByOrNull { it.date!! }
+            NextExamHeader(st.focusExam, plan?.dLabel.orEmpty(), planned, st.now.toLocalDate(), Modifier.weight(1f).clickable(onClick = onExams))
             IconButton(onClick = onCoach) { Icon(Icons.AutoMirrored.Filled.Chat, "AI 코치") }
             IconButton(onClick = onSettings) { Icon(Icons.Filled.Settings, "설정") }
         }
@@ -198,11 +205,16 @@ fun HomeScreen(
 
         // 4) Concrete shortcuts: each opens a specific script.
         if (st.due.isNotEmpty()) SectionCard(title = "복습 예정 스크립트 ${st.due.size}개") {
-            st.due.take(4).forEach { sc ->
+            // The title promised N scripts but only 4 were reachable; the rest open in place.
+            var showAllDue by rememberSaveable { mutableStateOf(false) }
+            (if (showAllDue) st.due else st.due.take(4)).forEach { sc ->
                 Row(Modifier.fillMaxWidth().heightIn(min = 44.dp).clickable { onScript(sc.id) }, verticalAlignment = Alignment.CenterVertically) {
                     Text("${sc.topic} · ${sc.title}", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
                     Text(sc.mastery.label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
+            }
+            if (st.due.size > 4) {
+                TextButton(onClick = { showAllDue = !showAllDue }) { Text(if (showAllDue) "접기" else "나머지 ${st.due.size - 4}개 더 보기") }
             }
         }
 
@@ -284,8 +296,14 @@ private fun PermissionBanners(alarmNeedsExact: Boolean, onSettings: () -> Unit) 
 
 /** Top of Home: the nearest registered exam. Nothing here is a recommendation. */
 @Composable
-private fun NextExamHeader(r: ExamRegistrationEntity?, dLabel: String, modifier: Modifier) {
+private fun NextExamHeader(r: ExamRegistrationEntity?, dLabel: String, planned: ExamRegistrationEntity?, today: java.time.LocalDate, modifier: Modifier) {
     Column(modifier) {
+        val plannedDate = planned?.date
+        if (r == null && planned != null && plannedDate != null) {
+            Text("${planned.state.label}: ${planned.type.label}", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("${plannedDate.monthDay()} · D-${plannedDate.toEpochDay() - today.toEpochDay()}", style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.primary)
+            return@Column
+        }
         if (r == null) {
             Text("접수 완료 일정 없음", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Text("시험 일정 보기", style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.primary)

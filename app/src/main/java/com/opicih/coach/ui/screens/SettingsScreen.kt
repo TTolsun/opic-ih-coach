@@ -75,7 +75,7 @@ import java.time.ZoneOffset
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
-fun SettingsScreen(onExams: () -> Unit = {}) {
+fun SettingsScreen() {
     val c = LocalContainer.current
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -116,11 +116,10 @@ fun SettingsScreen(onExams: () -> Unit = {}) {
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
         message?.let { Banner(it, "닫기") { message = null } }
 
-        SectionCard(title = "시험과 학습량", collapsible = true) {
-            Row(Modifier.fillMaxWidth().clickable(onClick = onExams).padding(vertical = 6.dp)) {
-                Text("시험 일정 관리 (OPIc·SAIL)", modifier = Modifier.weight(1f)); Text("열기", color = MaterialTheme.colorScheme.primary)
-            }
-            Text("매일 최소 훈련 시간", style = MaterialTheme.typography.labelLarge)
+        // The exam schedule is reached from Home (header, 시험 현황), 기록 and 다음 OPIc 추천; a fifth link here
+        // only added another path to the same screen.
+        SectionCard(title = "학습량", collapsible = true) {
+            Text("하루 훈련 분량 (홈의 '오늘 권장' 계획)", style = MaterialTheme.typography.labelLarge)
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) { StudyLevel.entries.forEach { l -> Pill(l.label, s.studyLevel == l) { save { it.copy(studyLevel = l) } } } }
         }
 
@@ -201,7 +200,12 @@ fun SettingsScreen(onExams: () -> Unit = {}) {
             ToggleRow("정확한 시간 알람 (알람 아이콘 표시)", s.useExactAlarm) { v -> save { it.copy(useExactAlarm = v) } }
             ToggleRow("소리", s.alarmSound) { v -> save { it.copy(alarmSound = v) } }
             ToggleRow("진동", s.alarmVibrate) { v -> save { it.copy(alarmVibrate = v) } }
-            ToggleRow("저녁 학습 리마인더 (목표 미달 시, 일반 알림)", s.eveningReminder) { v -> save { it.copy(eveningReminder = v) } }
+            // ReminderWorker skips the evening reminder while block alarms are on, so the switch says so instead of
+            // looking active.
+            ToggleRow("저녁 학습 리마인더 (목표 미달 시, 일반 알림)", s.eveningReminder, enabled = !s.studyBlocksEnabled) { v -> save { it.copy(eveningReminder = v) } }
+            if (s.studyBlocksEnabled) {
+                Text("학습 블록 알람이 켜져 있어 저녁 리마인더는 보내지 않습니다.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
             if (!AlarmScheduler.canExact(context)) {
                 Banner("정확한 알람 권한이 꺼져 있습니다.", "권한 열기") {
                     if (Build.VERSION.SDK_INT >= 31) runCatching { context.startActivity(Intent(AndroidSettings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, Uri.parse("package:" + context.packageName))) }
@@ -221,11 +225,13 @@ fun SettingsScreen(onExams: () -> Unit = {}) {
             val blocks = StudyBlocks.parse(s.studyBlocks)
             fun saveBlocks(list: List<StudyBlock>) = save { it.copy(studyBlocks = StudyBlocks.encode(list.sortedBy { b -> b.startMinute })) }
             ToggleRow("블록 알람 사용 (켜면 저녁 리마인더는 쉽니다)", s.studyBlocksEnabled) { v -> save { it.copy(studyBlocksEnabled = v) } }
-            Text("오늘 ${(studiedMs / 60_000L).toInt()}/${StudyBlocks.dailyGoalMinutes(blocks)}분", style = MaterialTheme.typography.titleMedium)
+            Text("오늘 앱 학습 시간 ${(studiedMs / 60_000L).toInt()}/${StudyBlocks.dailyGoalMinutes(blocks)}분", style = MaterialTheme.typography.titleMedium)
             blocks.forEachIndexed { i, b ->
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        "${i + 1}. ${StudyBlocks.label(b.startMinute)}" + if (b.startMinute >= 1440) " (익일 ${StudyBlocks.label(b.startMinute - 1440)})" else "",
+                        // "24:00 (익일 00:00)" wrapped to two lines next to the −/+/삭제 buttons; one form is enough.
+                        "${i + 1}. " + if (b.startMinute >= 1440) "익일 ${StudyBlocks.label(b.startMinute - 1440)}" else StudyBlocks.label(b.startMinute),
+                        maxLines = 1,
                         color = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.weight(1f).clickable { editBlock = i }.padding(vertical = 8.dp),
                     )
@@ -240,7 +246,7 @@ fun SettingsScreen(onExams: () -> Unit = {}) {
                 val start = ((last?.let { it.startMinute + it.minutes + 60 } ?: 600)).coerceAtMost(StudyBlocks.MAX_START_MINUTE)
                 saveBlocks(blocks + StudyBlock(start, 30))
             }) { Text("블록 추가") }
-            Text("시간을 누르면 바꿉니다. 04:00 이전 시각은 같은 날의 연장(24:00 이후)으로 저장됩니다.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("시간을 누르면 바꿉니다. 04:00 이전 시각은 전날 학습의 연장으로 보고 '익일'로 표시합니다.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Text("앱의 학습 화면(스크립트·말하기·모의시험·SAIL·코치·아침 표현)을 열어 둔 시간만 셉니다.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
 
@@ -422,10 +428,11 @@ private fun NumberRow(label: String, value: Int, onChange: (Int) -> Unit) {
 }
 
 @Composable
-private fun ToggleRow(label: String, value: Boolean, onChange: (Boolean) -> Unit) {
+private fun ToggleRow(label: String, value: Boolean, enabled: Boolean = true, onChange: (Boolean) -> Unit) {
     Row(Modifier.fillMaxWidth().padding(vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
-        Text(label, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
-        Switch(value, onChange)
+        Text(label, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f),
+            color = if (enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant)
+        Switch(value, onChange, enabled = enabled)
     }
 }
 

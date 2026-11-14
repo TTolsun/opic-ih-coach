@@ -201,7 +201,7 @@ private fun Details(r: AnalyzedAttempt, ui: SpeakingUi, vm: SpeakingViewModel) {
             if (a.transcript.isNotBlank()) {
                 MetricTile("단어 수", "${m.discourse.wordCount}")
                 if (a.wpm > 0) MetricTile("속도", "${a.wpm} wpm")
-                MetricTile("시제", "과${m.discourse.pastCount}·현${m.discourse.presentCount}·미${m.discourse.futureCount}")
+                MetricTile("시제 표현 (회)", "과거 ${m.discourse.pastCount} · 현재 ${m.discourse.presentCount} · 미래 ${m.discourse.futureCount}")
                 MetricTile("연결 표현", "${m.discourse.connectorCount}회")
             } else {
                 MetricTile("텍스트", "전사 없음")
@@ -234,7 +234,7 @@ private fun Details(r: AnalyzedAttempt, ui: SpeakingUi, vm: SpeakingViewModel) {
             // The first two are already shown above the retry button.
             val missing = cmp.sentences.filter { !it.covered }.drop(2)
             if (missing.isNotEmpty()) {
-                Text("빠진 내용 (더)", style = MaterialTheme.typography.titleSmall)
+                Text("나머지 빠진 내용", style = MaterialTheme.typography.titleSmall)
                 missing.take(4).forEach { Bullet(it.sentence, color = MaterialTheme.colorScheme.onSurfaceVariant) }
             }
         }
