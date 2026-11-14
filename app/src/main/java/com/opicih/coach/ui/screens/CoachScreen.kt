@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -50,6 +51,7 @@ import com.opicih.coach.ui.components.SourceTag
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 fun CoachScreen() {
     val c = LocalContainer.current
@@ -88,12 +90,14 @@ fun CoachScreen() {
 
     Column(Modifier.fillMaxSize().imePadding()) {
         Row(Modifier.padding(horizontal = 16.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text("AI 코치", style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
+            // The top bar already says "AI 코치"; this row only states which engine answers.
+            Spacer(Modifier.weight(1f))
             SourceTag(if (isAi) "Gemini ${settings.geminiModel}" else "오프라인 (AI 꺼짐)", if (isAi) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
         }
         LazyColumn(Modifier.weight(1f).padding(horizontal = 16.dp), state = listState, verticalArrangement = Arrangement.spacedBy(8.dp)) {
             if (turns.isEmpty()) item {
-                Text("내 스크립트와 연습 기록을 바탕으로 답합니다.",
+                Text(if (isAi) "내 스크립트와 연습 기록을 바탕으로 답합니다."
+                    else "AI가 꺼져 있어 아래 세 가지 요청에만 답합니다. 자유 대화는 설정 > AI에서 Gemini를 켜면 쓸 수 있습니다.",
                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             items(turns) { t ->
@@ -109,9 +113,17 @@ fun CoachScreen() {
             }
             if (busy) item { CircularProgressIndicator(Modifier.padding(8.dp)) }
         }
-        Row(Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 6.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            listOf("이 답변 IH 목표에 충분해?", "좀 더 쉽게 말할 수 있게 바꿔줘.", "내가 반복해서 틀리는 문법이 뭐야?", "이 내용을 다른 질문에도 쓸 수 있어?", "돌발 질문 하나 내줘.", "내 답변을 자연스럽게 고쳐줘.")
-                .forEach { Pill(it, false) { send(it) } }
+        if (isAi) {
+            Row(Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 6.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                listOf("이 답변 IH 목표에 충분해?", "좀 더 쉽게 말할 수 있게 바꿔줘.", "내가 반복해서 틀리는 문법이 뭐야?", "이 내용을 다른 질문에도 쓸 수 있어?", "돌발 질문 하나 내줘.", "내 답변을 자연스럽게 고쳐줘.")
+                    .forEach { Pill(it, false) { send(it) } }
+            }
+        } else {
+            // Offline, only requests LocalCoach.chat can answer are offered (the rest would just say AI is off),
+            // and all three wrap onto the screen instead of hiding the last one off the edge.
+            FlowRow(Modifier.padding(horizontal = 16.dp, vertical = 6.dp), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                listOf("돌발 질문 하나 내줘.", "내가 반복해서 틀리는 문법이 뭐야?", "내 취약 주제가 뭐야?").forEach { Pill(it, false) { send(it) } }
+            }
         }
         Row(Modifier.padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
             OutlinedTextField(input, { input = it }, modifier = Modifier.weight(1f), placeholder = { Text("코치에게 질문") }, maxLines = 4)

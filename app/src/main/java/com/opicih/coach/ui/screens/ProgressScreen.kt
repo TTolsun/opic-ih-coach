@@ -187,7 +187,12 @@ fun ProgressScreen(onNextExam: () -> Unit = {}) {
             Spacer(Modifier.height(6.dp))
             // OPIc's official rule, not the user-editable SAIL limit (s.retakeDays).
             val opic = ExamPolicy.opic()
-            Text("OPIc 다음 응시 가능: ${opic.earliestWithoutWaiver(last)} (응시일 제외 ${opic.blockedDays}일 제한, 공식 시험관리규정 기준)", style = MaterialTheme.typography.bodyMedium)
+            val earliest = opic.earliestWithoutWaiver(last)
+            Text(
+                if (earliest.isAfter(LocalDate.now())) "OPIc 다음 응시 가능: ${earliest.monthDay()} (응시일 제외 ${opic.blockedDays}일 제한, 공식 시험관리규정 기준)"
+                else "OPIc 재응시 제한 없음: ${earliest.monthDay()}에 제한이 끝났습니다.",
+                style = MaterialTheme.typography.bodyMedium,
+            )
             Spacer(Modifier.height(6.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Button(onClick = onNextExam) { Text("다음 시험 추천") }

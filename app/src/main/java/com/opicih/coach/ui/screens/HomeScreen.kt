@@ -177,16 +177,19 @@ fun HomeScreen(
                 Stat("누적 발화", "${st.totalSpeakingMin}분", Modifier.weight(1f))
             }
             Spacer(Modifier.height(10.dp))
-            ProgressRow("IH 준비도", st.readiness / 100f, "${st.readiness} / 100")
+            ProgressRow("최종 목표(${st.settings.profile.finalGoal.code}) 준비도", st.readiness / 100f, "${st.readiness} / 100")
         }
 
         ExamStatusCard(st.regs, st.now, st.settings, plan, onExams)
 
         st.nextExam?.let { n ->
-            SectionCard(Modifier.clickable(onClick = onNextExam), title = "다음 OPIc 추천 (학습용)", trailing = { SourceTag(n.verdict) }) {
+            // Same rule as the 다음 OPIc 추천 screen: a booked or planned OPIc replaces the suggested date.
+            val booked = ExamSchedule.nextOfType(st.regs, ExamType.OPIC, st.now)?.date
+            SectionCard(Modifier.clickable(onClick = onNextExam), title = "다음 OPIc 추천", trailing = { SourceTag(if (booked != null) "학습용" else n.verdict) }) {
                 val rec = n.recommended
                 Text(
-                    if (rec != null) "추천 ${rec.monthValue}/${rec.dayOfMonth} · 접수 ${n.registerBy?.let { "${it.monthValue}/${it.dayOfMonth}" } ?: "-"}까지 · 준비도 ${n.gatesPassed}/${n.gatesTotal}"
+                    if (booked != null) "${booked.monthDay()} OPIc 준비 중 · 준비도 ${n.gatesPassed}/${n.gatesTotal}"
+                    else if (rec != null) "추천 ${rec.monthValue}/${rec.dayOfMonth} · 접수 ${n.registerBy?.let { "${it.monthValue}/${it.dayOfMonth}" } ?: "-"}까지 · 준비도 ${n.gatesPassed}/${n.gatesTotal}"
                     else "응시 가능한 날짜가 없습니다",
                     style = MaterialTheme.typography.bodyMedium,
                 )
@@ -314,7 +317,7 @@ private fun ExamStatusCard(regs: List<ExamRegistrationEntity>, now: java.time.Zo
         }
         retake.sailEarliest?.takeIf { !it.isBefore(today) }?.let { Bullet("SAIL 일반 재응시 ${it.monthDay()}부터") }
         s.gradeDeadline?.let { d ->
-            Bullet("목표 IH · ${d.monthDay()}까지")
+            Bullet("다음 시험 목표 ${s.targetGrade.code} · 최종 목표 ${s.profile.finalGoal.code} (${d.monthDay()}까지)")
         }
         val examMinutes = plan.tasks.filter { it.type != TaskType.MORNING && it.type != TaskType.REVIEW }.sumOf { it.minutes }
         val shared = plan.totalMinutes - examMinutes

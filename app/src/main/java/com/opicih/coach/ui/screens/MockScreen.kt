@@ -392,7 +392,7 @@ fun MockScreen() {
                 if (micDenied) MicPermissionBanner()
                 ui.error?.let { Banner(it, tone = MaterialTheme.colorScheme.error) }
                 TextButton(enabled = ui.phase != MockPhase.SAVING, onClick = {
-                    if (ui.phase == MockPhase.RECORDING) confirmEnd = true else vm.finish()
+                    confirmEnd = true
                 }) { Text("종료하고 리포트 보기") }
             }
             MockPhase.ADJUST -> {
@@ -411,18 +411,26 @@ fun MockScreen() {
         }
     }
 
-    if (confirmEnd && ui.phase == MockPhase.RECORDING) {
+    // Ending is not undoable (the remaining questions are dropped), so it always asks first.
+    if (confirmEnd && (ui.phase == MockPhase.RECORDING || ui.phase == MockPhase.QUESTION)) {
+        val recording = ui.phase == MockPhase.RECORDING
         AlertDialog(
             onDismissRequest = { confirmEnd = false },
             title = { Text("모의시험을 종료할까요?") },
-            text = { Text("지금 녹음 중인 답변을 저장할 수 있습니다.") },
+            text = { Text(if (recording) "지금 녹음 중인 답변을 저장할 수 있습니다." else "남은 문항은 건너뛰고, 지금까지 저장한 답변으로 리포트를 만듭니다.") },
             confirmButton = {
                 Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Button(onClick = { confirmEnd = false; vm.finish(saveCurrentAnswer = true) }, modifier = Modifier.fillMaxWidth()) {
-                        Text("저장하고 종료")
-                    }
-                    OutlinedButton(onClick = { confirmEnd = false; vm.finish() }, modifier = Modifier.fillMaxWidth()) {
-                        Text("버리고 종료")
+                    if (recording) {
+                        Button(onClick = { confirmEnd = false; vm.finish(saveCurrentAnswer = true) }, modifier = Modifier.fillMaxWidth()) {
+                            Text("저장하고 종료")
+                        }
+                        OutlinedButton(onClick = { confirmEnd = false; vm.finish() }, modifier = Modifier.fillMaxWidth()) {
+                            Text("버리고 종료")
+                        }
+                    } else {
+                        Button(onClick = { confirmEnd = false; vm.finish() }, modifier = Modifier.fillMaxWidth()) {
+                            Text("종료하고 리포트 보기")
+                        }
                     }
                     TextButton(onClick = { confirmEnd = false }, modifier = Modifier.fillMaxWidth()) {
                         Text("계속 답변")

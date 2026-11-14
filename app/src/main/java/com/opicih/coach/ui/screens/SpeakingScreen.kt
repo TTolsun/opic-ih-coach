@@ -1,5 +1,10 @@
 package com.opicih.coach.ui.screens
 
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.Box
+import androidx.compose.material3.Surface
 import android.Manifest
 import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -118,7 +123,10 @@ fun SpeakingScreen(scriptId: Long?, mode: PracticeMode?, reviewId: Long? = null,
     var showPicker by remember { mutableStateOf(false) }
     var showTyped by remember { mutableStateOf(false) }
 
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+    // The mic is the main action, so it sits in a bar under the scrolling content instead of below a long
+    // 학습본 card where it started half under the bottom navigation.
+    Column(Modifier.fillMaxSize()) {
+    Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
         ModeSelector(ui.mode) { vm.setMode(it) }
 
         if (micDenied) MicPermissionBanner()
@@ -181,39 +189,6 @@ fun SpeakingScreen(scriptId: Long?, mode: PracticeMode?, reviewId: Long? = null,
         ModePanel(ui, vm)
         PracticePanel(ui, onOpenFrames)
 
-        // Mic area
-        Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            when (ui.phase) {
-                Phase.PROCESSING -> { CircularProgressIndicator(); Text("분석 중", style = MaterialTheme.typography.bodyMedium) }
-                else -> {
-                    MicButton(recording = ui.phase == Phase.RECORDING) { onMic() }
-                    Text(
-                        when (ui.phase) {
-                            Phase.RECORDING -> "${formatMs(ui.elapsedMs)} · 눌러서 끝내기"
-                            Phase.RESULT -> "다시 말하기"
-                            else -> "눌러서 말하기"
-                        },
-                        style = MaterialTheme.typography.labelLarge,
-                    )
-                }
-            }
-            if (ui.phase == Phase.RECORDING) {
-                LevelBar(ui.level, Modifier.fillMaxWidth(0.6f))
-                if (examLike) {
-                    // No live captions here: reading your own words while speaking is not possible in the exam.
-                    when {
-                        ui.elapsedMs >= 120_000 -> Text("2분 넘음 · 마무리하기", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.tertiary)
-                        ui.elapsedMs >= 60_000 -> Text("목표 구간 (1~2분)", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.secondary)
-                    }
-                } else if (ui.liveText.isNotBlank()) {
-                    Text(ui.liveText, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            }
-            if (ui.phase == Phase.IDLE || ui.showTypedFallback) {
-                TextButton(onClick = { showTyped = true }) { Icon(Icons.Filled.Edit, null); Spacer(Modifier.width(4.dp)); Text("직접 입력") }
-            }
-        }
-
         ui.error?.let { Banner(it, "닫기", tone = MaterialTheme.colorScheme.error) { vm.dismissError() } }
 
         ui.check?.let { if (ui.result != null) CheckCard(it, vm) }
@@ -221,6 +196,46 @@ fun SpeakingScreen(scriptId: Long?, mode: PracticeMode?, reviewId: Long? = null,
         ui.result?.let { ResultPanel(it, ui, vm, onRetry = { onMic() }) }
 
         Spacer(Modifier.height(24.dp))
+    }
+    // After a result, ResultPanel's "같은 질문 다시 말하기" is the retry; a second big mic would repeat it.
+    if (ui.question != null && ui.phase != Phase.RESULT) {
+        Surface(Modifier.fillMaxWidth(), tonalElevation = 3.dp) {
+            Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                val examLike = PracticeModes.of(ui.mode).stage != PracticeStage.MEMORIZE
+                if (ui.phase == Phase.RECORDING) {
+                    LevelBar(ui.level, Modifier.fillMaxWidth(0.6f))
+                    if (examLike) {
+                        // No live captions here: reading your own words while speaking is not possible in the exam.
+                        when {
+                            ui.elapsedMs >= 120_000 -> Text("2분 넘음 · 마무리하기", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.tertiary)
+                            ui.elapsedMs >= 60_000 -> Text("목표 구간 (1~2분)", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.secondary)
+                        }
+                    } else if (ui.liveText.isNotBlank()) {
+                        Text(ui.liveText, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    }
+                }
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Box(Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
+                        if (ui.phase == Phase.IDLE || ui.showTypedFallback) {
+                            TextButton(onClick = { showTyped = true }) { Icon(Icons.Filled.Edit, null); Spacer(Modifier.width(4.dp)); Text("직접 입력") }
+                        }
+                    }
+                    if (ui.phase == Phase.PROCESSING) CircularProgressIndicator(Modifier.size(72.dp).padding(12.dp))
+                    else MicButton(recording = ui.phase == Phase.RECORDING, size = 72.dp) { onMic() }
+                    Box(Modifier.weight(1f), contentAlignment = Alignment.CenterEnd) {
+                        Text(
+                            when (ui.phase) {
+                                Phase.RECORDING -> "${formatMs(ui.elapsedMs)} · 끝내기"
+                                Phase.PROCESSING -> "분석 중"
+                                else -> "눌러서 말하기"
+                            },
+                            style = MaterialTheme.typography.labelLarge, textAlign = TextAlign.End,
+                        )
+                    }
+                }
+            }
+        }
+    }
     }
 
     if (showPicker) {

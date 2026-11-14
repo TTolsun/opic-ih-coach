@@ -111,24 +111,63 @@ fun NextExamScreen(onOpenSettings: () -> Unit, onOpenExams: () -> Unit) {
             }
         }
 
+        // An OPIc already on the schedule wins over a fresh recommendation; otherwise the card would suggest
+        // a second date next to the booked one.
+        val booked = ExamSchedule.nextOfType(regs, ExamType.OPIC, now)
+        val bookedDate = booked?.date
+        // The rule date can be months in the past; the first day the user can actually sit is tomorrow at the earliest.
+        val possible = maxOf(advice.earliest, today.plusDays(1))
         SectionCard(title = "다음 시험 추천", trailing = { SourceTag("학습용 판단") }) {
-            Text(advice.verdict.label, style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.primary)
+            Text(
+                if (booked != null && bookedDate != null) "${bookedDate.monthDay()} OPIc 준비 (${booked.state.label})" else advice.verdict.label,
+                style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.primary,
+            )
             Spacer(Modifier.height(8.dp))
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 MetricTile("기준 OPIc 응시", "${last.monthValue}/${last.dayOfMonth}", hint = ExamSchedule.lastCompleted(regs, ExamType.OPIC)?.let { if (it.exact) null else "월말로 가정" })
-                MetricTile("재응시 가능", "${advice.earliest.monthValue}/${advice.earliest.dayOfMonth}", hint = if (rulesOf(s, retake.waiverAvailable).useWaiver) "Waiver 사용" else "공식 규정")
-                advice.recommended?.let { MetricTile("추천 응시일", "${it.monthValue}/${it.dayOfMonth}") }
-                advice.registerBy?.let { MetricTile("접수 권장", "${it.monthValue}/${it.dayOfMonth}까지") }
+                MetricTile(
+                    "응시 가능", "${possible.monthValue}/${possible.dayOfMonth}",
+                    hint = when {
+                        advice.earliest.isBefore(today) -> "제한 끝남"
+                        rulesOf(s, retake.waiverAvailable).useWaiver -> "Waiver 사용"
+                        else -> "공식 규정"
+                    },
+                )
+                if (bookedDate != null) {
+                    MetricTile("잡힌 회차", "${bookedDate.monthValue}/${bookedDate.dayOfMonth}", hint = "D-${bookedDate.toEpochDay() - today.toEpochDay()}")
+                } else {
+                    advice.recommended?.let { MetricTile("추천 응시일", "${it.monthValue}/${it.dayOfMonth}") }
+                    advice.registerBy?.let { MetricTile("접수 권장", "${it.monthValue}/${it.dayOfMonth}까지") }
+                }
                 advice.latestUseful?.let { MetricTile("마감 전 마지막", "${it.monthValue}/${it.dayOfMonth}", hint = "발표 예정 D+${ExamResults.OPIC_LAG_DAYS}") }
             }
             Spacer(Modifier.height(10.dp))
-            advice.reasons.forEach { Bullet(it) }
+            if (bookedDate != null) {
+                val rec = advice.recommended
+                val missing = advice.gates.filter { !it.passed }
+                Bullet(
+                    when {
+                        missing.isEmpty() -> "준비도 조건을 모두 통과했습니다. 잡힌 회차에 그대로 응시하면 됩니다."
+                        rec != null && rec.isAfter(bookedDate) ->
+                            "준비도만 보면 ${rec.monthDay()} 이후가 안전합니다. 남은 ${bookedDate.toEpochDay() - today.toEpochDay()}일 동안 미통과 조건(${missing.joinToString { it.label }})에 집중하세요."
+                        else -> "미통과 조건(${missing.joinToString { it.label }})을 회차 전까지 채우세요."
+                    },
+                )
+                if (advice.latestUseful != null) {
+                    Bullet(
+                        if (!ExamPolicy.opic().earliestWithoutWaiver(bookedDate).isAfter(advice.latestUseful)) "이 회차 뒤에도 마감 전에 한 번 더 응시할 수 있습니다."
+                        else "이 회차가 마감 전 사실상 마지막 기회입니다.",
+                    )
+                }
+            } else {
+                advice.reasons.forEach { Bullet(it) }
+            }
             // Rule assumptions (unverified retake interval, register lead time) are shown once, in the rules card below.
             Spacer(Modifier.height(10.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 val rec = advice.recommended
                 val reg = advice.registerBy
-                if (rec != null && reg != null) {
+                if (booked == null && rec != null && reg != null) {
                     Button(onClick = {
                         val ok = AlarmScheduler.scheduleReminder(context, reg, "다음 시험 접수일입니다", "추천 응시일 $rec. 오늘 접수 가능한 회차를 확인하세요. (${advice.verdict.label})")
                         message = if (ok) "$reg 09:00에 접수 알림을 예약했습니다." else "접수 권장일이 오늘이거나 지났습니다. 바로 접수 회차를 확인하세요."
@@ -335,17 +374,17 @@ private fun RetakePathsCard(r: RetakeSummary, s: Settings, onPlanWithWaiver: (Bo
         val w = r.opicWaiver
         Text(
             "Waiver: " + when (w.available) { null -> "입력 안 됨"; 0 -> "사용 가능 0회"; else -> "사용 가능 ${w.available}회" } +
-                (w.regrantOn?.let { " · 다시 생기는 날 $it" } ?: ""),
+                (w.regrantOn?.let { " · 다시 생기는 날 ${it.monthDay()}" } ?: ""),
             style = MaterialTheme.typography.bodyMedium,
         )
-        Text("기준 응시 ${r.opicLast ?: "기록 없음"}" + (r.latestUseful?.let { " · 마감 전 마지막 응시일 ${it.monthDay()}" } ?: ""),
+        Text("기준 응시 ${r.opicLast?.monthDay() ?: "기록 없음"}" + (r.latestUseful?.let { " · 마감 전 마지막 응시일 ${it.monthDay()}" } ?: ""),
             style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Spacer(Modifier.height(8.dp))
         r.opicPaths.forEach { p ->
             Text(if (p.useWaiver) "Waiver 사용" else "Waiver 없이", style = MaterialTheme.typography.labelLarge)
             Text(
                 if (p.earliest == null) "마감 전에 응시할 수 있는 날이 없습니다."
-                else "가장 빠른 날 ${p.earliest} · 마감 전 기회 ${p.opportunities}회 (${p.eligibleDates.joinToString { "${it.monthValue}/${it.dayOfMonth}" }})",
+                else "가장 빠른 날 ${p.earliest.monthDay()} · 마감 전 기회 ${p.opportunities}회 (${p.eligibleDates.joinToString { "${it.monthValue}/${it.dayOfMonth}" }})",
                 style = MaterialTheme.typography.bodyMedium,
             )
             Spacer(Modifier.height(4.dp))
