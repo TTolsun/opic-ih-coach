@@ -68,6 +68,8 @@ data class Settings(
     val audioUploadConsent: Boolean = false,
     val audioRetentionDays: Int = 14,
     val seedVersion: Int = 0,
+    /** Bundled templates added after the first seed (roleplay). Reset with seedVersion when all data is wiped. */
+    val templateSeedVersion: Int = 0,
     val focusTopics: Set<String> = emptySet(),
     // Retake planning (values the app cannot look up; the user confirms them).
     val retakeDays: Int = 25,
@@ -175,6 +177,7 @@ internal val SETTINGS_FIELDS: List<PrefField<*, *>> = listOf(
     plain("audioUploadConsent", booleanPreferencesKey("audio_consent"), { it.audioUploadConsent }) { s, v -> s.copy(audioUploadConsent = v) },
     plain("audioRetentionDays", intPreferencesKey("audio_retention"), { it.audioRetentionDays }) { s, v -> s.copy(audioRetentionDays = v) },
     plain("seedVersion", intPreferencesKey("seed_version"), { it.seedVersion }) { s, v -> s.copy(seedVersion = v) },
+    plain("templateSeedVersion", intPreferencesKey("template_seed_version"), { it.templateSeedVersion }) { s, v -> s.copy(templateSeedVersion = v) },
     plain("focusTopics", stringSetPreferencesKey("focus_topics"), { it.focusTopics }) { s, v -> s.copy(focusTopics = v) },
     plain("retakeDays", intPreferencesKey("retake_days"), { it.retakeDays }) { s, v -> s.copy(retakeDays = v) },
     plain("retakeVerified", booleanPreferencesKey("retake_verified"), { it.retakeVerified }) { s, v -> s.copy(retakeVerified = v) },

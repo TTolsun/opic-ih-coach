@@ -1,0 +1,24 @@
+{
+  "source": "앱 내장 롤플레이 템플릿 (AI 작성)",
+  "note": "OPIc 롤플레이 3단계(질문하기, 문제 해결, 관련 경험)용 틀. 세부 내용은 자기 상황에 맞게 바꿔 쓴다. 3번은 오사카 여행 이야기(S1)를 재활용한다.",
+  "scripts": [
+    {
+      "topic": "Role-play: Hotel reservation", "title": "1. Asking Questions", "type": "ROLEPLAY", "stories": "",
+      "question": "You want to book a hotel for your next trip. Call the hotel and ask three or four questions about the rooms and services.",
+      "original": "Hi, I'm calling because I'd like to book a room for my next trip. I have a few questions, if you don't mind.\nFirst of all, do you have any rooms available from the 20th to the 23rd? I'm traveling with my family, so we need a room for three people.\nSecond, how much is it per night, and is breakfast included?\nAlso, I heard there's a hot spring near your hotel. Is it inside the hotel, or do we have to go outside?\nLastly, is there a parking lot? We're planning to rent a car.\nThank you so much for your help. I'll call you back after I talk to my family.",
+      "keywords": ["calling to book a room", "a few questions", "first: rooms available, three people", "second: price per night, breakfast", "also: hot spring", "lastly: parking", "call you back"]
+    },
+    {
+      "topic": "Role-play: Hotel reservation", "title": "2. Solving a Problem", "type": "ROLEPLAY", "stories": "",
+      "question": "When you arrive at the hotel, they say your reservation does not exist. Explain the situation to the front desk and offer two or three alternatives.",
+      "original": "Excuse me, I think there's a problem. I booked a room on your website two weeks ago, but you said my reservation doesn't exist.\nHere's my confirmation email. As you can see, I already paid with my credit card.\nI'm really tired after a long flight, so I hope we can solve this quickly. I have a few ideas.\nFirst, if you have any other room tonight, I'm okay with a smaller one.\nSecond, if the hotel is fully booked, could you find me a room at a hotel nearby?\nLastly, if neither works, please give me a full refund, and I'll look for another place myself.\nI'd really appreciate your help.",
+      "keywords": ["there's a problem", "booked two weeks ago, no reservation", "confirmation email, already paid", "tired, solve quickly", "first: another room, smaller is okay", "second: hotel nearby", "lastly: full refund", "appreciate your help"]
+    },
+    {
+      "topic": "Role-play: Hotel reservation", "title": "3. Related Experience", "type": "PAST_EXPERIENCE", "stories": "S1",
+      "question": "Have you ever had a problem while you were traveling? Tell me what happened and how you solved it.",
+      "original": "Actually, I had a problem during my trip to Osaka last summer.\nOn the second night, my family and I went to Dotonbori, and I ate way too much takoyaki. A few hours later, I got a terrible stomachache.\nIt was late at night, and I couldn't read Japanese, so I didn't know what medicine to buy.\nSo I asked the front desk for help. They told me about a drugstore nearby, and I bought some medicine there.\nAfter that, I rested in the hot spring at the hotel, and I felt much better the next morning.\nSince then, I always carry some basic medicine when I travel abroad.",
+      "keywords": ["Osaka, last summer", "Dotonbori, too much takoyaki", "terrible stomachache", "late at night, couldn't read Japanese", "front desk, drugstore nearby", "hot spring, better next morning", "always carry medicine now"]
+    }
+  ]
+}

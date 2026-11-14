@@ -408,7 +408,7 @@ fun SettingsScreen() {
             confirmWipe = false
             scope.launch {
                 c.dao.wipeAll(); c.backup.deleteAllAudio(); c.keys.clearAll()
-                c.settings.update { it.copy(seedVersion = 0) }
+                c.settings.update { it.copy(seedVersion = 0, templateSeedVersion = 0) }
                 c.seed.seedIfNeeded()
                 message = "삭제했습니다. 기본 콘텐츠를 다시 불러왔습니다."
             }

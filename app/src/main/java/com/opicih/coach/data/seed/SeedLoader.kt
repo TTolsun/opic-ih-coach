@@ -41,6 +41,15 @@ private fun SeedScript.revisionsFor(scriptId: Long) = buildList {
     if (keywords.isNotEmpty()) add(ScriptRevisionEntity(scriptId = scriptId, version = ScriptVersion.KEYWORDS.name, text = keywords.joinToString("\n"), reasonKo = "말하는 순서대로 정리한 키워드입니다."))
 }
 
+/**
+ * Story links for bundled scripts that were seeded before their story existed. Only scripts never linked
+ * (storyIds == null) are filled; matching is by topic and title, which do not change for bundled scripts.
+ */
+internal fun planStoryLinks(seed: List<SeedScript>, scripts: List<ScriptEntity>): List<ScriptEntity> =
+    scripts.filter { it.source == ContentSource.SEED_USER.name && it.storyIds == null }.mapNotNull { s ->
+        seed.firstOrNull { it.topic == s.topic && it.title == s.title }?.stories?.takeIf { it.isNotBlank() }?.let { s.copy(storyIds = it) }
+    }
+
 internal data class BundledRevisionRefresh(
     val obsolete: List<ScriptRevisionEntity>,
     val additions: List<ScriptRevisionEntity>,
@@ -80,6 +89,11 @@ class SeedLoader(private val context: Context, private val db: AppDatabase, priv
     private val seedLock = Mutex()
 
     suspend fun seedIfNeeded() = seedLock.withLock {
+        seedOriginal()
+        addLaterContent()
+    }
+
+    private suspend fun seedOriginal() {
         val initialSeed = settings.current().seedVersion < SEED_VERSION
         val today = LocalDate.now().toEpochDay()
         val content = if (initialSeed) readAsset("seed/content.json")?.let {
@@ -88,7 +102,7 @@ class SeedLoader(private val context: Context, private val db: AppDatabase, priv
         val seed = readAsset("seed/user_scripts_2026.json")?.let {
             json.decodeFromString(SeedScripts.serializer(), it).scripts
         }.orEmpty()
-        if (!initialSeed && seed.none { it.refreshRevisions }) return@withLock
+        if (!initialSeed && seed.none { it.refreshRevisions }) return
 
         db.withTransaction {
             if (content != null) seedReferenceContent(content, today)
@@ -124,8 +138,50 @@ class SeedLoader(private val context: Context, private val db: AppDatabase, priv
         }
     }
 
+    /**
+     * Content added after the first seed: stories that were missing (S8, S9), story links for bundled scripts that
+     * never had one, and the roleplay templates. Links fill only scripts whose storyIds is null; a script the learner
+     * set to "no story" stores "" and is left alone. Templates are inserted once, so a deleted template stays deleted.
+     */
+    private suspend fun addLaterContent() {
+        val content = readAsset("seed/content.json")?.let { json.decodeFromString(SeedContent.serializer(), it) }
+        val seed = readAsset("seed/user_scripts_2026.json")?.let { json.decodeFromString(SeedScripts.serializer(), it).scripts }.orEmpty()
+        db.withTransaction {
+            content?.let { c ->
+                val have = dao.stories().map { it.id }.toSet()
+                val missing = c.stories.filter { it.id !in have }
+                if (missing.isNotEmpty()) dao.insertStories(missing.map { StoryEntity(it.id, it.titleKo, it.summary, it.tags, it.reusableFor) })
+            }
+            planStoryLinks(seed, dao.scripts()).forEach { dao.updateScript(it) }
+        }
+        if (settings.current().templateSeedVersion < TEMPLATE_VERSION) {
+            val templates = readAsset("seed/roleplay_templates.json")?.let {
+                json.decodeFromString(SeedScripts.serializer(), it).scripts
+            }.orEmpty()
+            val today = LocalDate.now().toEpochDay()
+            db.withTransaction {
+                val existing = dao.scripts().map { it.topic to it.title }.toSet()
+                templates.filter { (it.topic to it.title) !in existing }.forEach { t ->
+                    dao.insertScript(
+                        ScriptEntity(
+                            topic = t.topic, title = t.title, question = t.question, questionType = t.type, original = t.original,
+                            keywords = t.keywords.joinToString("\n").ifBlank { null }, source = ContentSource.AI_SAMPLE.name,
+                            storyIds = t.stories.ifBlank { null },
+                            estSeconds = (TextNormalizer.words(t.original).size / 2.2).toInt().coerceAtLeast(10), dueEpochDay = today,
+                        )
+                    )
+                }
+            }
+            settings.update { it.copy(templateSeedVersion = TEMPLATE_VERSION) }
+        }
+    }
+
     private fun readAsset(path: String): String? =
         runCatching { context.assets.open(path).bufferedReader(Charsets.UTF_8).use { it.readText() } }.getOrNull()
 
-    companion object { const val SEED_VERSION = 1 }
+    companion object {
+        const val SEED_VERSION = 1
+        /** 1: roleplay templates (질문하기, 문제 해결, 관련 경험). */
+        const val TEMPLATE_VERSION = 1
+    }
 }
