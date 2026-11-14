@@ -95,7 +95,7 @@ class ScriptRepository(private val db: AppDatabase) {
             ScriptVersion.SHORT -> s.copy(shortVersion = rev.text)
             ScriptVersion.KEYWORDS -> s.copy(keywords = rev.text)
             ScriptVersion.ORIGINAL -> s
-        }.let { if (makeActive && v != ScriptVersion.KEYWORDS && v != ScriptVersion.ORIGINAL) it.copy(activeVersion = v.name) else it }
+        }.let { if (makeActive && v.becomesStudyTextOnApprove) it.copy(activeVersion = v.name) else it }
         dao.updateScript(updated.copy(updatedAt = System.currentTimeMillis()))
         dao.updateRevision(rev.copy(status = RevisionStatus.APPROVED.name))
     }

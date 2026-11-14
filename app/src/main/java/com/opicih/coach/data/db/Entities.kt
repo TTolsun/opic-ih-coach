@@ -33,6 +33,13 @@ enum class QuestionType(val label: String) {
 enum class ScriptVersion(val label: String) {
     ORIGINAL("Original"), NATURAL("Natural"), IH_TARGET("Target"), SHORT("Short"), KEYWORDS("Keywords");
 
+    /**
+     * Whether approving a proposal of this version also makes it the study text. Only full answers do: Short is a
+     * 20-30 word emergency version, and approving it used to swap the study text for it. The learner can still
+     * pick Short on purpose with "이 버전으로 학습".
+     */
+    val becomesStudyTextOnApprove: Boolean get() = this == NATURAL || this == IH_TARGET
+
     companion object {
         fun of(name: String?): ScriptVersion = entries.firstOrNull { it.name == name } ?: ORIGINAL
     }
