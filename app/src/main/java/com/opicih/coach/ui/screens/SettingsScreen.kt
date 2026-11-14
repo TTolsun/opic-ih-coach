@@ -170,6 +170,13 @@ fun SettingsScreen(onExams: () -> Unit = {}) {
             FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 TARGET_GRADE_CHOICES.forEach { g -> Pill(g.code, g == s.targetGrade) { save { it.copy(targetGrade = g) } } }
             }
+            Spacer(Modifier.height(6.dp))
+            // Home shows "IH 준비도" and "최종 목표 IH"; say here how those relate to the grades picked above.
+            Text(
+                "최종 목표는 ${s.profile.finalGoal.code}" + (s.gradeDeadline?.let { " (${it.monthDay()}까지)" } ?: "") +
+                    "입니다. 다음 시험 추천의 준비도 조건은 위 목표 등급(${s.targetGrade.code}) 기준이고, 홈의 ${s.profile.finalGoal.code} 준비도는 최종 목표 기준입니다.",
+                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
 
         SectionCard(title = "Background Survey 주제", collapsible = true, initiallyExpanded = false) {

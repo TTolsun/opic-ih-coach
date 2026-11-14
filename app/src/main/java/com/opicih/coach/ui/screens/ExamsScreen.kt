@@ -276,7 +276,8 @@ private fun RegistrationDialog(r: ExamRegistrationEntity, plan: PlannedRetake?, 
                 if (status == RegistrationStatus.COMPLETED) OutlinedTextField(grade, { grade = it }, label = { Text("결과 등급 (나오면 입력)") }, singleLine = true)
                 Text(if (status == RegistrationStatus.PLANNED) "웨이버 사용 계획" else "실제 웨이버 사용", style = MaterialTheme.typography.labelLarge)
                 if (status == RegistrationStatus.PLANNED && date == r.dateLocal && type == r.type) {
-                    plan?.regularFrom?.let {
+                    // A past date ("3월 26일부터" in November) reads as a stale warning, so only future limits are shown.
+                    plan?.regularFrom?.takeIf { it.isAfter(ExamRepository.nowKst().toLocalDate()) }?.let {
                         Text("일반 재응시 ${it.monthDay()}부터", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
