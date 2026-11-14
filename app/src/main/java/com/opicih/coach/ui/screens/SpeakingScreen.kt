@@ -181,7 +181,8 @@ fun SpeakingScreen(scriptId: Long?, mode: PracticeMode?, reviewId: Long? = null,
                 }
                 Spacer(Modifier.weight(1f))
                 if (ui.mode.usesScript) IconButton(onClick = { showPicker = true }) { Icon(Icons.Filled.List, "스크립트 선택") }
-                IconButton(onClick = { vm.next() }) { Icon(Icons.Filled.SkipNext, "다음 질문") }
+                // After a result the panel below has a labeled "다음 질문" button; the icon would repeat it.
+                if (ui.phase != Phase.RESULT) IconButton(onClick = { vm.next() }) { Icon(Icons.Filled.SkipNext, "다음 질문") }
             }
         }
 

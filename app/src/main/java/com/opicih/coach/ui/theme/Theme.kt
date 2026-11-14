@@ -10,6 +10,8 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.intl.LocaleList
+import androidx.compose.ui.text.style.LineBreak
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -84,15 +86,36 @@ private val AppShapes = Shapes(
 )
 
 private val base = Typography()
+
+/**
+ * Korean UI text breaks between words, not inside them. Without this, Android breaks Korean at any syllable,
+ * so a larger system font produced "다
+시 말하기" or "13
+분". Phrase word-break needs Android 13+ and a
+ * ko locale on the text; older versions ignore it and keep the old behavior. Latin glyphs are unaffected by
+ * the locale (they still come from the default font), and English study text uses [EnglishReading] instead.
+ */
+private fun TextStyle.korean(): TextStyle = copy(
+    localeList = LocaleList("ko-KR"),
+    lineBreak = LineBreak.Paragraph.copy(wordBreak = LineBreak.WordBreak.Phrase),
+)
+
 private val AppTypography = Typography(
-    displaySmall = base.displaySmall.copy(fontWeight = FontWeight.Bold, letterSpacing = (-1).sp),
-    headlineMedium = base.headlineMedium.copy(fontWeight = FontWeight.Bold, letterSpacing = (-0.5).sp),
-    headlineSmall = base.headlineSmall.copy(fontWeight = FontWeight.Bold),
-    titleLarge = base.titleLarge.copy(fontWeight = FontWeight.SemiBold),
-    titleMedium = base.titleMedium.copy(fontWeight = FontWeight.SemiBold),
-    bodyLarge = base.bodyLarge.copy(lineHeight = 26.sp),
-    bodyMedium = base.bodyMedium.copy(lineHeight = 22.sp),
-    labelLarge = base.labelLarge.copy(fontWeight = FontWeight.SemiBold),
+    displayLarge = base.displayLarge.korean(),
+    displayMedium = base.displayMedium.korean(),
+    displaySmall = base.displaySmall.copy(fontWeight = FontWeight.Bold, letterSpacing = (-1).sp).korean(),
+    headlineLarge = base.headlineLarge.korean(),
+    headlineMedium = base.headlineMedium.copy(fontWeight = FontWeight.Bold, letterSpacing = (-0.5).sp).korean(),
+    headlineSmall = base.headlineSmall.copy(fontWeight = FontWeight.Bold).korean(),
+    titleLarge = base.titleLarge.copy(fontWeight = FontWeight.SemiBold).korean(),
+    titleMedium = base.titleMedium.copy(fontWeight = FontWeight.SemiBold).korean(),
+    titleSmall = base.titleSmall.korean(),
+    bodyLarge = base.bodyLarge.copy(lineHeight = 26.sp).korean(),
+    bodyMedium = base.bodyMedium.copy(lineHeight = 22.sp).korean(),
+    bodySmall = base.bodySmall.korean(),
+    labelLarge = base.labelLarge.copy(fontWeight = FontWeight.SemiBold).korean(),
+    labelMedium = base.labelMedium.korean(),
+    labelSmall = base.labelSmall.korean(),
 )
 
 /** English study text gets a slightly larger serif-free reading style. */

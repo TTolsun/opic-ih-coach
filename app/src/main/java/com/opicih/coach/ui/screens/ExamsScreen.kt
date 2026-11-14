@@ -105,7 +105,7 @@ fun ExamsScreen(onDebrief: (LocalDate, Long) -> Unit) {
             Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
-                        Text("목표 IH", style = MaterialTheme.typography.labelLarge)
+                        Text("다음 시험 목표 ${settings.targetGrade.code} · 최종 목표 ${settings.profile.finalGoal.code}", style = MaterialTheme.typography.labelLarge)
                         settings.gradeDeadline?.let { deadline ->
                             Text("${deadline.monthDay()}까지 성적 확보", style = MaterialTheme.typography.titleMedium)
                         }
@@ -265,8 +265,9 @@ private fun RegistrationDialog(r: ExamRegistrationEntity, plan: PlannedRetake?, 
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) { ExamType.selectable.forEach { t -> Pill(t.label, type == t) { type = t } } }
                 OutlinedTextField(date, { date = it }, label = { Text("시험일 (YYYY-MM-DD)") }, singleLine = true)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedTextField(start, { start = it }, label = { Text("시작 (HH:MM)") }, singleLine = true, modifier = Modifier.weight(1f))
-                    OutlinedTextField(end, { end = it }, label = { Text("종료") }, singleLine = true, modifier = Modifier.weight(1f))
+                    // Same short label on both fields (the format moved to the placeholder), so neither wraps.
+                    OutlinedTextField(start, { start = it }, label = { Text("시작 시각") }, placeholder = { Text("09:00") }, singleLine = true, modifier = Modifier.weight(1f))
+                    OutlinedTextField(end, { end = it }, label = { Text("종료 시각") }, placeholder = { Text("10:00") }, singleLine = true, modifier = Modifier.weight(1f))
                 }
                 OutlinedTextField(location, { location = it }, label = { Text("장소") }, singleLine = true)
                 Text("상태", style = MaterialTheme.typography.labelLarge)
