@@ -319,8 +319,11 @@ fun ScriptDetailScreen(id: Long, onPractice: (Long, PracticeMode) -> Unit, onEdi
                 busy = true; message = null
                 scope.launch {
                     val stories = c.dao.stories().joinToString("; ") { "${it.id} ${it.titleKo}: ${it.summary}" }
-                    c.scripts.requestImprovement(s, c.coach(settings), stories)
-                        .onSuccess { n -> message = "개선안 ${n}개를 승인 대기로 저장했습니다." }
+                    c.scripts.requestImprovement(s, c.coach(settings), stories, c.glossary)
+                        .onSuccess { r ->
+                            message = "개선안 ${r.revisions}개를 승인 대기로 저장했습니다." +
+                                if (r.glossary > 0) " 새 표현 뜻 ${r.glossary}개를 추가했습니다." else ""
+                        }
                         .onFailure { e -> message = e.message }
                     busy = false
                 }

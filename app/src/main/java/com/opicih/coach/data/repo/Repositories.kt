@@ -35,6 +35,7 @@ import com.opicih.coach.data.db.ScriptVersion
 import com.opicih.coach.importer.DuplicateLinker
 import com.opicih.coach.importer.ParsedScript
 import com.opicih.coach.learning.CAPTURE_CLOUD_STT
+import com.opicih.coach.learning.GlossaryGrowth
 import com.opicih.coach.learning.MasteryRules
 import com.opicih.coach.learning.ScoreKind
 import com.opicih.coach.learning.SrsScheduler
@@ -111,7 +112,10 @@ class ScriptRepository(private val db: AppDatabase) {
 
     suspend fun setActive(s: ScriptEntity, v: ScriptVersion) = dao.updateScript(s.copy(activeVersion = v.name))
 
-    suspend fun requestImprovement(s: ScriptEntity, coach: AiCoach, storyHints: String): Result<Int> {
+    /** [revisions] improvement versions waiting for approval; [glossary] new expression meanings that were added. */
+    data class Improvement(val revisions: Int, val glossary: Int)
+
+    suspend fun requestImprovement(s: ScriptEntity, coach: AiCoach, storyHints: String, glossary: GlossaryRepository? = null): Result<Improvement> {
         val r = coach.improveScript(ScriptInput(s.topic, s.question, s.original, storyHints))
         return r.map { v ->
             val origin = if (coach.isRealAi) RevisionOrigin.AI_CLAUDE.name else RevisionOrigin.LOCAL.name
@@ -123,7 +127,10 @@ class ScriptRepository(private val db: AppDatabase) {
             }
             dao.insertRevisions(revs)
             if (v.koreanMeaning.isNotBlank()) dao.updateScript(s.copy(koreanMeaning = v.koreanMeaning))
-            revs.size
+            val entries = glossary?.let {
+                GlossaryGrowth.accept(v.glossary, it.current(), listOf(v.natural, v.ihTarget, v.short), s.original)
+            }.orEmpty()
+            Improvement(revs.size, glossary?.saveGenerated(s.id, entries, origin) ?: 0)
         }
     }
 

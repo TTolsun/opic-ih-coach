@@ -35,6 +35,24 @@ class GeminiParseTest {
     }
 }
 
+class ScriptVersionsParseTest {
+    @Test fun decodesGlossaryEntries() {
+        val text = """{"natural":"n","ihTarget":"i","short":"s","keywords":[],"reasonKo":"r","koreanMeaning":"k",
+            "glossary":[{"phrase":"wind down","forms":["wind down"],"kind":"IDIOM","meaningKo":"긴장을 풀다","easier":"relax"},
+            {"phrase":"fatigue","meaningKo":"피로"}]}"""
+        val v = com.opicih.coach.ai.AiJson.json.decodeFromString(com.opicih.coach.ai.ScriptVersions.serializer(), text)
+        assertEquals(2, v.glossary.size)
+        assertEquals("IDIOM", v.glossary[0].kind)
+        assertEquals("relax", v.glossary[0].easier)
+        assertEquals("WORD", v.glossary[1].kind)
+    }
+
+    @Test fun missingGlossaryKeyIsEmpty() {
+        val v = com.opicih.coach.ai.AiJson.json.decodeFromString(com.opicih.coach.ai.ScriptVersions.serializer(), """{"natural":"n"}""")
+        assertTrue(v.glossary.isEmpty())
+    }
+}
+
 class GeminiTranscriberTest {
     @Test fun requestCarriesInlineAudioAndVerbatimPrompt() {
         val body = com.opicih.coach.ai.GeminiTranscriber.requestBody("QUJD", "audio/wav").toString()

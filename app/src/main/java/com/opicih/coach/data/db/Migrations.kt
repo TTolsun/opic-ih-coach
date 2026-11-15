@@ -83,6 +83,14 @@ object MigrationSql {
         "CREATE INDEX IF NOT EXISTS `index_morning_reviews_chunkId` ON `morning_reviews` (`chunkId`)",
     )
 
+    /** v10: glossary entries made by the AI. Adds one table; no existing row is changed. */
+    val V9_TO_V10 = listOf(
+        "CREATE TABLE IF NOT EXISTS `glossary_entries` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `phrase` TEXT NOT NULL, " +
+            "`forms` TEXT NOT NULL, `kind` TEXT NOT NULL, `meaningKo` TEXT NOT NULL, `noteKo` TEXT, `easier` TEXT, " +
+            "`sourceScriptId` INTEGER, `origin` TEXT NOT NULL, `createdAt` INTEGER NOT NULL)",
+        "CREATE UNIQUE INDEX IF NOT EXISTS `index_glossary_entries_phrase` ON `glossary_entries` (`phrase`)",
+    )
+
     val V8_TO_V9 = listOf(
         "ALTER TABLE `exam_registrations` ADD COLUMN `waiverPlanned` INTEGER",
         "CREATE TABLE IF NOT EXISTS `exam_data_updates` (`version` INTEGER NOT NULL, PRIMARY KEY(`version`))",

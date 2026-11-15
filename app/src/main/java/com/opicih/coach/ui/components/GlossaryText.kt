@@ -58,8 +58,8 @@ import kotlinx.coroutines.withContext
 @Composable
 fun GlossaryText(text: String, scriptId: Long, modifier: Modifier = Modifier, style: TextStyle = EnglishReading) {
     val c = LocalContainer.current
-    val glossary = c.glossary.glossary
-    val spans = remember(text) { glossary.spans(text) }
+    val glossary by c.glossary.glossaryFlow.collectAsState(initial = c.glossary.seed)
+    val spans = remember(text, glossary) { glossary.spans(text) }
     var picked by remember(text) { mutableStateOf<GlossaryLookup?>(null) }
     var layout by remember { mutableStateOf<TextLayoutResult?>(null) }
     val idiomBg = MaterialTheme.colorScheme.primary.copy(alpha = 0.10f)
@@ -87,11 +87,12 @@ fun GlossaryText(text: String, scriptId: Long, modifier: Modifier = Modifier, st
 fun LookedUpList(scriptId: Long) {
     val c = LocalContainer.current
     val lookups by c.glossary.lookups(scriptId).collectAsState(initial = emptyList())
+    val glossary by c.glossary.glossaryFlow.collectAsState(initial = c.glossary.seed)
     var open by remember { mutableStateOf<WordLookupEntity?>(null) }
     if (lookups.isEmpty()) return
     SectionCard(title = "찾아본 표현") {
         lookups.take(8).forEach { l ->
-            val entry = c.glossary.glossary.entry(l.phrase)
+            val entry = glossary.entry(l.phrase)
             Row(Modifier.fillMaxWidth().clickable { open = l }.padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     Text(l.surface, style = MaterialTheme.typography.bodyLarge)
@@ -102,7 +103,7 @@ fun LookedUpList(scriptId: Long) {
         }
     }
     open?.let { l ->
-        val lookup = GlossaryLookup(c.glossary.glossary.entry(l.phrase), null, l.surface, l.sentence, 0, 0)
+        val lookup = GlossaryLookup(glossary.entry(l.phrase), null, l.surface, l.sentence, 0, 0)
         LookupSheet(lookup, scriptId, record = false) { open = null }
     }
 }
@@ -127,7 +128,10 @@ fun LookupSheet(lookup: GlossaryLookup, scriptId: Long, record: Boolean, onDismi
         Column(Modifier.padding(start = 20.dp, end = 20.dp, bottom = 28.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(entry?.phrase ?: lookup.surface, style = MaterialTheme.typography.headlineSmall, modifier = Modifier.weight(1f))
-                if (entry != null) SourceTag(if (entry.isIdiom) "숙어" else "단어", if (entry.isIdiom) primary else muted)
+                if (entry != null) {
+                    SourceTag(if (entry.isIdiom) "숙어" else "단어", if (entry.isIdiom) primary else muted)
+                    if (c.glossary.seed.entry(entry.phrase) == null) { Spacer(Modifier.width(6.dp)); SourceTag("AI", muted) }
+                }
             }
             if (entry == null) {
                 Text("등록된 뜻이 없습니다.", style = MaterialTheme.typography.bodyMedium, color = muted)

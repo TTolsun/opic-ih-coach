@@ -164,6 +164,13 @@ interface AppDao {
     @Insert suspend fun insertLookups(l: List<WordLookupEntity>)
     @Query("SELECT COUNT(*) FROM chunks WHERE lower(phrase) IN (:phrases)") suspend fun chunkCount(phrases: List<String>): Int
 
+    // ---- AI-made glossary entries (v10)
+    @Query("SELECT * FROM glossary_entries ORDER BY id") fun glossaryEntriesFlow(): Flow<List<GlossaryEntryEntity>>
+    @Query("SELECT * FROM glossary_entries ORDER BY id") suspend fun glossaryEntries(): List<GlossaryEntryEntity>
+    /** IGNORE: the unique phrase index keeps the first meaning when two scripts produce the same expression. */
+    @Insert(onConflict = OnConflictStrategy.IGNORE) suspend fun insertGlossaryEntries(e: List<GlossaryEntryEntity>): List<Long>
+    @Query("DELETE FROM glossary_entries") suspend fun clearGlossaryEntries()
+
     // ---- Sentence frames (v5)
     /** All frames, pending first. REJECTED rows stay so a rejected frame is not suggested again; the screen can restore them. */
     @Query("SELECT * FROM sentence_frames ORDER BY status DESC, id") fun framesFlow(): Flow<List<SentenceFrameEntity>>
@@ -209,6 +216,6 @@ interface AppDao {
     suspend fun wipeAll() {
         clearScripts(); clearRevisions(); clearImports(); clearAttempts(); clearErrors(); clearChunks()
         clearDailyLogs(); clearMocks(); clearExams(); clearStories(); clearQuestions()
-        clearRegistrations(); clearStatusEvents(); clearTrainingSessions(); clearLookups(); clearFrames(); clearSegments()
+        clearRegistrations(); clearStatusEvents(); clearTrainingSessions(); clearLookups(); clearFrames(); clearSegments(); clearGlossaryEntries()
     }
 }

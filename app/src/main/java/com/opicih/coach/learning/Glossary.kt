@@ -45,7 +45,7 @@ data class GlossaryLookup(
     val end: Int,
 )
 
-class Glossary(entries: List<GlossaryEntry>) {
+class Glossary(val entries: List<GlossaryEntry>) {
     private val byForm: Map<String, GlossaryEntry>
     private val maxTokens: Int
     private val byPhrase: Map<String, GlossaryEntry> = entries.associateBy { it.phrase.lowercase() }
@@ -67,6 +67,9 @@ class Glossary(entries: List<GlossaryEntry>) {
     val size: Int get() = byPhrase.size
 
     fun entry(phrase: String): GlossaryEntry? = byPhrase[phrase.lowercase()]
+
+    /** Whether some entry already maps this exact surface [form] (compared by tokens, so case and apostrophes do not matter). */
+    fun knows(form: String): Boolean = byForm.containsKey(tokenize(form).joinToString(" ") { it.norm })
 
     /** Greedy, longest match first, left to right. A longer idiom beats the single words inside it. */
     fun spans(text: String): List<GlossarySpan> {

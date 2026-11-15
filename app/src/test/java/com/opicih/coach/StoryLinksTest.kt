@@ -55,7 +55,7 @@ class StoryLinksTest {
     @Test fun learnerMadeStoriesSurviveABackupRoundTrip() = with(BackupManager.Companion) {
         val own = StoryEntity("U1731560000000", "어릴 적 치과", "충치 치료가 무서웠음", "user", "병원, 어린 시절")
         val back = decode(encode(BackupManager.Snapshot(stories = listOf(own.toBackup()))))
-        assertEquals(8, back.version)
+        assertEquals(9, back.version)
         assertEquals(listOf(own), back.stories.map { it.toEntity() })
         // A version-7 file has no stories field; it still decodes and restores none.
         assertTrue(decode("""{"version":7}""").stories.isEmpty())
