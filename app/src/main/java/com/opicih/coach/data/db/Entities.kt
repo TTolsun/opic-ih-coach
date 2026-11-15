@@ -288,6 +288,34 @@ data class SentenceFrameEntity(
     val createdAt: Long = System.currentTimeMillis(),
 )
 
+/**
+ * v10: a glossary entry the AI made while improving a script (the bundled glossary asset is not stored here).
+ * [phrase] is unique so improving another script never duplicates an expression. [forms] are newline-joined.
+ */
+@Entity(tableName = "glossary_entries", indices = [Index(value = ["phrase"], unique = true)])
+data class GlossaryEntryEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val phrase: String,
+    val forms: String = "",
+    /** IDIOM or WORD. */
+    val kind: String = "WORD",
+    val meaningKo: String,
+    val noteKo: String? = null,
+    val easier: String? = null,
+    val sourceScriptId: Long? = null,
+    /** Same values as RevisionOrigin: the engine that made the entry. */
+    val origin: String,
+    val createdAt: Long = System.currentTimeMillis(),
+) {
+    fun toEntry() = com.opicih.coach.learning.GlossaryEntry(phrase, forms.split('\n').filter { it.isNotBlank() }, kind, meaningKo, noteKo, easier)
+
+    companion object {
+        fun of(e: com.opicih.coach.learning.GlossaryEntry, scriptId: Long?, origin: String) = GlossaryEntryEntity(
+            phrase = e.phrase, forms = e.forms.joinToString("\n"), kind = e.kind, meaningKo = e.meaningKo, noteKo = e.noteKo,
+            easier = e.easier, sourceScriptId = scriptId, origin = origin)
+    }
+}
+
 @Entity(tableName = "daily_logs")
 data class DailyLogEntity(
     @PrimaryKey val epochDay: Long,

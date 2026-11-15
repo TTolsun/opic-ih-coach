@@ -20,7 +20,7 @@ import java.sql.SQLException
 
 /**
  * Runs the production migration SQL (MigrationSql) against a real SQLite database built from Room's exported
- * v1 schema, then checks the result against Room's exported v9 schema and that no user data was lost.
+ * v1 schema, then checks the result against Room's exported v10 schema and that no user data was lost.
  * This replaces an instrumented MigrationTestHelper run, which needs a device.
  */
 class MigrationTest {
@@ -83,9 +83,14 @@ class MigrationTest {
         MigrationSql.V8_TO_V9.forEach(::exec)
     }
 
-    @Test fun v1ToV9MatchesRoomSchema() {
+    private fun migrateToV10() {
         migrateToV9()
-        for (e in entities(9)) {
+        MigrationSql.V9_TO_V10.forEach(::exec)
+    }
+
+    @Test fun v1ToV10MatchesRoomSchema() {
+        migrateToV10()
+        for (e in entities(10)) {
             val table = e["tableName"]!!.jsonPrimitive.content
             val expected = e["fields"]!!.jsonArray.associate { f ->
                 val o = f.jsonObject
@@ -161,6 +166,18 @@ class MigrationTest {
         assertEquals(1, count("sqlite_master", "name = 'sentence_frames'"))
         assertEquals(1, count("sqlite_master", "name = 'script_segments'"))
         assertEquals(23, count("scripts"))
+    }
+
+    @Test fun v9ToV10AddsAnEmptyGlossaryTableAndKeepsData() {
+        migrateToV9()
+        MigrationSql.V9_TO_V10.forEach(::exec)
+        assertEquals(0, count("glossary_entries"))
+        assertEquals(23, count("scripts"))
+        assertEquals(1, count("chunks"))
+        exec("INSERT INTO glossary_entries (phrase, forms, kind, meaningKo, origin, createdAt) VALUES ('wind down', 'wind down', 'IDIOM', '긴장을 풀다', 'AI_CLAUDE', 1)")
+        assertThrows(SQLException::class.java) {
+            exec("INSERT INTO glossary_entries (phrase, forms, kind, meaningKo, origin, createdAt) VALUES ('wind down', 'x', 'IDIOM', 'y', 'AI_CLAUDE', 2)")
+        }
     }
 
     @Test fun emptyExamsTableMigrates() {

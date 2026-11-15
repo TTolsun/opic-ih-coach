@@ -5,22 +5,38 @@ import android.util.Log
 import com.opicih.coach.data.db.AppDao
 import com.opicih.coach.data.db.ChunkEntity
 import com.opicih.coach.data.db.ContentSource
+import com.opicih.coach.data.db.GlossaryEntryEntity
 import com.opicih.coach.data.db.WordLookupEntity
 import com.opicih.coach.learning.Glossary
 import com.opicih.coach.learning.GlossaryEntry
 import com.opicih.coach.learning.LookupCounter
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 import java.time.LocalDate
 
 /**
- * Script glossary: meanings come from the bundled asset (seed/glossary.json), lookups are recorded per script, and a
+ * Script glossary: meanings come from the bundled asset (seed/glossary.json) plus entries the AI made while improving scripts, lookups are recorded per script, and a
  * phrase looked up on [LookupCounter.AUTO_REVIEW_DAYS] different days becomes a morning-routine review card.
  */
 class GlossaryRepository(context: Context, private val dao: AppDao) {
     private val ctx = context.applicationContext
 
-    val glossary: Glossary by lazy {
+    /** The bundled glossary only. Use [glossaryFlow] for what the learner sees: it also has the AI-made entries. */
+    val seed: Glossary by lazy {
         runCatching { ctx.assets.open(ASSET).use { Glossary.parse(it.readBytes().toString(Charsets.UTF_8)) } }
             .getOrElse { Log.e(TAG, "glossary asset could not be loaded; word lookup is off", it); Glossary(emptyList()) }
+    }
+
+    /** Bundled entries first, so the bundled meaning wins when an AI-made entry shares a form with it. */
+    val glossaryFlow: Flow<Glossary> = dao.glossaryEntriesFlow().map { rows -> Glossary(seed.entries + rows.map { it.toEntry() }) }
+
+    /** The glossary as it is now: bundled entries plus the stored AI-made ones. */
+    suspend fun current(): Glossary = Glossary(seed.entries + dao.glossaryEntries().map { it.toEntry() })
+
+    /** Stores AI-made [entries] made for [scriptId]. Returns how many were new (an existing phrase keeps its first meaning). */
+    suspend fun saveGenerated(scriptId: Long, entries: List<GlossaryEntry>, origin: String): Int {
+        if (entries.isEmpty()) return 0
+        return dao.insertGlossaryEntries(entries.map { GlossaryEntryEntity.of(it, scriptId, origin) }).count { it != -1L }
     }
 
     fun lookups(scriptId: Long) = dao.lookupsFlow(scriptId)

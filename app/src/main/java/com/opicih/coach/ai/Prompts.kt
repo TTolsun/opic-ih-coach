@@ -31,8 +31,14 @@ Rewrite the learner's script for spoken use. Rules:
 - "keywords": 4-6 keyword cues (2-4 words each) in speaking order.
 - "reasonKo": 3-5 short Korean bullet sentences explaining what changed and why (start each with "- ").
 - "koreanMeaning": natural Korean translation of ihTarget.
+- "glossary": words and expressions that appear in natural, ihTarget or short but NOT in the learner's original script, and that a learner at this level may not know. Skip very basic words.
+  Put an idiom or phrasal verb in one entry with "kind":"IDIOM"; a single word is "kind":"WORD".
+  "forms": the exact surface forms as they appear in the generated text (for example "relieving", "wind down").
+  "meaningKo": the Korean meaning in THIS context, not the first dictionary sense.
+  Optional "noteKo": a short Korean note (for example a confusing sense). Optional "easier": simpler English the learner could say instead.
+  At most 12 entries. Use an empty array if there are none.
 Output ONLY one JSON object:
-{"natural":"...","ihTarget":"...","short":"...","keywords":["..."],"reasonKo":"...","koreanMeaning":"..."}
+{"natural":"...","ihTarget":"...","short":"...","keywords":["..."],"reasonKo":"...","koreanMeaning":"...","glossary":[{"phrase":"...","forms":["..."],"kind":"WORD","meaningKo":"...","noteKo":"...","easier":"..."}]}
 """.trimIndent()
     }
 

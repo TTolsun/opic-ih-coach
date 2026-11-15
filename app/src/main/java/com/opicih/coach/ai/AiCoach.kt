@@ -3,6 +3,7 @@ package com.opicih.coach.ai
 import com.opicih.coach.analysis.DiscourseMetrics
 import com.opicih.coach.analysis.Feedback
 import com.opicih.coach.analysis.PauseMetrics
+import com.opicih.coach.learning.GlossaryEntry
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 
@@ -14,6 +15,8 @@ data class ScriptVersions(
     val keywords: List<String> = emptyList(),
     val reasonKo: String = "",
     val koreanMeaning: String = "",
+    /** Meanings for expressions that are in the generated versions but not in the learner's original. */
+    val glossary: List<GlossaryEntry> = emptyList(),
 )
 
 data class ScriptInput(val topic: String, val question: String, val original: String, val storyHints: String = "")
