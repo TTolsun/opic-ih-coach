@@ -56,7 +56,14 @@ import kotlinx.coroutines.withContext
  * do not give away) get a light tint so the learner sees which parts to learn as one unit.
  */
 @Composable
-fun GlossaryText(text: String, scriptId: Long, modifier: Modifier = Modifier, style: TextStyle = EnglishReading) {
+fun GlossaryText(
+    text: String,
+    scriptId: Long,
+    modifier: Modifier = Modifier,
+    style: TextStyle = EnglishReading,
+    /** Called when a tap opens a meaning, e.g. to pause audio that would talk over the sheet's TTS. */
+    onLookup: () -> Unit = {},
+) {
     val c = LocalContainer.current
     val glossary by c.glossary.glossaryFlow.collectAsState(initial = c.glossary.seed)
     val spans = remember(text, glossary) { glossary.spans(text) }
@@ -76,7 +83,10 @@ fun GlossaryText(text: String, scriptId: Long, modifier: Modifier = Modifier, st
         style = style,
         onTextLayout = { layout = it },
         modifier = modifier.pointerInput(text, spans) {
-            detectTapGestures { pos -> layout?.let { picked = glossary.lookupAt(text, it.getOffsetForPosition(pos), spans) } }
+            detectTapGestures { pos ->
+                layout?.let { picked = glossary.lookupAt(text, it.getOffsetForPosition(pos), spans) }
+                if (picked != null) onLookup()
+            }
         },
     )
     picked?.let { LookupSheet(it, scriptId, record = true) { picked = null } }

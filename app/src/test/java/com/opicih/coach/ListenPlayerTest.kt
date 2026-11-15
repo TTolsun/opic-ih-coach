@@ -89,6 +89,15 @@ class ListenPlayerTest {
         assertEquals(ListenRole.ANSWER, sp.spoken[1].third)
     }
 
+    @Test fun stateCarriesTheLanguageOfTheStepBeingRead() = runTest {
+        val p = player(backgroundScope, FakeSpeaker(speakMs = 1000), ids = listOf(1), withKorean = true)
+        p.play()
+        advanceTimeBy(500) // q1 (EN)
+        assertEquals("q1" to ListenLang.EN, p.state.value.text to p.state.value.lang)
+        advanceTimeBy(1000) // 질문1 (KO)
+        assertEquals("질문1" to ListenLang.KO, p.state.value.text to p.state.value.lang)
+    }
+
     @Test fun noScriptRepeatsBeforeTheWholeRoundIsPlayed() = runTest {
         val sp = FakeSpeaker()
         player(backgroundScope, sp).play()
