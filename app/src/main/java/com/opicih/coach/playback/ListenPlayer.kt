@@ -46,6 +46,8 @@ data class ListenState(
     val stepCount: Int = 0,
     val stepLabel: String = "",
     val text: String = "",
+    /** [text]의 언어. 영어 단계에서만 단어 뜻을 볼 수 있다. */
+    val lang: ListenLang = ListenLang.EN,
     /** 사용자에게 알려야 하는 상황(한국어 음성 없음, 반복 실패 등). */
     val notice: String? = null,
     /** true면 한국어 단계를 건너뛰는 중이다(한국어 음성이 설치되지 않은 기기). */
@@ -134,7 +136,7 @@ class ListenPlayer(
                 _state.update {
                     it.copy(
                         scriptId = c.scriptId, scriptTitle = c.title, topic = c.topic,
-                        stepIndex = stepIdx + 1, stepCount = c.steps.size, stepLabel = step.label, text = step.text,
+                        stepIndex = stepIdx + 1, stepCount = c.steps.size, stepLabel = step.label, text = step.text, lang = step.lang,
                     )
                 }
                 val p = prefs()

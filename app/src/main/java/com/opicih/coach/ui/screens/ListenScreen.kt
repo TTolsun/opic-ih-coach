@@ -44,6 +44,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import com.opicih.coach.data.prefs.Settings
 import com.opicih.coach.data.repo.SegmentRepository
+import com.opicih.coach.learning.ListenLang
 import com.opicih.coach.learning.ListenRole
 import com.opicih.coach.playback.ListenService
 import com.opicih.coach.playback.ListenStatus
@@ -51,6 +52,7 @@ import com.opicih.coach.speech.VoiceGender
 import com.opicih.coach.speech.VoiceGenders
 import com.opicih.coach.ui.LocalContainer
 import com.opicih.coach.ui.components.Banner
+import com.opicih.coach.ui.components.GlossaryText
 import com.opicih.coach.ui.components.Pill
 import com.opicih.coach.ui.components.SectionCard
 import com.opicih.coach.ui.components.SourceTag
@@ -102,7 +104,11 @@ fun ListenScreen(onOpenSettings: () -> Unit) {
                 Spacer(Modifier.height(6.dp))
                 Text(st.scriptTitle, style = MaterialTheme.typography.titleSmall)
                 Spacer(Modifier.height(8.dp))
-                Text(st.text, style = EnglishReading)
+                if (st.lang == ListenLang.EN && st.scriptId != 0L) {
+                    GlossaryText(st.text, st.scriptId, onLookup = { if (playing) ListenService.command(context, ListenService.ACTION_PAUSE) })
+                } else {
+                    Text(st.text, style = EnglishReading)
+                }
             }
             Spacer(Modifier.height(14.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
