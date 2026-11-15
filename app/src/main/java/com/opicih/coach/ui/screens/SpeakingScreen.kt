@@ -156,10 +156,10 @@ fun SpeakingScreen(scriptId: Long?, mode: PracticeMode?, reviewId: Long? = null,
             // until the learner asks for it or the result is shown.
             if (examLike && ui.phase != Phase.RESULT) {
                 var reveal by remember(q.text) { mutableStateOf(false) }
-                if (reveal) Text(q.text, style = EnglishReading)
+                if (reveal) GlossaryText(q.text, q.script?.id ?: 0L)
                 else OutlinedButton(onClick = { reveal = true }) { Icon(Icons.Filled.Visibility, null); Spacer(Modifier.width(6.dp)); Text("질문 보기") }
             } else {
-                Text(q.text, style = EnglishReading)
+                GlossaryText(q.text, q.script?.id ?: 0L)
             }
             // 틀 붙이기는 아래 틀 카드에 같은 내용을 보여 주므로 미션 배너를 따로 띄우지 않습니다.
             q.mission?.takeIf { ui.mode != PracticeMode.FRAME_ATTACH }?.let {

@@ -65,6 +65,7 @@ import com.opicih.coach.ui.LocalContainer
 import com.opicih.coach.ui.components.Banner
 import com.opicih.coach.ui.components.Bullet
 import com.opicih.coach.ui.components.MetricTile
+import com.opicih.coach.ui.components.GlossaryText
 import com.opicih.coach.ui.components.InfoButton
 import com.opicih.coach.ui.components.InfoTopics
 import com.opicih.coach.ui.components.MicButton
@@ -73,7 +74,6 @@ import com.opicih.coach.ui.components.Pill
 import com.opicih.coach.ui.components.SectionCard
 import com.opicih.coach.ui.components.SourceTag
 import com.opicih.coach.ui.components.formatMs
-import com.opicih.coach.ui.theme.EnglishReading
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -365,7 +365,7 @@ fun MockScreen() {
                     Spacer(Modifier.height(8.dp))
                     var show by remember(q.no) { mutableStateOf(false) }
                     TextButton(onClick = { show = !show }) { Text(if (show) "질문 숨기기" else "질문 보기") }
-                    if (show) Text(q.text, style = EnglishReading)
+                    if (show) GlossaryText(q.text, scriptId = 0L)
                     Row {
                         OutlinedButton(enabled = ui.replaysLeft > 0 && ui.phase == MockPhase.QUESTION, onClick = { vm.playQuestion() }) { Text("다시 듣기 (${ui.replaysLeft})") }
                         Spacer(Modifier.weight(1f))
