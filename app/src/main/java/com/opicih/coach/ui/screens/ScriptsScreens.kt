@@ -194,6 +194,7 @@ fun ScriptDetailScreen(id: Long, onPractice: (Long, PracticeMode) -> Unit, onEdi
             Text("${s.topic} · ${s.title}", style = MaterialTheme.typography.titleLarge)
             // The question is a caption here, not reading material, so it uses a tighter line height than EnglishReading.
             Text(s.question, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            StoryReuseQuestions(s.copy(activeVersion = tab.name))
             Spacer(Modifier.height(6.dp))
             val dueIn = s.dueEpochDay - LocalDate.now().toEpochDay()
             Text(if (dueIn <= 0) "오늘 복습" else "${dueIn}일 뒤 복습 · 예상 발화 ${s.estSeconds}초", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
