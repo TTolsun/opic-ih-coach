@@ -47,6 +47,7 @@ import com.opicih.coach.ui.screens.ExamsScreen
 import com.opicih.coach.ui.screens.FramesScreen
 import com.opicih.coach.ui.screens.StoriesScreen
 import com.opicih.coach.ui.screens.HomeScreen
+import com.opicih.coach.ui.screens.HotelRoleplayScreen
 import com.opicih.coach.ui.screens.ListenScreen
 import com.opicih.coach.ui.screens.ImportScreen
 import com.opicih.coach.ui.screens.MockScreen
@@ -161,7 +162,6 @@ fun AppNav(startRoute: String?, onRouteConsumed: () -> Unit) {
                     onDebrief = { date, registrationId -> nav.navigate("examDebrief/${date.toEpochDay()}/${registrationId ?: 0L}") },
                     onExams = { nav.navigate("exams") },
                     onSpeakingReview = { nav.navigate("review/$it") { launchSingleTop = true } },
-                    onCoaching = { target, id -> nav.navigate("coachingPractice/$target/$id") { launchSingleTop = true } },
                     onSpeakMode = { m ->
                         when (m) {
                             null -> nav.goTab("speaking")
@@ -193,22 +193,15 @@ fun AppNav(startRoute: String?, onRouteConsumed: () -> Unit) {
             ) { e ->
                 val id = e.arguments?.getLong("scriptId")?.takeIf { it > 0 }
                 val mode = e.arguments?.getString("mode")?.let { PracticeMode.of(it) }
-                SpeakingScreen(id, mode, onOpenFrames = { nav.navigate("frames") })
+                SpeakingScreen(id, mode, onOpenFrames = { nav.navigate("frames") }, onHotelRoleplay = { nav.navigate("speakingHotel") })
             }
             composable("review/{id}", arguments = listOf(navArgument("id") { type = NavType.LongType })) { e ->
-                SpeakingScreen(null, PracticeMode.FREE, reviewId = e.arguments!!.getLong("id"), onOpenFrames = { nav.navigate("frames") })
-            }
-            composable("coachingPractice/{target}/{id}") { e ->
-                SpeakingScreen(
-                    null, PracticeMode.FREE,
-                    coachingTarget = e.arguments?.getString("target"),
-                    coachingId = e.arguments?.getString("id"),
-                    onExitCoaching = { nav.popBackStack() },
-                )
+                SpeakingScreen(null, PracticeMode.FREE, reviewId = e.arguments!!.getLong("id"), onOpenFrames = { nav.navigate("frames") }, onHotelRoleplay = { nav.navigate("speakingHotel") })
             }
             composable("frames") { FramesScreen() }
             composable("stories") { StoriesScreen(onOpenScript = { nav.navigate("script/$it") }) }
             composable("mock") { MockScreen() }
+            composable("speakingHotel") { HotelRoleplayScreen() }
             composable("progress") { ProgressScreen(onNextExam = { nav.navigate("nextExam") }, onExams = { nav.navigate("exams") }) }
             composable("script/{id}", arguments = listOf(navArgument("id") { type = NavType.LongType })) { e ->
                 ScriptDetailScreen(

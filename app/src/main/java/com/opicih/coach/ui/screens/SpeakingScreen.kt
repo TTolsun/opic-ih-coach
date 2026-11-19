@@ -92,15 +92,16 @@ import com.opicih.coach.ui.components.GlossaryText
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun SpeakingScreen(
-    scriptId: Long?, mode: PracticeMode?, reviewId: Long? = null, onOpenFrames: () -> Unit = {},
-    coachingTarget: String? = null, coachingId: String? = null, onExitCoaching: () -> Unit = {},
+    scriptId: Long?,
+    mode: PracticeMode?,
+    reviewId: Long? = null,
+    onOpenFrames: () -> Unit = {},
+    onHotelRoleplay: () -> Unit = {},
 ) {
     val vm: SpeakingViewModel = viewModel()
     val ui by vm.ui.collectAsStateWithLifecycle()
     val context = LocalContext.current
-    LaunchedEffect(scriptId, mode, reviewId, coachingTarget, coachingId) {
-        vm.configure(scriptId, mode, reviewId, coachingTarget, coachingId)
-    }
+    LaunchedEffect(scriptId, mode, reviewId) { vm.configure(scriptId, mode, reviewId) }
 
     // Stop the mic when the app goes to background (call, home button, screen off).
     val owner = LocalLifecycleOwner.current
@@ -132,7 +133,9 @@ fun SpeakingScreen(
     // 학습본 card where it started half under the bottom navigation.
     Column(Modifier.fillMaxSize()) {
     Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-        if (coachingTarget == null) ModeSelector(ui.mode) { vm.setMode(it) }
+        ModeSelector(ui.mode) {
+            if (it == PracticeMode.HOTEL_ROLEPLAY) onHotelRoleplay() else vm.setMode(it)
+        }
 
         if (micDenied) MicPermissionBanner()
 
@@ -154,14 +157,12 @@ fun SpeakingScreen(
             ) {
                 Text(q.topic, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
                 SourceTag(QuestionType.of(q.type).label)
-                if (q.sourceLabel.isNotBlank()) SourceTag(q.sourceLabel)
+                SourceTag(q.sourceLabel)
             }
             Spacer(Modifier.height(10.dp))
             // Recall/apply stages copy exam conditions: the exam asks by audio only, so the text stays hidden
             // until the learner asks for it or the result is shown.
-            if (q.coaching != null) {
-                Text(q.text, style = MaterialTheme.typography.bodyLarge)
-            } else if (examLike && ui.phase != Phase.RESULT) {
+            if (examLike && ui.phase != Phase.RESULT) {
                 var reveal by remember(q.text) { mutableStateOf(false) }
                 if (reveal) GlossaryText(q.text, q.script?.id ?: 0L)
                 else OutlinedButton(onClick = { reveal = true }) { Icon(Icons.Filled.Visibility, null); Spacer(Modifier.width(6.dp)); Text("질문 보기") }
@@ -177,7 +178,7 @@ fun SpeakingScreen(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 if (examLike) {
                     // Exam rule: one listen plus one replay. 0.75x is a memorize-stage aid only.
-                    val left = (if (q.coaching == null) EXAM_PLAYS else 1) - ui.replays
+                    val left = EXAM_PLAYS - ui.replays
                     FilledTonalButton(enabled = left > 0, onClick = { vm.playQuestion(1.0f) }) {
                         Icon(Icons.AutoMirrored.Filled.VolumeUp, null); Spacer(Modifier.width(6.dp))
                         Text(if (ui.replays == 0) "질문 듣기" else "다시 듣기 (${left.coerceAtLeast(0)})")
@@ -189,7 +190,7 @@ fun SpeakingScreen(
                 Spacer(Modifier.weight(1f))
                 if (ui.mode.usesScript) IconButton(onClick = { showPicker = true }) { Icon(Icons.Filled.List, "스크립트 선택") }
                 // After a result the panel below has a labeled "다음 질문" button; the icon would repeat it.
-                if (!ui.coachingRoute && ui.phase != Phase.RESULT) IconButton(onClick = { vm.next() }) { Icon(Icons.Filled.SkipNext, "다음 질문") }
+                if (ui.phase != Phase.RESULT) IconButton(onClick = { vm.next() }) { Icon(Icons.Filled.SkipNext, "다음 질문") }
             }
         }
 
@@ -201,17 +202,7 @@ fun SpeakingScreen(
 
         ui.check?.let { if (ui.result != null) CheckCard(it, vm) }
 
-        ui.result?.let { result ->
-            if (ui.coachingRoute) {
-                val offerDeviceRecognition = result.attempt.captureMode != CaptureMode.LIVE_STT.name &&
-                    result.attempt.transcript.isBlank()
-                CoachingResultPanel(result.metrics.coaching, ui.coachingRun, offerDeviceRecognition, onExitCoaching) {
-                    if (vm.prepareCoachingRetry(it)) onMic()
-                }
-            } else {
-                ResultPanel(result, ui, vm, onRetry = { onMic() })
-            }
-        }
+        ui.result?.let { ResultPanel(it, ui, vm, onRetry = { onMic() }) }
 
         Spacer(Modifier.height(24.dp))
     }
@@ -234,7 +225,7 @@ fun SpeakingScreen(
                 }
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     Box(Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
-                        if (!ui.coachingRoute && (ui.phase == Phase.IDLE || ui.showTypedFallback)) {
+                        if (ui.phase == Phase.IDLE || ui.showTypedFallback) {
                             TextButton(onClick = { showTyped = true }) { Icon(Icons.Filled.Edit, null); Spacer(Modifier.width(4.dp)); Text("직접 입력") }
                         }
                     }

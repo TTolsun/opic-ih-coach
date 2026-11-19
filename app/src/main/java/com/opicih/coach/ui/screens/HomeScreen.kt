@@ -96,12 +96,10 @@ fun HomeScreen(
     /** Opens speaking with the task's PracticeMode name (null = default; SAIL_CONVERSATION = SAIL screen). */
     onSpeakMode: (String?) -> Unit = { onSpeak() },
     onSpeakingReview: (Long) -> Unit,
-    onCoaching: (String, String) -> Unit,
 ) {
     val vm: HomeViewModel = viewModel()
     val st by vm.state.collectAsStateWithLifecycle()
     val reviews by vm.speakingReviews.collectAsStateWithLifecycle(initialValue = emptyList())
-    val coachingHistory by vm.coachingHistory.collectAsStateWithLifecycle(initialValue = emptyList())
     var today by remember { mutableLongStateOf(ExamRepository.nowKst().toLocalDate().toEpochDay()) }
     LifecycleResumeEffect(Unit) {
         today = ExamRepository.nowKst().toLocalDate().toEpochDay()
@@ -132,8 +130,6 @@ fun HomeScreen(
         st.awaitingConfirm?.let { r ->
             Banner("${r.type.label} ${ExamSchedule.formatWhen(r)} 시험에 응시했나요? 확인하면 다음 시험 기준으로 계획이 바뀝니다.", "확인", tone = MaterialTheme.colorScheme.secondary, onAction = onExams)
         }
-
-        CoachingHomeCard(coachingHistory, today, onCoaching)
 
         if (plan == null) return@Column
 

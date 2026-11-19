@@ -105,6 +105,16 @@ class TtsManager(context: Context) {
         enqueue(text, rate, UUID.randomUUID().toString())
     }
 
+    fun speakOffline(text: String, rate: Float = 1.0f): Boolean {
+        val voices = englishVoices().filterNot { it.isNetworkConnectionRequired }
+        val voice = voices.firstOrNull { it.name == desiredVoice } ?: voices.firstOrNull() ?: return false
+        val previous = tts.voice
+        if (tts.setVoice(voice) != TextToSpeech.SUCCESS) return false
+        enqueue(text, rate, UUID.randomUUID().toString())
+        if (previous != null) tts.setVoice(previous)
+        return true
+    }
+
     /** Speaks and suspends until finished. Returns false if TTS is unavailable or interrupted. */
     suspend fun speakAndWait(text: String, rate: Float = 1.0f): Boolean {
         if (_state.value != State.READY || text.isBlank()) return false

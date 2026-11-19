@@ -46,8 +46,13 @@ object MockTestBuilder {
 
         // Role-play set: ask questions → solve a problem → related experience.
         val rp = pool.filter { it.topic.startsWith("Role-play") }.map { it.topic }.distinct().shuffled(rnd).firstOrNull()
-        if (rp != null) pool.filter { it.topic == rp && it.text !in used }.take(3).forEach { used += it.text; add(it, "롤플레이") }
-        else repeat(2) { add(pick { it.type == "ROLEPLAY" }, "롤플레이") }
+        if (rp != null) {
+            val remaining = pool.filter { it.topic == rp && it.text !in used }
+            val ordered = if (rp == HotelRoleplay.TOPIC) {
+                HotelRoleplay.questions(remaining).values.toList().ifEmpty { remaining.take(3) }
+            } else remaining.take(3)
+            ordered.forEach { used += it.text; add(it, "롤플레이") }
+        } else repeat(2) { add(pick { it.type == "ROLEPLAY" }, "롤플레이") }
 
         val endTypes = when (adjust) {
             Adjust.EASIER -> listOf("DESCRIPTION", "ROUTINE")
