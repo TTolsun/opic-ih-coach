@@ -39,6 +39,10 @@ adb install -r app/build/outputs/apk/release/app-release.apk
 
 ## 2. 검증 현황 (사실만)
 
+**홈 → 교정 연습**에서 가구 비교 또는 해외여행 경험을 고릅니다. 첫 답변에서 연습할 행동 하나를 확인한 후 같은 질문에 다시 답합니다. 사흘 뒤 홈에서 같은 행동을 요구하는 새 질문을 열 수 있습니다. 재검사 결과에는 재답변과 새 답변의 근거 구절, 실제 경과 일수가 표시됩니다.
+
+Android 16 `opic_verify`에서 테스트용 음성 인식 서비스로 합성 전사를 전달하고 시계를 사흘 이동해 이 흐름을 확인했습니다. 앱을 다시 열어도 결과와 기존 원문 재검사 예약이 유지됐습니다. [재답변 결과](docs/screenshots/coaching-practice/02-retry.png) · [두 예약이 함께 표시된 홈](docs/screenshots/coaching-practice/03-due.png)
+
 | 항목 | 상태 | 근거 |
 |---|---|---|
 | Gradle 빌드 (`assembleDebug`) | **검증함** | 2026-11-07 로컬 Windows, AGP 8.13.2 / Kotlin 2.2.21 / JDK 17 |

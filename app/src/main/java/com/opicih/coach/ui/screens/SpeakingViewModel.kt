@@ -13,6 +13,14 @@ import com.opicih.coach.data.db.ScriptEntity
 import com.opicih.coach.data.prefs.CaptureMode
 import com.opicih.coach.data.repo.AnalyzedAttempt
 import com.opicih.coach.data.repo.ExamRepository
+import com.opicih.coach.data.repo.AttemptMetrics
+import com.opicih.coach.data.repo.CoachingEntry
+import com.opicih.coach.data.repo.CoachingRun
+import com.opicih.coach.data.repo.appJson
+import com.opicih.coach.analysis.Feedback
+import com.opicih.coach.learning.CoachingPrompts
+import com.opicih.coach.learning.CoachingStage
+import com.opicih.coach.learning.CoachingTrack
 import com.opicih.coach.data.repo.PracticeRepository
 import com.opicih.coach.analysis.VerbatimMarkup
 import com.opicih.coach.data.prefs.Settings
@@ -46,6 +54,7 @@ data class QuestionItem(
     val frames: List<FrameChip> = emptyList(),
     val reviewId: Long? = null,
     val missionQuestion: String? = null,
+    val coaching: CoachingTrack? = null,
 )
 
 private data class Variation(val instruction: String, val tense: String? = null, val question: String? = null)
@@ -80,6 +89,8 @@ data class SpeakingUi(
     val check: PracticeCheck? = null,
     val reviewDueEpochDay: Long? = null,
     val transferUnavailable: Boolean = false,
+    val coachingRoute: Boolean = false,
+    val coachingRun: CoachingRun? = null,
 )
 
 class SpeakingViewModel(app: Application) : AndroidViewModel(app) {
@@ -118,12 +129,18 @@ class SpeakingViewModel(app: Application) : AndroidViewModel(app) {
 
     /** How the answer being recorded is captured (see [CapturePolicy]); null before the first recording. */
     private var activeChoice: CaptureChoice? = null
+    private var useDeviceRecognitionNext = false
 
     /** Called once from navigation arguments. */
-    fun configure(scriptId: Long?, mode: PracticeMode?, reviewId: Long?) {
+    fun configure(scriptId: Long?, mode: PracticeMode?, reviewId: Long?, coachingTarget: String?, coachingId: String?) {
         if (configured) return
         configured = true
-        reviewRoute = reviewId != null
+        reviewRoute = reviewId != null || coachingTarget != null
+        if (coachingTarget != null && coachingId != null) {
+            _ui.update { it.copy(mode = PracticeMode.FREE, coachingRoute = true) }
+            viewModelScope.launch { openCoaching(coachingTarget, coachingId) }
+            return
+        }
         openingReview = reviewRoute
         viewModelScope.launch {
             if (reviewId != null) {
@@ -145,8 +162,54 @@ class SpeakingViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    private suspend fun openCoaching(target: String, id: String) {
+        val entries = c.practice.coachingEntries(id)
+        val saved = CoachingRun.from(entries)
+        val run = if (target == "delayed" && saved?.delayed == null) {
+            c.practice.openCoachingAssessment(id, ExamRepository.nowKst().toLocalDate().toEpochDay())
+        } else saved
+        val completed = when (target) {
+            "retry" -> run?.retry ?: run?.first
+            "delayed" -> run?.delayed
+            else -> run?.retry ?: run?.first
+        }
+        val track = completed?.record?.track ?: when (target) {
+            "delayed" -> run?.retry?.record?.assessmentId?.let { CoachingTrack(id, it, CoachingStage.DELAYED) }
+            else -> CoachingPrompts.practice.firstOrNull { it.id == target }?.let { CoachingTrack(id, it.id, CoachingStage.FIRST) }
+        }
+        val prompt = track?.let { CoachingPrompts.prompt(it.promptId) }
+        if (track == null || prompt == null) {
+            _ui.update { it.copy(error = "연습할 질문이 없습니다.") }
+            return
+        }
+        showQuestion(QuestionItem(prompt.label, prompt.question, prompt.type.name, "", coaching = track))
+        _ui.update { it.copy(coachingRun = run) }
+        completed?.let(::restoreCoachingResult)
+    }
+
+    private fun restoreCoachingResult(entry: CoachingEntry) {
+        val metrics = AttemptMetrics.from(entry.attempt) ?: return
+        val feedback = appJson.decodeFromString(Feedback.serializer(), entry.attempt.feedbackJson)
+        _ui.update { it.copy(result = AnalyzedAttempt(entry.attempt, feedback, metrics, null), phase = Phase.RESULT) }
+    }
+
+    /** Arm the linked retry before the screen opens the mic or requests permission. */
+    fun prepareCoachingRetry(useDeviceRecognition: Boolean): Boolean {
+        val u = _ui.value
+        val q = u.question ?: return false
+        val record = u.result?.metrics?.coaching ?: return !u.coachingRoute
+        if (record.evidence != null && record.track.stage != CoachingStage.FIRST) return false
+        useDeviceRecognitionNext = useDeviceRecognition
+        val stage = if (record.evidence != null) CoachingStage.RETRY else record.track.stage
+        _ui.update {
+            it.copy(question = q.copy(coaching = record.track.copy(stage = stage)), phase = Phase.IDLE, result = null,
+                error = null, replays = 0)
+        }
+        return true
+    }
+
     fun setMode(m: PracticeMode) {
-        if (openingReview || _ui.value.phase in setOf(Phase.RECORDING, Phase.PROCESSING)) return
+        if (_ui.value.coachingRoute || openingReview || _ui.value.phase in setOf(Phase.RECORDING, Phase.PROCESSING)) return
         _ui.update { it.copy(mode = m, result = null, phase = Phase.IDLE, shadowIndex = 0, error = null, ladder = null, check = null) }
         val s = _ui.value.question?.script
         if (m.usesScript && s != null) setScript(s) else next()
@@ -159,7 +222,7 @@ class SpeakingViewModel(app: Application) : AndroidViewModel(app) {
 
     /** Next question: due scripts first for script modes, Survey/focus topics first for free speaking. */
     fun next() {
-        if (openingReview || _ui.value.phase in setOf(Phase.RECORDING, Phase.PROCESSING)) return
+        if (_ui.value.coachingRoute || openingReview || _ui.value.phase in setOf(Phase.RECORDING, Phase.PROCESSING)) return
         questionLoad?.cancel()
         questionLoad = viewModelScope.launch {
             val st = c.settings.current()
@@ -308,10 +371,11 @@ class SpeakingViewModel(app: Application) : AndroidViewModel(app) {
 
     fun playQuestion(rate: Float = 1.0f) {
         val q = _ui.value.question ?: return
+        if (q.coaching != null && _ui.value.replays >= 1) return
+        _ui.update { it.copy(replays = it.replays + 1) }
         viewModelScope.launch {
             val r = rate * c.settings.current().ttsRate.coerceIn(0.5f, 1.5f) / 0.9f
             c.tts.speak(q.text, r)
-            _ui.update { it.copy(replays = it.replays + 1) }
         }
     }
 
@@ -339,10 +403,13 @@ class SpeakingViewModel(app: Application) : AndroidViewModel(app) {
         c.tts.stop(); c.player.stop()
         // Free-speaking answers are recorded and transcribed verbatim when the learner allowed it; otherwise the
         // chosen capture mode is kept and the reason is shown with the result.
-        val choice = CapturePolicy.choose(_ui.value.mode, latestSettings, c.hasGeminiKey())
+        if (_ui.value.question == null) return
+        val choice = if (useDeviceRecognitionNext) CaptureChoice(CaptureMode.LIVE_STT, false)
+            else CapturePolicy.choose(_ui.value.mode, latestSettings, c.hasGeminiKey())
         activeChoice = choice
-        val err = capture.start(viewModelScope, choice.mode)
+        val err = capture.start(viewModelScope, choice.mode, preferOffline = _ui.value.coachingRoute && choice.mode == CaptureMode.LIVE_STT)
         if (err != null) { _ui.update { it.copy(error = err, showTypedFallback = true) }; return }
+        useDeviceRecognitionNext = false
         _ui.update { it.copy(phase = Phase.RECORDING, error = null, liveText = "", elapsedMs = 0, result = null, showTypedFallback = false) }
         tick?.cancel()
         tick = viewModelScope.launch {
@@ -351,7 +418,7 @@ class SpeakingViewModel(app: Application) : AndroidViewModel(app) {
                 val lvl = if (choice.mode == CaptureMode.LIVE_STT) ((live.level + 2f) / 12f) else (capture.recorderLevel.value / 6000f)
                 _ui.update { it.copy(elapsedMs = capture.elapsedMs, level = lvl.coerceIn(0f, 1f), liveText = live.fullText) }
                 if (live.error != null && !live.active && choice.mode == CaptureMode.LIVE_STT) { stop(); break }
-                if (capture.elapsedMs > MAX_ANSWER_MS) { stop(); break }
+                if (capture.elapsedMs > if (_ui.value.coachingRoute) 60_000L else MAX_ANSWER_MS) { stop(); break }
                 delay(100)
             }
         }
@@ -366,17 +433,17 @@ class SpeakingViewModel(app: Application) : AndroidViewModel(app) {
             val r = capture.stop(c.transcriber(st))
             // A verbatim transcription that failed (network, quota) leaves a recording but no text. Offer the typed
             // fallback instead of saving a score-less answer, as for a failed live recognizer.
-            if (r.transcript.isBlank() && (r.audioPath == null || activeChoice?.verbatim == true)) {
+            if (!_ui.value.coachingRoute && r.transcript.isBlank() && (r.audioPath == null || activeChoice?.verbatim == true)) {
                 _ui.update { it.copy(phase = Phase.IDLE, error = r.warning ?: "인식된 영어 문장이 없습니다. 다시 말하거나, 말한 내용을 직접 입력하세요.", showTypedFallback = true) }
                 return@launch
             }
-            analyze(r.transcript, r.captureMode, r.audioPath, r.durationMs, r.pauses, r.fromDeviceStt, r.warning, activeChoice?.note, completeReview)
+            analyze(r.transcript, r.captureMode, r.audioPath, r.durationMs, r.pauses, r.fromDeviceStt, r.warning, activeChoice?.note, completeReview && (!_ui.value.coachingRoute || r.warning == null))
         }
     }
 
     /** Recovery path when STT fails: the user types what they said. */
     fun submitTyped(text: String) {
-        if (text.isBlank() || _ui.value.phase in setOf(Phase.RECORDING, Phase.PROCESSING)) return
+        if (_ui.value.coachingRoute || text.isBlank() || _ui.value.phase in setOf(Phase.RECORDING, Phase.PROCESSING)) return
         questionLoad?.cancel()
         _ui.update { it.copy(phase = Phase.PROCESSING, showTypedFallback = false, error = null) }
         viewModelScope.launch { analyze(text.trim(), "TYPED", null, 0, null, false, null, null) }
@@ -395,16 +462,21 @@ class SpeakingViewModel(app: Application) : AndroidViewModel(app) {
                     pauses = pauses, transcriptFromDeviceStt = fromStt, requiredTense = q.requiredTense, mission = q.mission, target = target, captureNote = captureNote,
                     speakingReviewId = q.reviewId.takeIf { completeReview },
                     missionQuestion = q.missionQuestion,
+                    coaching = q.coaching,
+                    questionListens = u.replays,
+                    interrupted = !completeReview,
                 ),
-                ai = c.realAi(st), examEpochDay = c.exams.focusEpochDay(),
+                ai = if (q.coaching == null) c.realAi(st) else null, examEpochDay = c.exams.focusEpochDay(),
             )
         }
         res.onSuccess { a ->
             val check = checkFor(u, q, transcript, a)
-            val reviewDate = if (u.mode == PracticeMode.FREE) c.dao.speakingReviewDate(q.text) else null
+            val reviewDate = if (u.mode == PracticeMode.FREE && q.coaching == null) c.dao.speakingReviewDate(q.text) else null
+            val coachingRun = q.coaching?.let { CoachingRun.from(c.practice.coachingEntries(it.id)) }
             _ui.update {
                 it.copy(
                     phase = Phase.RESULT, result = a, check = check, reviewDueEpochDay = reviewDate, transferUnavailable = false,
+                    coachingRun = coachingRun,
                     error = listOfNotNull(warning, a.aiError?.let { e -> "AI 분석 실패: $e (로컬 분석으로 표시)" }).joinToString("\n").ifBlank { null },
                 )
             }

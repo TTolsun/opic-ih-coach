@@ -4,7 +4,6 @@ import com.opicih.coach.data.db.ErrorPatternEntity
 import com.opicih.coach.data.db.PracticeAttemptEntity
 import com.opicih.coach.data.db.QuestionType
 import com.opicih.coach.data.repo.AttemptMetrics
-import com.opicih.coach.data.repo.appJson
 
 /**
  * Speaking competencies shared by OPIc and SAIL. Pronunciation is deliberately absent:
@@ -45,12 +44,16 @@ object WeaknessAnalyzer {
         windowDays: Int = 14,
     ): List<Weakness> {
         val since = nowMs - windowDays * 86_400_000L
-        val recent = attempts.filter { it.createdAt >= since && it.transcript.isNotBlank() && it.mode in FREE_MODES }
-        val metrics = recent.mapNotNull { a -> runCatching { appJson.decodeFromString(AttemptMetrics.serializer(), a.metricsJson) }.getOrNull()?.let { a to it } }
+        val recent = attempts.asSequence()
+            .filter { it.createdAt >= since && it.transcript.isNotBlank() && it.mode in FREE_MODES }
+            .map { it to AttemptMetrics.from(it) }
+            .filter { (_, metrics) -> metrics?.usableForIndependentAssessment != false }
+            .toList()
+        val metrics = recent.mapNotNull { (attempt, metrics) -> metrics?.let { attempt to it } }
         val out = mutableListOf<Weakness>()
 
         // Fluency: 2 s+ pauses per answer (acoustic, not STT).
-        val timed = recent.filter { it.captureMode != "TYPED" && it.durationMs > 0 }
+        val timed = recent.map { it.first }.filter { it.captureMode != "TYPED" && it.durationMs > 0 }
         if (timed.size >= MIN_SAMPLES) {
             val avg = timed.map { it.longPauseCount }.average().toFloat()
             if (avg >= 1.5f) out += Weakness(SharedSpeakingCompetency.FLUENCY, "최근 답변 ${timed.size}개에서 2초 이상 멈춤이 답변당 평균 %.1f회".format(avg), (avg / 4f).coerceAtMost(1f), timed.size)

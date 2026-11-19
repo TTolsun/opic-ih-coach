@@ -43,6 +43,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.ui.Alignment
 import com.opicih.coach.data.prefs.Settings
 import com.opicih.coach.data.repo.AttemptMetrics
+import com.opicih.coach.learning.CoachingStage
 import com.opicih.coach.data.repo.measuredScore
 import com.opicih.coach.analysis.VerbatimMarkup
 import com.opicih.coach.learning.ErrorTrend
@@ -105,9 +106,11 @@ fun ProgressScreen(onNextExam: () -> Unit = {}, onExams: () -> Unit = {}) {
 
         SectionCard(title = "최근 답변 추세 (최대 12회)") {
             // 암기 점수는 외울수록 오르므로, 추세는 즉석에서 말한 답변의 말하기 점수만 보여 줍니다.
-            val recent = withText.filter { it.mode in ScoreKind.SPEAKING_MODES }.take(12)
-            val scored = recent.mapNotNull { attempt ->
-                val metrics = AttemptMetrics.from(attempt)
+            val recent = withText.asSequence().filter { it.mode in ScoreKind.SPEAKING_MODES }
+                .map { it to AttemptMetrics.from(it) }
+                .filter { (_, metrics) -> metrics?.usableForIndependentAssessment != false }
+                .take(12).toList()
+            val scored = recent.mapNotNull { (attempt, metrics) ->
                 attempt.measuredScore(metrics)?.let { (metrics?.speakingFlow == true) to it }
             }
             if (scored.isEmpty()) Text("측정한 말하기 점수가 없습니다.", style = MaterialTheme.typography.bodyMedium)
@@ -117,7 +120,7 @@ fun ProgressScreen(onNextExam: () -> Unit = {}, onExams: () -> Unit = {}) {
                 BarChart(scored.filter { it.first == flow }.map { it.second.toFloat() }.reversed(),
                     MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.surfaceContainerHighest, max = 100f)
             }
-            val pauses = recent.mapNotNull { AttemptMetrics.from(it)?.pauses?.takeIf { p -> p.speechMs > 0 } }.reversed()
+            val pauses = recent.mapNotNull { (_, metrics) -> metrics?.pauses?.takeIf { it.speechMs > 0 } }.reversed()
             if (pauses.isNotEmpty()) {
                 Spacer(Modifier.height(8.dp))
                 Text("2초 이상 무음 (회)", style = MaterialTheme.typography.labelMedium)
@@ -174,9 +177,15 @@ fun ProgressScreen(onNextExam: () -> Unit = {}, onExams: () -> Unit = {}) {
                 Row(Modifier.fillMaxWidth().padding(vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
                         val t = java.time.Instant.ofEpochMilli(a.createdAt).atZone(java.time.ZoneId.systemDefault())
-                        Text("%d/%d %02d:%02d · %s · %s".format(t.monthValue, t.dayOfMonth, t.hour, t.minute, PracticeMode.of(a.mode).label, a.topic),
-                            style = MaterialTheme.typography.bodySmall)
                         val metrics = AttemptMetrics.from(a)
+                        val stage = when (metrics?.coaching?.track?.stage) {
+                            CoachingStage.FIRST -> "첫 무힌트 답변"
+                            CoachingStage.RETRY -> "재답변 · 교정 안내 제공"
+                            CoachingStage.DELAYED -> "새 질문 재검사"
+                            null -> PracticeMode.of(a.mode).label
+                        }
+                        Text("%d/%d %02d:%02d · %s · %s".format(t.monthValue, t.dayOfMonth, t.hour, t.minute, stage, a.topic),
+                            style = MaterialTheme.typography.bodySmall)
                         val score = a.measuredScore(metrics)?.let {
                             val label = if (metrics?.speakingFlow == true) ScoreKind.FLOW_LABEL else ScoreKind.of(a.mode).label
                             " · $label ${it}점"
