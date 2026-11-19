@@ -40,6 +40,7 @@ class LiveRecognizer(private val context: Context) {
     private var startedAt = 0L
     private var lastLevelAt = 0L
     private var consecutiveErrors = 0
+    private var preferOffline = false
 
     /** (elapsed ms, rms dB) samples. */
     val levels = mutableListOf<Pair<Long, Float>>()
@@ -49,9 +50,10 @@ class LiveRecognizer(private val context: Context) {
 
     val elapsedMs: Long get() = if (startedAt == 0L) 0 else SystemClock.elapsedRealtime() - startedAt
 
-    fun start() {
+    fun start(preferOffline: Boolean = false) {
         stop(cancelOnly = true)
-        if (!SpeechRecognizer.isRecognitionAvailable(context)) {
+        this.preferOffline = preferOffline
+        if (!SpeechRecognizer.isRecognitionAvailable(context) && !(preferOffline && hasOnDeviceRecognizer())) {
             _state.value = Snapshot(error = "이 기기에서 음성 인식 서비스를 찾지 못했습니다. Google 앱 또는 음성 인식 서비스를 설치하거나 '녹음 우선' 모드를 사용하세요.")
             return
         }
@@ -96,13 +98,17 @@ class LiveRecognizer(private val context: Context) {
     private fun listenOnce() {
         if (!sessionActive) return
         recognizer?.destroy()
-        val r = SpeechRecognizer.createSpeechRecognizer(context)
+        val r = if (Build.VERSION.SDK_INT >= 31 && preferOffline && hasOnDeviceRecognizer() &&
+            !SpeechRecognizer.isRecognitionAvailable(context)) {
+            SpeechRecognizer.createOnDeviceSpeechRecognizer(context)
+        } else SpeechRecognizer.createSpeechRecognizer(context)
         recognizer = r
         r.setRecognitionListener(listener)
         val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
             putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
             putExtra(RecognizerIntent.EXTRA_LANGUAGE, "en-US")
             putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
+            if (preferOffline) putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE, true)
             putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
             // Ask for longer silence tolerance. Many engines ignore these, which is why we also auto-restart.
             putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, 4000)
@@ -118,6 +124,9 @@ class LiveRecognizer(private val context: Context) {
             _state.value = _state.value.copy(error = "음성 인식을 시작하지 못했습니다: ${it.message}")
         }
     }
+
+    private fun hasOnDeviceRecognizer() =
+        Build.VERSION.SDK_INT >= 31 && SpeechRecognizer.isOnDeviceRecognitionAvailable(context)
 
     private fun restartSoon() {
         if (!sessionActive) return

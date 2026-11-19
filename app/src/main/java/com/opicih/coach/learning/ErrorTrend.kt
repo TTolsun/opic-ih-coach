@@ -14,7 +14,7 @@ data class ErrorTrendPoint(val createdAt: Long, val tense: Int, val abandoned: I
  */
 object ErrorTrend {
     fun countsOf(a: PracticeAttemptEntity): ErrorCounts? =
-        AttemptMetrics.from(a)?.errorCounts
+        AttemptMetrics.from(a)?.takeIf { it.usableForIndependentAssessment }?.errorCounts
 
     /** 원문 전사 답변이 없을 때 모든 기록의 JSON을 읽지 않도록, 최근 이만큼만 훑습니다. */
     const val MAX_SCAN = 200

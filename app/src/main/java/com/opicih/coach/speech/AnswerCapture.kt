@@ -37,11 +37,11 @@ class AnswerCapture(private val context: Context, private val audioDir: File) {
     val recorderLevel get() = recorder.level
 
     /** @return null on success, otherwise an error message. */
-    fun start(scope: CoroutineScope, captureMode: CaptureMode): String? {
+    fun start(scope: CoroutineScope, captureMode: CaptureMode, preferOffline: Boolean = false): String? {
         mode = captureMode
         startedAt = SystemClock.elapsedRealtime()
         return when (captureMode) {
-            CaptureMode.LIVE_STT -> { live.start(); live.state.value.error }
+            CaptureMode.LIVE_STT -> { live.start(preferOffline); live.state.value.error }
             CaptureMode.RECORD_ONLY -> {
                 val f = File(audioDir, "ans_${System.currentTimeMillis()}.wav")
                 if (recorder.start(scope, f)) null else "녹음을 시작하지 못했습니다. 다른 앱이 마이크를 사용 중인지 확인하세요."

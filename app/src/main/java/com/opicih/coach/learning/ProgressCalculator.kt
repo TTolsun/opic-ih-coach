@@ -38,7 +38,7 @@ object ProgressCalculator {
      */
     fun ihReadiness(scripts: List<ScriptEntity>, attempts: List<PracticeAttemptEntity>): Int {
         val mastery = if (scripts.isEmpty()) 0f else scripts.map { it.masteryScore }.average().toFloat()
-        val spoken = attempts.filter { it.hasSpokenTranscript }
+        val spoken = attempts.filter { it.hasSpokenTranscript && it.usableForIndependentAssessment }
         val free = spoken.filter { it.mode in ScoreKind.READINESS_MODES }.take(10)
         val freeScore = comparableScores(free)?.scores?.average()?.toFloat() ?: 0f
         val topics = spoken.map { it.topic }.toSet().size
@@ -61,7 +61,7 @@ object ProgressCalculator {
 
     /** Weak topics: lowest average score with at least one attempt, or Survey topics never practiced. */
     fun weakTopics(attempts: List<PracticeAttemptEntity>, survey: Set<String>, max: Int = 3): List<String> {
-        val stats = topicStats(attempts.take(60))
+        val stats = topicStats(attempts.asSequence().filter { it.usableForIndependentAssessment }.take(60).toList())
         val never = survey.filter { s -> stats.none { it.topic.equals(s, true) } }
         val low = stats.filter { it.avgScore?.let { score -> score < 70 } == true }.map { it.topic }
         return (never + low).distinct().take(max)
@@ -93,7 +93,7 @@ object ProgressCalculator {
         sinceEpochMs: Long,
         mocks: List<MockTestEntity> = emptyList(),
     ): RetestAdvisor.Readiness {
-        val after = attempts.filter { it.createdAt >= sinceEpochMs }
+        val after = attempts.filter { it.createdAt >= sinceEpochMs && it.usableForIndependentAssessment }
         val speaking = after.filter { it.mode in ScoreKind.READINESS_MODES && it.captureMode in speechCaptures }
         val transcribed = speaking.filter { it.hasSpokenTranscript }.take(15)
         val pauseCounts = speaking.take(15).mapNotNull { attempt ->
@@ -119,6 +119,9 @@ object ProgressCalculator {
             scorableMockAnswers = scoredMocks.maxOfOrNull { it.scores.size } ?: 0,
         )
     }
+
+    private val PracticeAttemptEntity.usableForIndependentAssessment: Boolean
+        get() = AttemptMetrics.from(this)?.usableForIndependentAssessment != false
 
     private val speechCaptures = setOf(CaptureMode.LIVE_STT.name, CAPTURE_CLOUD_STT, CaptureMode.RECORD_ONLY.name)
     private val PracticeAttemptEntity.hasSpokenTranscript: Boolean

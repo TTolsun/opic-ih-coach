@@ -40,6 +40,10 @@ interface AppDao {
 
     // ---- Attempts
     @Insert suspend fun insertAttempt(a: PracticeAttemptEntity): Long
+    @Query("UPDATE attempts SET metricsJson = :metrics WHERE id = :id")
+    suspend fun updateAttemptMetrics(id: Long, metrics: String)
+    @Query("SELECT * FROM attempts WHERE metricsJson LIKE '%\"coaching\"%' ORDER BY createdAt DESC, id DESC")
+    fun coachingAttemptsFlow(): Flow<List<PracticeAttemptEntity>>
     @Query("SELECT * FROM attempts ORDER BY createdAt DESC") fun attemptsFlow(): Flow<List<PracticeAttemptEntity>>
     @Query("SELECT * FROM attempts ORDER BY createdAt DESC") suspend fun attempts(): List<PracticeAttemptEntity>
     /** Same question in the same mode only: a memorize-stage read-aloud score is not comparable to a blind answer. */

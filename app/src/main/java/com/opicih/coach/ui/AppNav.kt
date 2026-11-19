@@ -161,6 +161,7 @@ fun AppNav(startRoute: String?, onRouteConsumed: () -> Unit) {
                     onDebrief = { date, registrationId -> nav.navigate("examDebrief/${date.toEpochDay()}/${registrationId ?: 0L}") },
                     onExams = { nav.navigate("exams") },
                     onSpeakingReview = { nav.navigate("review/$it") { launchSingleTop = true } },
+                    onCoaching = { target, id -> nav.navigate("coachingPractice/$target/$id") { launchSingleTop = true } },
                     onSpeakMode = { m ->
                         when (m) {
                             null -> nav.goTab("speaking")
@@ -196,6 +197,14 @@ fun AppNav(startRoute: String?, onRouteConsumed: () -> Unit) {
             }
             composable("review/{id}", arguments = listOf(navArgument("id") { type = NavType.LongType })) { e ->
                 SpeakingScreen(null, PracticeMode.FREE, reviewId = e.arguments!!.getLong("id"), onOpenFrames = { nav.navigate("frames") })
+            }
+            composable("coachingPractice/{target}/{id}") { e ->
+                SpeakingScreen(
+                    null, PracticeMode.FREE,
+                    coachingTarget = e.arguments?.getString("target"),
+                    coachingId = e.arguments?.getString("id"),
+                    onExitCoaching = { nav.popBackStack() },
+                )
             }
             composable("frames") { FramesScreen() }
             composable("stories") { StoriesScreen(onOpenScript = { nav.navigate("script/$it") }) }

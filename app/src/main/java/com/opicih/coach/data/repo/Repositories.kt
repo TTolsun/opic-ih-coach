@@ -35,6 +35,11 @@ import com.opicih.coach.data.db.ScriptVersion
 import com.opicih.coach.importer.DuplicateLinker
 import com.opicih.coach.importer.ParsedScript
 import com.opicih.coach.learning.CAPTURE_CLOUD_STT
+import com.opicih.coach.learning.CoachingPrompts
+import com.opicih.coach.learning.CoachingRecord
+import com.opicih.coach.learning.CoachingStage
+import com.opicih.coach.learning.CoachingTrack
+import kotlinx.coroutines.flow.map
 import com.opicih.coach.learning.GlossaryGrowth
 import com.opicih.coach.learning.MasteryRules
 import com.opicih.coach.learning.ScoreKind
@@ -57,7 +62,10 @@ data class AttemptMetrics(
     val speakingFlow: Boolean = false,
     /** 새 질문 적용 체크 for 바뀐 질문 / 응용 미션. Null for other modes and older rows. */
     val transfer: TransferCheck? = null,
+    val coaching: CoachingRecord? = null,
 ) {
+    val usableForIndependentAssessment: Boolean get() = coaching?.usableForIndependentAssessment != false
+
     companion object {
         fun from(attempt: PracticeAttemptEntity): AttemptMetrics? =
             runCatching { appJson.decodeFromString(serializer(), attempt.metricsJson) }.getOrNull()
@@ -65,7 +73,11 @@ data class AttemptMetrics(
 }
 
 fun PracticeAttemptEntity.measuredScore(metrics: AttemptMetrics? = AttemptMetrics.from(this)): Int? =
-    if (metrics?.speakingFlow == true) metrics.localScore else score.takeIf { wordCount > 0 }
+    when {
+        metrics?.usableForIndependentAssessment == false -> null
+        metrics?.speakingFlow == true -> metrics.localScore
+        else -> score.takeIf { wordCount > 0 }
+    }
 
 data class AnalyzedAttempt(
     val attempt: PracticeAttemptEntity,
@@ -186,6 +198,9 @@ class PracticeRepository(private val db: AppDatabase) {
         val captureNote: String? = null,
         val speakingReviewId: Long? = null,
         val missionQuestion: String? = null,
+        val coaching: CoachingTrack? = null,
+        val questionListens: Int = 0,
+        val interrupted: Boolean = false,
     )
 
     /**
@@ -196,6 +211,27 @@ class PracticeRepository(private val db: AppDatabase) {
         // The network call stays outside the transaction.
         val result = analyze(req, ai)
         return db.withTransaction { persist(req, result, examEpochDay) }
+    }
+
+    fun coachingHistory() = dao.coachingAttemptsFlow().map(::coachingEntries)
+
+    suspend fun coachingEntries(id: String) = coachingEntries(dao.attempts()).filter { it.record.track.id == id }
+
+    /** Opening an assessment consumes first exposure even if the learner leaves without submitting. */
+    suspend fun openCoachingAssessment(id: String, day: Long): CoachingRun? = db.withTransaction {
+        val run = CoachingRun.from(coachingEntries(id)) ?: return@withTransaction null
+        val retry = run.retry ?: return@withTransaction null
+        if (run.delayed != null || retry.record.dueDay?.let { day >= it } != true || retry.record.assessmentId == null) {
+            return@withTransaction null
+        }
+        val record = retry.record.copy(opened = retry.record.opened + 1)
+        updateCoachingRecord(retry.attempt, record)
+        run.copy(retry = retry.copy(record = record))
+    }
+
+    private suspend fun updateCoachingRecord(attempt: PracticeAttemptEntity, record: CoachingRecord) {
+        val metrics = requireNotNull(AttemptMetrics.from(attempt)).copy(coaching = record)
+        dao.updateAttemptMetrics(attempt.id, appJson.encodeToString(AttemptMetrics.serializer(), metrics))
     }
 
     companion object {
@@ -258,10 +294,21 @@ class PracticeRepository(private val db: AppDatabase) {
             // The error notebook is built from the same read of the transcript as the counts.
             val errorAnalysis = ErrorCounts.analyze(req.transcript, verbatim, feedback)
             feedback = feedback.copy(errors = (feedback.errors + errorAnalysis.notebook).distinctBy { it.key })
+            val coaching = req.coaching?.let { track ->
+                val prompt = requireNotNull(CoachingPrompts.prompt(track.promptId))
+                CoachingRecord(
+                    track = track,
+                    evidence = if (req.interrupted) null else prompt.evidence(req.transcript, req.captureMode, req.durationMs),
+                    receivedCorrection = track.stage == CoachingStage.RETRY,
+                    questionListens = req.questionListens,
+                    day = ExamRepository.nowKst().toLocalDate().toEpochDay(),
+                )
+            }
             val metrics = AttemptMetrics(
                 discourse, req.pauses, compare, errorAnalysis.counts,
                 local.score.takeIf { local.scoreMeasured }, speakingFlow = scoreKind == ScoreKind.SPEAKING,
                 transfer = transfer,
+                coaching = coaching,
             )
             val speechMs = req.pauses?.speechMs ?: 0L
             val attempt = PracticeAttemptEntity(
@@ -279,9 +326,14 @@ class PracticeRepository(private val db: AppDatabase) {
     }
 
     private suspend fun persist(req: Request, result: AnalyzedAttempt, examEpochDay: Long?): AnalyzedAttempt {
-        val (attempt, feedback, metrics) = result
+        val (rawAttempt, feedback, rawMetrics) = result
+        val coaching = rawMetrics.coaching?.let { finalizeCoaching(it, req.question) }
+        val metrics = if (coaching == null) rawMetrics else rawMetrics.copy(coaching = coaching)
+        val attempt = if (coaching == null) rawAttempt else rawAttempt.copy(
+            metricsJson = appJson.encodeToString(AttemptMetrics.serializer(), metrics),
+        )
         val compare = metrics.compare
-        val previous = dao.recentForQuestion(req.question, req.mode.name).firstOrNull()
+        val previous = if (coaching == null) dao.recentForQuestion(req.question, req.mode.name).firstOrNull() else null
         val id = dao.insertAttempt(attempt)
         if (req.mode == PracticeMode.FREE && req.speakingReviewId != null && (attempt.wordCount > 0 || attempt.speechMs > 0)) {
             dao.finishSpeakingReview(req.speakingReviewId, req.question, ExamRepository.nowKst().toLocalDate().toEpochDay())
@@ -315,7 +367,7 @@ class PracticeRepository(private val db: AppDatabase) {
         }
 
         // Repeated error notebook
-        feedback.errors.forEach { e ->
+        feedback.errors.takeIf { metrics.usableForIndependentAssessment }.orEmpty().forEach { e ->
             val key = e.key.ifBlank { TextNormalizer.normalize(e.example).take(40) }
             val existing = dao.error(key)
             dao.upsertError(
@@ -323,7 +375,51 @@ class PracticeRepository(private val db: AppDatabase) {
                     ?: ErrorPatternEntity(key = key, category = e.category.ifBlank { "GRAMMAR" }, example = e.example, correction = e.correction)
             )
         }
-        return result.copy(attempt = attempt.copy(id = id), previous = previous)
+        return result.copy(attempt = attempt.copy(id = id), previous = previous, metrics = metrics)
+    }
+
+    private suspend fun finalizeCoaching(record: CoachingRecord, question: String): CoachingRecord {
+        val track = record.track
+        val prompt = requireNotNull(CoachingPrompts.prompt(track.promptId))
+        require(question == prompt.question)
+        val attempts = dao.attempts()
+        val entries = coachingEntries(attempts)
+        val run = CoachingRun.from(entries.filter { it.record.track.id == track.id })
+        return when (track.stage) {
+            CoachingStage.FIRST -> {
+                check(run == null && prompt in CoachingPrompts.practice)
+                record
+            }
+            CoachingStage.RETRY -> {
+                check(run?.retry == null && run?.first?.record?.track?.promptId == track.promptId)
+                if (record.evidence == null) record else {
+                    val assessment = CoachingPrompts.reserve(
+                        prompt.type,
+                        entries.mapNotNull { it.record.assessmentId }.toSet() +
+                            entries.filter { it.record.track.stage == CoachingStage.DELAYED }.map { it.record.track.promptId },
+                        (attempts.asSequence().map { it.questionText } +
+                            dao.questions().asSequence().map { it.text } +
+                            dao.scripts().asSequence().map { it.question })
+                            .map(TextNormalizer::normalize).toSet(),
+                    )
+                    record.copy(
+                        assessmentId = assessment?.id, dueDay = assessment?.let { record.day + CoachingPrompts.DELAY_DAYS },
+                    )
+                }
+            }
+            CoachingStage.DELAYED -> {
+                val retry = checkNotNull(run?.retry)
+                val reservation = retry.record
+                check(run?.delayed == null && reservation.assessmentId == track.promptId && reservation.opened > 0 &&
+                    reservation.dueDay?.let { record.day >= it } == true)
+                val submissions = entries.count { it.record.track == track }
+                // Keep the exposure on the reservation even if the learner deletes an inconclusive attempt.
+                if (!reservation.assessmentSubmitted) {
+                    updateCoachingRecord(retry.attempt, reservation.copy(assessmentSubmitted = true))
+                }
+                record.copy(opened = reservation.delayedExposure(submissions))
+            }
+        }
     }
 
     suspend fun saveMorningReview(review: MorningReviewEntity, finishesRoutine: Boolean) = db.withTransaction {
