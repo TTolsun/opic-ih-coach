@@ -192,6 +192,7 @@ fun SpeakingScreen(
                 // After a result the panel below has a labeled "다음 질문" button; the icon would repeat it.
                 if (ui.phase != Phase.RESULT) IconButton(onClick = { vm.next() }) { Icon(Icons.Filled.SkipNext, "다음 질문") }
             }
+            if (!examLike && ui.phase == Phase.IDLE) q.script?.let { StoryReuseQuestions(it) }
         }
 
         // Mode-specific support panel

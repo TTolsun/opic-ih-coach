@@ -5,6 +5,7 @@
     {
       "topic": "Overseas Travel", "title": "Recent Trip", "type": "PAST_EXPERIENCE", "stories": "S1", "refreshRevisions": true,
       "question": "Tell me about a trip you took to another country recently. Where did you go, and what did you do there?",
+      "reuseQuestions": ["What were the highlights of your last trip abroad?", "Tell me about a hotel that helped you relax while you were traveling."],
       "original": "I went to japan last summer using jeju air. I stayed for 3 nights and 4 days.\nJapan is famous for Osaka Castle, which is a huge tourist attraction. There are so many people, and the castle was magnificent\nSecond, I clearly remember the hotel I stayed at. The best part was that the hotel offered unlimited beer service. Also, there was a hot spring. The water was steaming hot, which was perfect for relieving my fatigue.\nI felt completely rejuvenated. It is my latest and most memorable trip.",
       "ihTarget": "Last summer, I went to Osaka, Japan. I flew with Jeju Air and stayed for three nights and four days. I visited Osaka Castle. It was crowded, but the castle was magnificent. When I saw it in person, I could see why it was such a popular tourist attraction.\n\nI also remember the hotel where I stayed. The best part about the hotel was the unlimited beer. It also had a hot spring, and the water was steaming hot. The hot water helped me relax, and I felt refreshed. Those are the two places that stand out from my trip.",
       "short": "Last summer, I went to Osaka, Japan. I visited Osaka Castle and stayed at a hotel with a hot spring and unlimited beer. The hot water helped me relax, and I felt refreshed.",
@@ -14,6 +15,7 @@
     {
       "topic": "Overseas Travel", "title": "Memorable Experience", "type": "PAST_EXPERIENCE", "stories": "S1", "refreshRevisions": true,
       "question": "Did anything memorable or unexpected happen during your trip abroad?",
+      "reuseQuestions": ["Tell me about a time you felt unwell while traveling. What did you do about it?", "Tell me about a trip when you had to make an unplanned stop at a drugstore. What happened afterward?"],
       "original": "As I told you, I went to Osaka and visited Dotonbori with my family.\nAnd you know what? We had Takoyaki. It's a really famous street food in Japan. There were lots of different types, but I liked the sweet one the most.\nI was enjoying it a lot, but suddenly I had a terrible stomachache. I was really uncomfortable. I guess I had indigestion and it was pretty bad. So I went to the drug store and bought some medicine.\nAfter that I went back to the hotel and had a really nice sleep.",
       "ihTarget": "Last summer, I went to Osaka, Japan. My family and I tried takoyaki in Dotonbori. I liked the sweet kind best, but then I got a terrible stomachache. So I went to a drugstore and bought some medicine. After that, I went back to the hotel and slept well.",
       "short": "I got a terrible stomachache in Dotonbori. So I went to a drugstore and bought some medicine. After that, I went back to the hotel and slept well.",
@@ -23,6 +25,7 @@
     {
       "topic": "Domestic Travel", "title": "Favorite Destination", "type": "DESCRIPTION", "stories": "S2",
       "question": "Where do you like to go for domestic trips? Describe your favorite travel destination in your country.",
+      "reuseQuestions": ["Tell me about a place in Korea you visited that had a great view. What were you doing when you saw it?", "Where in Korea have you tried picking fruit? What made that place memorable?"],
       "original": "To be honest, I'm a huge fan of traveling, and my favorite spot is Ganwon-do.\nYou know, since Korea is a peninsula, there are many beautiful coasts, but Gangwon-do is special because of its stunning mountains.\nLast fall, I went there for apple farming. The scenery was absolutely breathtaking, especially when I was up on the ladder. It felt like I was on top of the world!",
       "ihTarget": "To be honest, I'm a huge fan of traveling, and my favorite place in Korea is Gangwon-do. Since Korea is a peninsula, there are a lot of beautiful beaches, but Gangwon-do is special because it has both the ocean and stunning mountains. The air is so fresh, and the scenery changes a lot depending on the season. In summer, people go to the beaches in Gangneung, and in fall, the mountains turn red and yellow. Last fall, I went there to pick apples at a farm. When I was up on the ladder, the view was absolutely breathtaking. It felt like I was on top of the world. I'm hoping to go back this winter to see the snowy mountains.",
       "short": "My favorite place in Korea is Gangwon-do. It has the ocean and stunning mountains. Last fall, I picked apples there, and the view was breathtaking.",
@@ -32,6 +35,7 @@
     {
       "topic": "Domestic Travel", "title": "Travel Routine", "type": "ROUTINE", "stories": "S2",
       "question": "What do you usually prepare before you go on a trip? What are some things you always do while traveling?",
+      "reuseQuestions": ["What is one thing you always pack for a trip, and what do you use it for?", "What kinds of short trips do you prefer? How far from home do you usually go?"],
       "original": "Okay.. you're asking me about my travel routines. right?\nI usually visit places within 4 hours because I don't like long-distance driving.\nAnd I always bring a mobile charger because I need to find famous restaurants on my phone. Also, I like to watch the news and play games. So I need it for sure.\nAnd I usually don't reserve hotels to stay. To be honest, I'm an introvert, so I like my home more than traveling. I prefer quiet trips.\nThese are my travel routines.",
       "ihTarget": "Let me tell you about my travel routine. First of all, I usually choose places within four hours from my home, because I don't like driving for a long time. Before I leave, I always pack a portable charger. That's because I use my phone for everything on a trip, like finding famous restaurants, checking the news, and playing games at night. Also, I don't usually book a hotel in advance. Honestly, I'm kind of an introvert, so I prefer short and quiet trips, and sometimes I just come back home on the same day. When I arrive, the first thing I do is look for a popular local restaurant. These days, I'm thinking about trying camping, so next time I might bring a tent too.",
       "short": "I usually travel within four hours from home. I always bring a portable charger to find restaurants. I prefer short, quiet trips.",
@@ -41,6 +45,7 @@
     {
       "topic": "Domestic Travel", "title": "Travel Experience", "type": "PAST_EXPERIENCE", "stories": "S2",
       "question": "Tell me about a memorable domestic trip you went on recently. Where did you go, and what did you do?",
+      "reuseQuestions": ["Tell me about a time you picked fruit on a trip. Where were you, and what happened?", "Have you ever gone to a farm on vacation? Tell me about something you remember from that visit."],
       "original": "I remember a time when I went to Gangwon-do for apple farming.\nThere were so many apples, and they looked so delicious. I couldn't resist, so I ate a lot of them while picking.\nBut suddenly, I had a terrible stomachache. I guess I had indigestion. I was so uncomfortable that I had to rush to a nearby drug store for some medicine.\nThankfully, I felt much better after a long nap at my friend's house.\nIt was a bittersweet memory for me.",
       "ihTarget": "I remember a trip to Gangwon-do last fall. My friend's family has an apple farm there, so I went to help them pick apples. There were so many apples, and they looked so delicious that I couldn't resist eating some while I was working. Everything was perfect until the afternoon. Suddenly, dark clouds came in and it started pouring rain. We didn't have any umbrellas, so we got completely soaked. We had to run to a small storage shed and wait there for almost an hour. While we were waiting, we ate fresh apples and talked a lot, and it turned out to be really fun. Looking back, it was a bittersweet memory, and I still think about it whenever I eat an apple.",
       "short": "Last fall, I picked apples in Gangwon-do. Suddenly it started pouring and we got soaked. We waited in a shed eating apples, and it turned out fun.",
@@ -50,6 +55,7 @@
     {
       "topic": "Movies", "title": "Favorite Movies", "type": "DESCRIPTION", "stories": "S8",
       "question": "What kind of movies do you like to watch? Who is your favorite actor or actress?",
+      "reuseQuestions": ["Tell me about a film that uses music and dance to tell a story. What made it memorable?", "What movie ending made you emotional? Tell me about the film."],
       "original": "Let me think.. I usually enjoy romance movies like 'La La Land'.\nIt delivers beautiful messages through music and dance. I especially like the main characters because they struggle between their dreams and reality. But they have different personalities, and the relationship is finally broken.\nIt's very touching.",
       "ihTarget": "I usually enjoy romance movies, and my all-time favorite is La La Land. It's a musical, so it tells a beautiful story through music and dance. The two main characters are both chasing their dreams, one as a jazz pianist and the other as an actress. They fall in love, but because they have different goals, they end up breaking up. The ending is really bittersweet, and it made me think about my own choices between dreams and reality. My favorite actress is Emma Stone, because her acting feels so natural. I've watched the movie three times, and I still get emotional during the last scene. I'm planning to watch it again this Christmas.",
       "short": "My favorite movie is La La Land. It tells a love story through music and dance. The bittersweet ending always makes me emotional.",
@@ -59,6 +65,7 @@
     {
       "topic": "Movies", "title": "Movie Routine", "type": "ROUTINE", "stories": "S3",
       "question": "What is your routine when you go to the movies? What do you do before and after the movie?",
+      "reuseQuestions": ["Walk me through what you usually do from choosing a movie to finding your seat.", "What do you like to do right after watching a movie at the theater?"],
       "original": "Let me tell you about the routine when I go to a movie theater.\nWhen I go to the theater, I usually check the schedule on a mobile app first. Then I grab some popcorn and a drink, and I find my seat.\nThe best part is leaving a review or rating after the movie to express my feelings.\nIt's a great way to finish the day.",
       "ihTarget": "Let me tell you about my routine when I go to the movies. First, I check the schedule and book a seat on a mobile app, usually a seat in the middle. I try to arrive about fifteen minutes early. Then I grab some popcorn and a drink, and I find my seat. During the movie, I always turn off my phone, because I want to fully focus on the story. After the movie, the best part is leaving a review or a rating on the app. It's a good way to sort out my feelings. Sometimes I go to a cafe with my friend, and we talk about the movie for an hour. It's a great way to finish the day.",
       "short": "I book a seat on an app, grab popcorn and a drink, and find my seat. After the movie, I leave a review on the app.",
@@ -68,6 +75,7 @@
     {
       "topic": "Movies", "title": "Memorable Experience", "type": "PAST_EXPERIENCE", "stories": "S3",
       "question": "Have you ever had a memorable or unexpected experience at a movie theater? What happened?",
+      "reuseQuestions": ["Tell me about a time you had to leave a movie before it was over. What happened?", "Have you ever missed an important scene in a movie theater? Tell me why."],
       "original": "Actually, I have a bittersweet memory about a movie.\nLast year, I went to a theater to watch a movie called 'Basketball'.\nBefore the movie started, I grabbed a lot of snacks and drinks because I was starving.\nEverything was fine until the movie reached its climax. Right when the main character was about to shoot the final ball, I suddenly had a terrible stomachache. To be honest, I was so embarrassed and uncomfortable.\nI had no choice but to run to the toilet immediately. When I finally arrived back at my seat, the movie had already ended. I missed the most important scene!\nIt was a totally frustrating and unforgettable experience for me.",
       "ihTarget": "Actually, I have a bittersweet memory about a movie. Last year, I went to see a movie called 'Basketball' with my friend. Before it started, I grabbed a lot of snacks and a huge drink because I was starving. Everything was fine until the movie reached its climax. Right when the main character was about to take the final shot, I really needed to go to the restroom. I tried to hold it, but I couldn't, so I had no choice but to run out. When I finally came back to my seat, the movie had already ended and the credits were rolling. I completely missed the most important scene! My friend couldn't stop laughing. Since then, I never buy a large drink at the theater.",
       "short": "I drank a huge soda at the movie 'Basketball' and had to run to the restroom at the climax. When I came back, it was over. Now I never buy a large drink.",
@@ -77,6 +85,7 @@
     {
       "topic": "Vacation", "title": "Vacation at Home", "type": "ROUTINE", "stories": "S7",
       "question": "How do you usually spend your vacation? Do you prefer staying at home or going out? Tell me about your vacation routine.",
+      "reuseQuestions": ["What do you enjoy doing on your sofa when you have time off?", "Describe a favorite way to relax at home during a break. Where do you do it?"],
       "original": "To be honest, I'm a total homebody, so I love staying at home on vacation. My favorite place is the big sofa in my living room. It's very comfy.\nUsually, I spend my time there playing video games on my big TV. The games look so realistic, so I completely lose track of time.\nThe best part is that playing games helps me get rid of all my stress. It's the best way for me to recharge my batteries.",
       "ihTarget": "To be honest, I'm a total homebody, so I love staying at home on vacation. On the first day, I usually sleep in and order some delivery food. Then I spend most of my time on the big gray sofa in my living room, playing video games on my big TV. The graphics are so realistic that I completely lose track of time. The best part is that playing games helps me get rid of all my stress. It's the best way for me to recharge my batteries. But I don't stay inside all day. In the evening, I usually go jogging in the park to get some fresh air. This year, I'm planning to spend my winter vacation the same way, but I also want to read a few books.",
       "short": "I'm a total homebody. I play video games on my big sofa and lose track of time. In the evening, I go jogging to get some fresh air.",
@@ -86,6 +95,7 @@
     {
       "topic": "Vacation", "title": "Going Outside", "type": "ROUTINE", "stories": "S5",
       "question": "You mentioned you like active vacations. What do you do when you go outside?",
+      "reuseQuestions": ["Where do you go when you want to get some exercise near home? What do you do there?", "What music do you listen to when you go jogging, and how does it make you feel?"],
       "original": "However, I don't just stay inside. After playing games, I usually go outside for some fresh air. I go to Central park near my house.\nI love jogging while listening to music. My favorite song is 'Butter' by BTS. It is very upbeat, so it makes me feel happy and energetic.\nRunning in the fresh air while listening to my favorite songs makes me feel alive. This is my perfect vacation routine!",
       "ihTarget": "Well, I don't just stay inside. After playing games for a few hours, I usually go outside for some fresh air. There's a big park called Central Park near my house, and I go jogging there. I always wear my Bluetooth earphones, because running with music makes it much more fun. My favorite song these days is 'Butter' by BTS. It's very upbeat, so it makes me feel happy and energetic. I usually run for about forty minutes along the lake, and then I stop at a convenience store for a cold drink. Running in the fresh air while listening to my favorite songs makes me feel alive. This is my perfect vacation routine.",
       "short": "After gaming, I go jogging in Central Park near my house. I listen to 'Butter' by BTS. It makes me feel alive.",
@@ -95,6 +105,7 @@
     {
       "topic": "Vacation", "title": "Memorable Vacation", "type": "PAST_EXPERIENCE", "stories": "S1",
       "question": "Tell me about a memorable vacation you took recently.",
+      "reuseQuestions": ["Tell me about a hotel you remember from a vacation. What did you like about it?", "Have you ever eaten too much of a local food on vacation? Tell me about the trip."],
       "original": "I took a 4-day trip to Osaka, Japan last summer.\nMy hotel was amazing-it had unlimited beer and a hot spring that was perfect for relieving my fatigue.\nHowever, I have one bittersweet memory. I ate too much Takoyaki and suddenly got a terrible stomachache. I even had to run to a drugstore for medicine. It was dizzying then, but looking back, it's a memorable experience.",
       "ihTarget": "The most memorable vacation I took recently was a four-day trip to Osaka last summer. My hotel was amazing. It had unlimited beer and a hot spring, so after walking around all day, I could relax and relieve my fatigue. During the day, we visited Osaka Castle and walked around the shopping streets. However, I also had one small problem. One night, I ate too much takoyaki and got a stomachache, so I had to find a drugstore. It was stressful at that moment, but looking back, it's a funny and memorable experience. That trip reminded me that a short break can really recharge me, so I'm planning another trip next summer.",
       "short": "My most memorable vacation was a four-day trip to Osaka. The hotel had unlimited beer and a hot spring. I ate too much takoyaki once, but now it's funny.",
@@ -104,6 +115,7 @@
     {
       "topic": "Home & Furniture", "title": "Description of Your House", "type": "DESCRIPTION", "stories": "S7", "refreshRevisions": true,
       "question": "Could you describe your home in detail? What does it look like, and how many rooms are there?",
+      "reuseQuestions": ["Tell me about the part of your apartment where you like to unwind. What do you do there?", "Imagine a friend is visiting your apartment for the first time. Which spot would you show them as your favorite, and why?"],
       "original": "I live on the 6th floor of an apartment. It has three rooms, including a dedicated dress room and a study room filled with books.\nMy favorite spot is the large, gray sofa in the living room. It's incredibly comfy, making it the perfect place to play video games or take a nap.",
       "ihTarget": "I live in an apartment on the sixth floor. There are three rooms, including a room for my clothes and a study full of books. My favorite spot is the big gray sofa in my living room. It's really comfortable. I usually play video games there or take a nap.",
       "short": "I live in an apartment on the sixth floor, and it has three rooms. My favorite spot is the big gray sofa in my living room. I usually play video games there or take a nap.",
@@ -113,6 +125,7 @@
     {
       "topic": "Home & Furniture", "title": "Favorite Furniture", "type": "DESCRIPTION", "stories": "S7", "refreshRevisions": true,
       "question": "Tell me about your favorite piece of furniture in your house. What is it, and why do you like it?",
+      "reuseQuestions": ["Where at home do you like to relax most? Describe what you do there.", "Describe a piece of furniture you use for both entertainment and rest."],
       "original": "I live in an apartment, and my favorite furniture is the sofa in my living room. It's a large, gray sofa, and it's my favorite place in the whole world.\nWhile I'm sitting there, I usually play video games or just take a nap.\nIt's the perfect place for relaxing.",
       "ihTarget": "My favorite piece of furniture is the big gray sofa in my living room. It's really comfortable. I usually play video games there or take a nap. It's my favorite place to relax.",
       "short": "My favorite piece of furniture is the big gray sofa in my living room. It's really comfortable. I usually play video games there or take a nap.",
@@ -122,6 +135,7 @@
     {
       "topic": "Home & Furniture", "title": "Comparison (Past vs. Present)", "type": "COMPARISON", "stories": "S4", "refreshRevisions": true,
       "question": "Compare the furniture you have now to the furniture you had when you were a child. How is it different?",
+      "reuseQuestions": ["How has the size of your sofa changed since you were a child?", "Think of a piece of furniture you had as a child. How does it compare with the one you use today?"],
       "original": "Honestly, I don't remember my childhood but I try to remember I guess furniture was very small.\nFirst of all, I want to point out the size. When I was young, my sofa was quite small and I used to jump on the sofa.\nBecause I jumped on the sofa, my sofa was broken sometimes. But now, I have a bigger sofa. So I usually spend a lot of time on the sofa. Because it is really comfy.\nSo I think that's the big change that I have got.",
       "ihTarget": "The biggest difference is the size. Back then, my sofa was quite small. Now I have a much bigger one. It's really comfortable, so I spend a lot of time on it.\n\nThe way I use it has changed, too. I used to jump on my old sofa like it was a trampoline. Now I usually play video games there or take a nap. On my days off, I get so into the games that I lose track of time. When I was a kid, the sofa was a place to jump around. These days, it's where I go to relax.",
       "short": "Back then, my sofa was quite small. Now I have a much bigger one. I spend a lot of time on it because it's really comfortable.",
@@ -131,6 +145,7 @@
     {
       "topic": "Home & Furniture", "title": "Past Experience", "type": "PAST_EXPERIENCE", "stories": "S4", "refreshRevisions": true,
       "question": "Tell me about a memorable experience regarding furniture you had in your childhood.",
+      "reuseQuestions": ["Tell me about something you used to jump on at home as a child. What happened to it?", "Tell me about a gift you bought for a family member that brought back a childhood memory."],
       "original": "To be honest, I clearly remember my old sofa from childhood. Back then, it was quite small, but to me, it felt like a huge trampoline.\nI used to jump on it all day long! My mom was always angry, it was such a fun and energetic time.\nActually, I recently bought a brand-new sofa for my mother. I felt a bit sorry for breaking the sofa when I was kid, so I wanted to make it up to her. She was so moved and happy about it.\nI feel much better now that I've finally replaced the one I ruined!",
       "ihTarget": "Back then, my sofa was quite small. But when I was a kid, it felt like a trampoline. I used to jump on it all the time, and I ended up breaking it. I felt bad about it, so I bought my mom a new sofa recently. She was really happy, and I felt much better.",
       "short": "I used to jump on my old sofa, and I ended up breaking it. I felt bad about it, so I bought my mom a new sofa. She was really happy.",
@@ -140,6 +155,7 @@
     {
       "topic": "Home & Furniture", "title": "Routine at Home", "type": "ROUTINE", "stories": "S7", "refreshRevisions": true,
       "question": "What do you usually do when you are at home? Tell me about your typical routine on your days off.",
+      "reuseQuestions": ["How do you unwind at home after a busy week? Where do you spend that time?", "Tell me about an activity that makes you lose track of time at home."],
       "original": "On my days off, I usually spend my time on the sofa playing video games on my big TV.\nThe games look so realistic, so I completely lose track of time. The best part is that it helps me get rid of all my stress and recharge my batteries.",
       "ihTarget": "On my days off, I usually play video games on the sofa in my living room. I play on my big TV, and the graphics look so real that I lose track of time. It helps me relax and recharge.",
       "short": "On my days off, I usually play video games on the sofa in my living room. I lose track of time. It helps me relax.",
@@ -149,6 +165,7 @@
     {
       "topic": "Park & Music", "title": "Park Description", "type": "DESCRIPTION", "stories": "S5",
       "question": "Describe a park you often visit. What does it look like, and what do people usually do there?",
+      "reuseQuestions": ["Where near home do you go to exercise, and what makes it good for that activity?", "Tell me about a place where you like both to exercise and listen to music."],
       "original": "I often go to Central Park near my house. It is a great place for jogging.There are a lot of joggers in that park, so we can exercise together.\nActually, my hobby is jogging. Do you like jogging too?\nAnd I love listening to upbeat music list 'Butter' by BTS while running. It makes me feel happy and energetic throughout the day.",
       "ihTarget": "I often go to Central Park, which is about ten minutes from my house. It's a big park with a lake in the middle and a long jogging track around it. There are lots of trees, so it's really green and peaceful, especially in the morning. On weekends, it's always busy. People walk their dogs, families have picnics on the grass, and a lot of people go jogging like me. Actually, my hobby is jogging, so I go there three or four times a week. I love listening to upbeat music like 'Butter' by BTS while I'm running. It makes me feel happy and energetic for the whole day. Do you like jogging too?",
       "short": "I often go to Central Park near my house. It has a lake and a jogging track, and people walk dogs and have picnics. I jog there listening to BTS.",
@@ -158,6 +175,7 @@
     {
       "topic": "Park & Music", "title": "Park/Music Routine", "type": "ROUTINE", "stories": "S5",
       "question": "What do you usually do at the park? Do you listen to music while exercising?",
+      "reuseQuestions": ["What do you wear or bring when you go jogging?", "What is your favorite song to run to? What makes it a good choice for exercise?"],
       "original": "I always wear knee pads before jogging. And I also wear Bluetooth earphones to immerse myself in the music.\nActually, I'm a huge fan of upbeat music, especially songs by BTS. My favorite track these days is 'Butter'. It's so energetic that it's perfect to listen to while jogging.\nRunning in the fresh air while listening to my favorite songs makes me feel alive.",
       "ihTarget": "Before I go jogging, I always stretch for a few minutes and put on my knee pads, because my knees get sore easily. I also wear Bluetooth earphones so I can be immersed in the music. When I get to the park, I usually walk for five minutes to warm up, and then I run around the lake. I'm a huge fan of upbeat music, especially songs by BTS. My favorite track these days is 'Butter'. It's so energetic that it's perfect for running. After running, I sit on a bench and cool down. Running in the fresh air while listening to my favorite songs makes me feel alive. I'm hoping to run a 10K race next spring.",
       "short": "I put on knee pads and earphones, then run around the lake. I listen to 'Butter' by BTS because it's energetic. It makes me feel alive.",
@@ -167,6 +185,7 @@
     {
       "topic": "Park & Music", "title": "Favorite Musician", "type": "DESCRIPTION", "stories": "S5",
       "question": "Who is your favorite musician or composer? Why do you like their music?",
+      "reuseQuestions": ["Tell me about a music group you enjoy watching perform. What do you like about them?", "What song would you recommend to someone who wants more energy while jogging?"],
       "original": "My favorite musician is BTS. There are 7 boys in a group.\nDo you know them well? If there's a chance to watch their performance video, you probably can figure out why I like them. Because they are great performers.\nI especially like the song “Butter” by BTS. It's a very upbeat song, so it's great to listen to while jogging",
       "ihTarget": "My favorite musician is BTS. They're a Korean boy group with seven members, and they're famous all around the world. Do you know them? If you watch one of their performance videos, you'll understand why I like them. They're amazing performers. Their dancing is perfectly in sync, and their songs have positive messages about loving yourself. I especially like the song 'Butter'. It's very upbeat, so it's great to listen to while I'm jogging. I first got into their music a few years ago when one of my coworkers recommended it. Since then, I've listened to them almost every day. Someday, I really want to go to one of their concerts.",
       "short": "My favorite musician is BTS. They're amazing performers with positive messages. I especially like 'Butter' because it's great for jogging.",
@@ -176,6 +195,7 @@
     {
       "topic": "Park & Music", "title": "Music Taste Change", "type": "COMPARISON", "stories": "S9",
       "question": "How has your music taste changed from when you were younger to now? Tell me about the music you used to like and what you listen to these days.",
+      "reuseQuestions": ["Which artist did you listen to years ago, and who do you listen to more often today?", "Tell me about a song you liked when you were younger and a musician you prefer now."],
       "original": "When I was young, I went to the army and I liked dance music. I like '비' and his English name is rain.\nEspecially the song's name is rainism. The music is very wonderful. You know that? The music makes me feel like a dancer.\nBut these days, the rainism is kind of old. So I like BTS.",
       "ihTarget": "My taste in music has changed a lot over time. When I was in my twenties, especially when I was in the army, I really liked dance music. My favorite singer was Rain, and my favorite song was 'Rainism'. Whenever I listened to it, I felt like a dancer, and it gave me a lot of energy during hard training. But these days, I don't listen to that kind of music much, because it feels a little old now. Instead, I listen to BTS. Their songs are still upbeat, but the lyrics are more meaningful to me. I think the biggest change is that I used to like music just for energy, but now I care about the message too.",
       "short": "When I was in the army, I liked dance music like Rain's 'Rainism'. These days, I listen to BTS because their lyrics are more meaningful.",
@@ -185,6 +205,7 @@
     {
       "topic": "Park & Music", "title": "Memorable Experience at the Park", "type": "PAST_EXPERIENCE", "stories": "S5",
       "question": "Tell me about something interesting or unexpected that happened while you were at the park.",
+      "reuseQuestions": ["Tell me about a time music distracted you while exercising. What happened?", "Describe an awkward encounter you had while jogging. How did you respond?"],
       "original": "I remember a time when I was jogging in the park. I was lost in the music, so I didn't see a woman walking toward me.\nSuddenly, I bumped into her very hard. She was shocked, and I was terribly sorry. I kept apologizing until she said she was okay.\nAfter that, I realized I should be more careful when I exercise with my earphones on.\nIt was a very embarrassing moment for me.",
       "ihTarget": "I remember something embarrassing that happened in the park last spring. I was jogging with my earphones on, and I was completely lost in the music. Because of that, I didn't see a woman walking toward me with her dog. Suddenly, I bumped into her really hard, and she almost fell down. She was shocked, and her dog started barking at me. I felt terrible, so I kept apologizing and asked if she was okay. Luckily, she wasn't hurt, and she told me not to worry about it. After that, I realized I should be more careful when I exercise with earphones. These days, I always keep the volume low so I can hear what's around me.",
       "short": "Last spring, I was jogging and lost in the music, so I bumped into a woman. I kept apologizing. Now I keep the volume low.",
@@ -194,6 +215,7 @@
     {
       "topic": "Geography", "title": "Geography Description", "type": "DESCRIPTION", "stories": "S2",
       "question": "Describe the geography of your country. What does the landscape look like?",
+      "reuseQuestions": ["What would a visitor notice about the mountains and coastlines of your country?", "What do the mountains in your country look like in the fall?"],
       "original": "South Korea is a peninsula located in East Asia, surrounded by the ocean on three sides.\nAlso, about 70% of our land is mountainous.\nSo, wherever you go, you can see stunning mountains and beautiful scenery. Especially in the fall, the colorful leaves are absolutely breathtaking.\nWe also have four distinct seasons, so the landscape changes beautifully throughout the year.",
       "ihTarget": "South Korea is a peninsula in East Asia, so it's surrounded by the ocean on three sides. About seventy percent of the land is mountainous, so wherever you go, you can see mountains. The east coast has clear blue water and long sandy beaches, while the west coast has wide mud flats. There's also Jeju Island in the south, which is famous for its volcano, Hallasan. We have four distinct seasons, so the landscape changes beautifully throughout the year. Especially in the fall, the colorful leaves on the mountains are absolutely breathtaking. That's why hiking is one of the most popular hobbies in Korea. I'm planning to hike Seoraksan next fall to see the leaves.",
       "short": "Korea is a peninsula, and about 70% of it is mountains. We have beaches, mud flats, and Jeju Island. The fall leaves are breathtaking.",
@@ -203,6 +225,7 @@
     {
       "topic": "Geography", "title": "Neighboring Countries", "type": "DESCRIPTION", "stories": "S6",
       "question": "Tell me about the neighboring countries of your country. What are they like?",
+      "reuseQuestions": ["How would you describe China and Japan to someone who does not know much about them?", "Tell me about two countries near yours that stand out to you. What makes each one memorable?"],
       "original": "We have two close neighbors, China and Japan.\nJapan is very close, but honestly, our history is a bit complicated. In the past, they invaded Korea and hurt many people. So personally, thinking about that history makes me feel sad.\nOn the other hand, China grew really fast. I went there for a business trip, and I saw many tall buildings and luxury cars. But because they grew so fast, the gap between the rich and poor is very big.",
       "ihTarget": "Korea has two close neighbors, China and Japan. Japan is very close, so it only takes about an hour by plane, and a lot of Koreans travel there. But honestly, our history is a bit complicated. In the past, Japan invaded Korea and hurt many people, so thinking about that history still makes me sad. These days, though, the two countries share a lot of culture, like food, music, and dramas. China, on the other hand, has grown really fast. I went there on a business trip a few years ago, and I saw so many tall buildings and luxury cars. But because it grew so fast, the gap between the rich and the poor is very big. I hope all three countries can get along better in the future.",
       "short": "Our neighbors are China and Japan. Japan is close, but our history is complicated. China has grown fast, but the gap between rich and poor is big.",

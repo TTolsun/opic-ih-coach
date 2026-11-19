@@ -17,6 +17,7 @@ import com.opicih.coach.data.db.StoryEntity
 import com.opicih.coach.data.prefs.SettingsRepository
 import com.opicih.coach.learning.HotelRoleplay
 import com.opicih.coach.learning.QuestionSource
+import com.opicih.coach.learning.StoryMap
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.sync.Mutex
@@ -30,6 +31,7 @@ data class SeedScript(
     val topic: String, val title: String, val type: String, val stories: String = "", val question: String,
     val original: String, val ihTarget: String = "", val short: String = "", val keywords: List<String> = emptyList(), val reasonKo: String = "",
     val refreshRevisions: Boolean = false,
+    val reuseQuestions: List<String> = emptyList(),
 )
 
 @Serializable data class SeedScripts(val source: String = "", val note: String = "", val scripts: List<SeedScript>)
@@ -53,6 +55,16 @@ internal fun planStoryLinks(seed: List<SeedScript>, scripts: List<ScriptEntity>)
     scripts.filter { it.source == ContentSource.SEED_USER.name && it.storyIds == null }.mapNotNull { s ->
         seed.firstOrNull { it.topic == s.topic && it.title == s.title }?.stories?.takeIf { it.isNotBlank() }?.let { s.copy(storyIds = it) }
     }
+
+internal fun curatedReuseQuestions(script: ScriptEntity, seed: List<SeedScript>, stories: List<StoryEntity>): List<String> {
+    if (script.source != ContentSource.SEED_USER.name) return emptyList()
+    val bundled = seed.firstOrNull { it.topic == script.topic && it.title == script.title } ?: return emptyList()
+    if (bundled.stories !in StoryMap.storyIdsOf(script) || stories.none { it.id == bundled.stories }) return emptyList()
+    val studyText = TextNormalizer.normalize(script.studyText)
+    val bundledVersions = listOf(bundled.original, bundled.ihTarget, bundled.short)
+    if (studyText.isEmpty() || bundledVersions.none { TextNormalizer.normalize(it) == studyText }) return emptyList()
+    return bundled.reuseQuestions
+}
 
 internal data class BundledRevisionRefresh(
     val obsolete: List<ScriptRevisionEntity>,
@@ -91,6 +103,9 @@ class SeedLoader(private val context: Context, private val db: AppDatabase, priv
     private val dao = db.dao()
     private val json = Json { ignoreUnknownKeys = true }
     private val seedLock = Mutex()
+    private val bundledScripts by lazy {
+        readAsset("seed/user_scripts_2026.json")?.let { json.decodeFromString(SeedScripts.serializer(), it).scripts }.orEmpty()
+    }
 
     suspend fun seedIfNeeded() = seedLock.withLock {
         seedOriginal()
@@ -106,6 +121,12 @@ class SeedLoader(private val context: Context, private val db: AppDatabase, priv
             }
             HotelRoleplay.questions(bundled?.questions.orEmpty().map { QuestionSource(it.topic, it.text, it.type, it.source) })
         }
+    }
+
+    suspend fun reuseQuestions(script: ScriptEntity): List<String> = withContext(Dispatchers.IO) {
+        val stories = dao.stories()
+        val curated = curatedReuseQuestions(script, bundledScripts, stories)
+        StoryMap.reuseQuestions(script, stories, dao.scripts(), curated)
     }
 
     private suspend fun seedOriginal() {
