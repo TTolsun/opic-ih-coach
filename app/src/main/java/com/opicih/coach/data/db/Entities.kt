@@ -150,6 +150,7 @@ enum class PracticeMode(val label: String, val usesScript: Boolean) {
     MOCK("모의시험", false),
     /** One turn of a SAIL practice conversation (v3). */
     SAIL_CONVERSATION("SAIL 대화", false),
+    HOTEL_ROLEPLAY("호텔 예약 롤플레이", false),
     /** v5: answer a new question with 1-2 approved sentence frames. */
     FRAME_ATTACH("틀 붙이기", false),
     /** v5: answer the same new question in 1, then 3, then 5+ sentences. */
@@ -192,7 +193,7 @@ data class PracticeAttemptEntity(
     val feedbackSource: String = "LOCAL",
     val mockId: Long? = null,
     val createdAt: Long = System.currentTimeMillis(),
-    /** v3: groups the turns of one exam training session (e.g. a SAIL conversation). */
+    /** Groups turns of one exam training session within a practice mode. */
     val trainingSessionId: Long? = null,
     /** A pending review of this exact free-speaking question. Null when unscheduled or completed. */
     val speakingReviewDueEpochDay: Long? = null,

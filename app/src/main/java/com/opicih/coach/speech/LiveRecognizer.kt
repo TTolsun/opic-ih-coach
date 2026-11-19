@@ -41,6 +41,7 @@ class LiveRecognizer(private val context: Context) {
     private var lastLevelAt = 0L
     private var consecutiveErrors = 0
     private var preferOffline = false
+    private var requireOnDevice = false
 
     /** (elapsed ms, rms dB) samples. */
     val levels = mutableListOf<Pair<Long, Float>>()
@@ -50,10 +51,15 @@ class LiveRecognizer(private val context: Context) {
 
     val elapsedMs: Long get() = if (startedAt == 0L) 0 else SystemClock.elapsedRealtime() - startedAt
 
-    fun start(preferOffline: Boolean = false) {
+    fun start(preferOffline: Boolean = false, requireOnDevice: Boolean = false) {
         stop(cancelOnly = true)
-        this.preferOffline = preferOffline
-        if (!SpeechRecognizer.isRecognitionAvailable(context) && !(preferOffline && hasOnDeviceRecognizer())) {
+        this.preferOffline = preferOffline || requireOnDevice
+        this.requireOnDevice = requireOnDevice
+        if (requireOnDevice && !hasOnDeviceRecognizer()) {
+            _state.value = Snapshot(error = "기기 내 음성 인식을 사용할 수 없습니다.")
+            return
+        }
+        if (!SpeechRecognizer.isRecognitionAvailable(context) && !(this.preferOffline && hasOnDeviceRecognizer())) {
             _state.value = Snapshot(error = "이 기기에서 음성 인식 서비스를 찾지 못했습니다. Google 앱 또는 음성 인식 서비스를 설치하거나 '녹음 우선' 모드를 사용하세요.")
             return
         }
@@ -98,8 +104,8 @@ class LiveRecognizer(private val context: Context) {
     private fun listenOnce() {
         if (!sessionActive) return
         recognizer?.destroy()
-        val r = if (Build.VERSION.SDK_INT >= 31 && preferOffline && hasOnDeviceRecognizer() &&
-            !SpeechRecognizer.isRecognitionAvailable(context)) {
+        val r = if (Build.VERSION.SDK_INT >= 31 && (requireOnDevice ||
+            (preferOffline && hasOnDeviceRecognizer() && !SpeechRecognizer.isRecognitionAvailable(context)))) {
             SpeechRecognizer.createOnDeviceSpeechRecognizer(context)
         } else SpeechRecognizer.createSpeechRecognizer(context)
         recognizer = r

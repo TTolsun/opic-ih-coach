@@ -15,6 +15,10 @@ import com.opicih.coach.data.db.ScriptRevisionEntity
 import com.opicih.coach.data.db.ScriptVersion
 import com.opicih.coach.data.db.StoryEntity
 import com.opicih.coach.data.prefs.SettingsRepository
+import com.opicih.coach.learning.HotelRoleplay
+import com.opicih.coach.learning.QuestionSource
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.Serializable
@@ -91,6 +95,17 @@ class SeedLoader(private val context: Context, private val db: AppDatabase, priv
     suspend fun seedIfNeeded() = seedLock.withLock {
         seedOriginal()
         addLaterContent()
+    }
+
+    suspend fun hotelQuestions() = withContext(Dispatchers.IO) {
+        val bank = dao.questions().filter { it.source == "AI_GENERATED" }
+            .map { QuestionSource(it.topic, it.text, it.type, it.source) }
+        HotelRoleplay.questions(bank).ifEmpty {
+            val bundled = readAsset("seed/content.json")?.let {
+                json.decodeFromString(SeedContent.serializer(), it)
+            }
+            HotelRoleplay.questions(bundled?.questions.orEmpty().map { QuestionSource(it.topic, it.text, it.type, it.source) })
+        }
     }
 
     private suspend fun seedOriginal() {
