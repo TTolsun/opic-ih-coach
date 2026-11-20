@@ -151,6 +151,7 @@ enum class PracticeMode(val label: String, val usesScript: Boolean) {
     /** One turn of a SAIL practice conversation (v3). */
     SAIL_CONVERSATION("SAIL 대화", false),
     HOTEL_ROLEPLAY("호텔 예약 롤플레이", false),
+    DIAGNOSTIC("말하기 진단", false),
     /** v5: answer a new question with 1-2 approved sentence frames. */
     FRAME_ATTACH("틀 붙이기", false),
     /** v5: answer the same new question in 1, then 3, then 5+ sentences. */

@@ -5,11 +5,14 @@ import com.opicih.coach.ai.GeminiAiCoach
 import com.opicih.coach.analysis.Feedback
 import com.opicih.coach.analysis.PauseMetrics
 import com.opicih.coach.data.db.PracticeMode
+import com.opicih.coach.data.db.QuestionType
 import com.opicih.coach.data.prefs.LearnerProfile
 import com.opicih.coach.data.repo.AnalyzedAttempt
 import com.opicih.coach.data.repo.AttemptMetrics
 import com.opicih.coach.data.repo.PracticeRepository
 import com.opicih.coach.data.repo.appJson
+import com.opicih.coach.learning.DiagnosticCriterion
+import com.opicih.coach.learning.DiagnosticStatus
 import kotlinx.coroutines.runBlocking
 import okhttp3.OkHttpClient
 import okhttp3.Protocol
@@ -93,6 +96,24 @@ class GeminiEvaluationFallbackTest {
         assertEquals("AI", result.attempt.feedbackSource)
         assertEquals(0, result.attempt.score)
         assertTrue(result.feedback.fixes.isEmpty())
+    }
+
+    @Test fun diagnosticAcceptsGroundedObservationsAndRejectsATruncatedModelResponse() = runBlocking {
+        val question = "What did you do when you lost something?"
+        val transcript = "I lost my keys and called the bus company."
+        val diagnostic = """
+            {
+              "TASK":{"status":"OBSERVED","quote":"called the bus company"},
+              "CONNECTION":{"status":"OBSERVED","quote":"a fabricated quote"},
+              "TIME":{"status":"OBSERVED","quote":"I lost my keys"},
+              "DELIVERY":{"status":"UNASSESSED","quote":null}
+            }
+        """.trimIndent()
+        val report = coach(envelope(diagnostic)).observeDiagnostic(question, QuestionType.PAST_EXPERIENCE, transcript).getOrThrow()
+        assertEquals(DiagnosticStatus.OBSERVED, report.observations[DiagnosticCriterion.TASK]?.status)
+        assertEquals(DiagnosticStatus.UNASSESSED, report.observations[DiagnosticCriterion.CONNECTION]?.status)
+        assertTrue(coach(envelope(diagnostic, finish = "MAX_TOKENS"))
+            .observeDiagnostic(question, QuestionType.PAST_EXPERIENCE, transcript).isFailure)
     }
 
     private fun assertLocalFallback(label: String, local: AnalyzedAttempt, result: AnalyzedAttempt) {

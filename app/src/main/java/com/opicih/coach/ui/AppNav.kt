@@ -47,6 +47,7 @@ import com.opicih.coach.ui.screens.ExamsScreen
 import com.opicih.coach.ui.screens.FramesScreen
 import com.opicih.coach.ui.screens.StoriesScreen
 import com.opicih.coach.ui.screens.HomeScreen
+import com.opicih.coach.ui.screens.SpeakingDiagnosticScreen
 import com.opicih.coach.ui.screens.HotelRoleplayScreen
 import com.opicih.coach.ui.screens.ListenScreen
 import com.opicih.coach.ui.screens.ImportScreen
@@ -77,7 +78,7 @@ private val tabs = listOf(
 private val titles = mapOf(
     "script/{id}" to "스크립트", "scriptEdit/{id}" to "스크립트 편집", "import" to "스크립트 가져오기",
     "settings" to "설정", "nextExam" to "다음 OPIc 추천", "exams" to "시험 일정", "sail" to "SAIL 대화 연습", "morning" to "아침 표현 루틴", "coach" to "AI 코치",
-    "listen" to "스크립트 듣기", "review/{id}" to "다시 말하기", "stories" to "이야기 묶음",
+    "listen" to "스크립트 듣기", "review/{id}" to "다시 말하기", "stories" to "이야기 묶음", "diagnostic" to PracticeMode.DIAGNOSTIC.label,
     "pendingRevisions" to "승인 대기 개선안", "examDebrief/{day}/{registrationId}" to "시험 복기",
 )
 
@@ -161,6 +162,7 @@ fun AppNav(startRoute: String?, onRouteConsumed: () -> Unit) {
                     onNextExam = { nav.navigate("nextExam") },
                     onDebrief = { date, registrationId -> nav.navigate("examDebrief/${date.toEpochDay()}/${registrationId ?: 0L}") },
                     onExams = { nav.navigate("exams") },
+                    onDiagnostic = { nav.navigate("diagnostic") { launchSingleTop = true } },
                     onSpeakingReview = { nav.navigate("review/$it") { launchSingleTop = true } },
                     onSpeakMode = { m ->
                         when (m) {
@@ -193,15 +195,26 @@ fun AppNav(startRoute: String?, onRouteConsumed: () -> Unit) {
             ) { e ->
                 val id = e.arguments?.getLong("scriptId")?.takeIf { it > 0 }
                 val mode = e.arguments?.getString("mode")?.let { PracticeMode.of(it) }
-                SpeakingScreen(id, mode, onOpenFrames = { nav.navigate("frames") }, onHotelRoleplay = { nav.navigate("speakingHotel") })
+                SpeakingScreen(
+                    id, mode,
+                    onOpenFrames = { nav.navigate("frames") },
+                    onHotelRoleplay = { nav.navigate("speakingHotel") },
+                    onDiagnostic = { nav.navigate("diagnostic") },
+                )
             }
             composable("review/{id}", arguments = listOf(navArgument("id") { type = NavType.LongType })) { e ->
-                SpeakingScreen(null, PracticeMode.FREE, reviewId = e.arguments!!.getLong("id"), onOpenFrames = { nav.navigate("frames") }, onHotelRoleplay = { nav.navigate("speakingHotel") })
+                SpeakingScreen(
+                    null, PracticeMode.FREE, reviewId = e.arguments!!.getLong("id"),
+                    onOpenFrames = { nav.navigate("frames") },
+                    onHotelRoleplay = { nav.navigate("speakingHotel") },
+                    onDiagnostic = { nav.navigate("diagnostic") },
+                )
             }
             composable("frames") { FramesScreen() }
             composable("stories") { StoriesScreen(onOpenScript = { nav.navigate("script/$it") }) }
             composable("mock") { MockScreen() }
             composable("speakingHotel") { HotelRoleplayScreen() }
+            composable("diagnostic") { SpeakingDiagnosticScreen() }
             composable("progress") { ProgressScreen(onNextExam = { nav.navigate("nextExam") }, onExams = { nav.navigate("exams") }) }
             composable("script/{id}", arguments = listOf(navArgument("id") { type = NavType.LongType })) { e ->
                 ScriptDetailScreen(
@@ -246,7 +259,7 @@ fun AppNav(startRoute: String?, onRouteConsumed: () -> Unit) {
 
 /** Routes whose open time counts as study (not home / progress / settings / exams / nextExam / import / scriptEdit). */
 internal fun isStudyRoute(route: String?): Boolean = route != null && (
-    route == "scripts" || route == "pendingRevisions" || route == "script/{id}" || route == "review/{id}" || route == "stories" ||
+    route == "scripts" || route == "pendingRevisions" || route == "script/{id}" || route == "review/{id}" || route == "stories" || route == "diagnostic" ||
         listOf("speaking", "mock", "sail", "coach", "morning").any { route.startsWith(it) }
     )
 

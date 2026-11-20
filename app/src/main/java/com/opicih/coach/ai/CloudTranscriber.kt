@@ -27,7 +27,11 @@ interface Transcriber {
  * analysis sees what was actually said instead of a cleaned-up version (the Android recognizer's weakness).
  * Requires explicit consent to upload audio.
  */
-class GeminiTranscriber(private val apiKey: String, private val model: String) : Transcriber {
+class GeminiTranscriber(
+    private val apiKey: String,
+    private val model: String,
+    private val forDiagnostic: Boolean = false,
+) : Transcriber {
     private val http = OkHttpClient.Builder().callTimeout(120, TimeUnit.SECONDS).build()
 
     override suspend fun transcribe(audio: File): Result<String> = withContext(Dispatchers.IO) {
@@ -37,7 +41,7 @@ class GeminiTranscriber(private val apiKey: String, private val model: String) :
             val req = Request.Builder()
                 .url("${GeminiAiCoach.BASE}/models/$model:generateContent")
                 .header("x-goog-api-key", apiKey)
-                .post(requestBody(b64, "audio/wav").toString().toRequestBody("application/json".toMediaType()))
+                .post(requestBody(b64, "audio/wav", forDiagnostic).toString().toRequestBody("application/json".toMediaType()))
                 .build()
             http.newCall(req).execute().use { r ->
                 val s = r.body?.string().orEmpty()
@@ -46,7 +50,7 @@ class GeminiTranscriber(private val apiKey: String, private val model: String) :
                     r.code == 429 -> throw AiException("전사 요청 한도를 초과했습니다 (429). 잠시 후 다시 시도하세요.")
                     !r.isSuccessful -> throw AiException("전사 실패 (${r.code}).")
                 }
-                clean(GeminiAiCoach.parseText(s))
+                clean(GeminiAiCoach.parseText(s, requireComplete = forDiagnostic))
             }
         }.recoverCatching { e -> throw if (e is AiException) e else AiException("전사 중 네트워크 오류: ${e.message}") }
     }
@@ -65,12 +69,16 @@ class GeminiTranscriber(private val apiKey: String, private val model: String) :
             "If there is no speech, return an empty string. Output only the transcript text."
 
         /** Pure: request JSON for an inline audio transcription. Unit tested. */
-        fun requestBody(base64Audio: String, mime: String): JsonObject = buildJsonObject {
+        fun requestBody(base64Audio: String, mime: String, forDiagnostic: Boolean = false): JsonObject = buildJsonObject {
             put("contents", buildJsonArray {
                 add(buildJsonObject {
                     put("role", "user")
                     putJsonArray("parts") {
-                        add(buildJsonObject { put("text", PROMPT) })
+                    val prompt = if (forDiagnostic) {
+                        PROMPT.replace("Mark two things with a tag and use no other tags.",
+                            "Use [inaudible] when any spoken words are unclear or missing. Never guess an unclear word.")
+                    } else PROMPT
+                    add(buildJsonObject { put("text", prompt) })
                         add(buildJsonObject { putJsonObject("inline_data") { put("mime_type", mime); put("data", base64Audio) } })
                     }
                 })

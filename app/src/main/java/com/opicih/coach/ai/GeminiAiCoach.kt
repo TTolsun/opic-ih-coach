@@ -3,7 +3,9 @@ package com.opicih.coach.ai
 import com.opicih.coach.analysis.Feedback
 import com.opicih.coach.analysis.ErrorItem
 import com.opicih.coach.analysis.FixItem
+import com.opicih.coach.data.db.QuestionType
 import com.opicih.coach.data.prefs.LearnerProfile
+import com.opicih.coach.learning.DiagnosticReport
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
@@ -53,6 +55,18 @@ class GeminiAiCoach internal constructor(
         evaluation.feedback(engineName)
     }
 
+    internal suspend fun observeDiagnostic(question: String, type: QuestionType, transcript: String): Result<DiagnosticReport> = call {
+        val text = send(
+            DiagnosticAssessment.system,
+            listOf(ChatTurn(true, DiagnosticAssessment.input(question, type, transcript))),
+            json = true,
+            maxTokens = 2048,
+            requireComplete = true,
+            temperature = 0.0,
+        )
+        DiagnosticAssessment.parse(text, type, transcript, model)
+    }
+
     override suspend fun chat(history: List<ChatTurn>, context: CoachContext): Result<String> = call {
         send(Prompts.chatSystem(profile) +"\n\n" + Prompts.contextBlock(context), history.takeLast(16), json = false)
     }
@@ -79,6 +93,7 @@ class GeminiAiCoach internal constructor(
         json: Boolean,
         maxTokens: Int = 8192,
         requireComplete: Boolean = false,
+        temperature: Double = 0.4,
     ): String = withContext(Dispatchers.IO) {
         val body = buildJsonObject {
             putJsonObject("systemInstruction") { putJsonArray("parts") { add(buildJsonObject { put("text", system) }) } }
@@ -91,7 +106,7 @@ class GeminiAiCoach internal constructor(
                 }
             })
             putJsonObject("generationConfig") {
-                put("temperature", 0.4)
+                put("temperature", temperature)
                 put("maxOutputTokens", maxTokens)
                 if (json) put("responseMimeType", "application/json")
             }
@@ -139,7 +154,7 @@ class GeminiAiCoach internal constructor(
         /** Pure: extracts the answer text from a generateContent response, or explains why there is none. Unit tested. */
         fun parseText(responseBody: String): String = parseText(responseBody, requireComplete = false)
 
-        private fun parseText(responseBody: String, requireComplete: Boolean): String {
+        internal fun parseText(responseBody: String, requireComplete: Boolean): String {
             val root = AiJson.json.parseToJsonElement(responseBody).jsonObject
             root["promptFeedback"]?.jsonObject?.get("blockReason")?.jsonPrimitive?.content?.let {
                 throw AiException("Gemini가 요청을 차단했습니다 ($it). 표현을 바꿔 다시 시도하세요.", false)

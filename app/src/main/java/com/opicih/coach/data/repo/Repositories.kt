@@ -27,6 +27,7 @@ import com.opicih.coach.data.db.ImportSourceEntity
 import com.opicih.coach.data.db.MasteryState
 import com.opicih.coach.data.db.PracticeAttemptEntity
 import com.opicih.coach.data.db.PracticeMode
+import com.opicih.coach.data.db.QuestionType
 import com.opicih.coach.data.db.RevisionOrigin
 import com.opicih.coach.data.db.RevisionStatus
 import com.opicih.coach.data.db.ScriptEntity
@@ -36,11 +37,13 @@ import com.opicih.coach.importer.DuplicateLinker
 import com.opicih.coach.importer.ParsedScript
 import com.opicih.coach.learning.CAPTURE_CLOUD_STT
 import com.opicih.coach.learning.CoachingRecord
+import com.opicih.coach.learning.DiagnosticReport
 import com.opicih.coach.learning.GlossaryGrowth
 import com.opicih.coach.learning.HotelRoleplay
 import com.opicih.coach.learning.HotelStage
 import com.opicih.coach.learning.MasteryRules
 import com.opicih.coach.learning.ScoreKind
+import com.opicih.coach.learning.SpeakingDiagnostic
 import com.opicih.coach.learning.SrsScheduler
 import com.opicih.coach.learning.MorningReviewRules
 import kotlinx.serialization.Serializable
@@ -62,6 +65,7 @@ data class AttemptMetrics(
     /** 새 질문 적용 체크 for 바뀐 질문 / 응용 미션. Null for other modes and older rows. */
     val transfer: TransferCheck? = null,
     val coaching: CoachingRecord? = null,
+    val diagnostic: DiagnosticReport? = null,
 ) {
     val usableForIndependentAssessment: Boolean get() = coaching?.usableForIndependentAssessment != false
 
@@ -73,6 +77,7 @@ data class AttemptMetrics(
 
 fun PracticeAttemptEntity.measuredScore(metrics: AttemptMetrics? = AttemptMetrics.from(this)): Int? =
     when {
+        mode == PracticeMode.DIAGNOSTIC.name -> null
         metrics?.usableForIndependentAssessment == false -> null
         metrics?.speakingFlow == true -> metrics.localScore
         else -> score.takeIf { wordCount > 0 }
@@ -225,6 +230,52 @@ class PracticeRepository(private val db: AppDatabase) {
                 attempts + persist(req, result, examEpochDay = null).attempt
             } else attempts
         }
+    }
+
+    internal suspend fun saveDiagnosticAnswer(req: Request): PracticeAttemptEntity {
+        val sessionId = requireNotNull(req.trainingSessionId)
+        val type = QuestionType.of(req.questionType)
+        require(req.mode == PracticeMode.DIAGNOSTIC && req.script == null && req.audioPath != null)
+        require(req.transcript.isBlank() && req.captureMode == "RECORD_ONLY" && req.durationMs > 0)
+        require(req.question in SpeakingDiagnostic.questions[type].orEmpty())
+        val result = analyze(req, ai = null)
+        return db.withTransaction {
+            val answers = dao.diagnosticAttempts(sessionId)
+            val saved = answers.firstOrNull { it.questionType == req.questionType }
+            if (saved != null) return@withTransaction saved
+            val next = SpeakingDiagnostic.types.firstOrNull { task -> answers.none { it.questionType == task.name } }
+            check(type == next) { "Diagnostic questions must be answered in order." }
+            persist(req, result, examEpochDay = null).attempt
+        }
+    }
+
+    internal suspend fun saveDiagnosticTranscript(
+        original: PracticeAttemptEntity,
+        transcript: String,
+    ): PracticeAttemptEntity? = db.withTransaction {
+        val current = dao.diagnosticAttempt(original.id) ?: return@withTransaction null
+        if (current != original) return@withTransaction null
+        val metrics = checkNotNull(AttemptMetrics.from(current))
+        val discourse = DiscourseAnalyzer.analyze(VerbatimMarkup.parse(transcript).clean)
+        val saved = current.copy(
+            transcript = transcript,
+            captureMode = CAPTURE_CLOUD_STT,
+            wordCount = discourse.wordCount,
+            wpm = FeedbackComposer.wpm(discourse.wordCount, current.speechMs, current.durationMs),
+            metricsJson = appJson.encodeToString(AttemptMetrics.serializer(), metrics.copy(discourse = discourse, diagnostic = null)),
+        )
+        dao.updateAttempt(saved)
+        saved
+    }
+
+    internal suspend fun saveDiagnosticReport(original: PracticeAttemptEntity, report: DiagnosticReport): Boolean = db.withTransaction {
+        val current = dao.diagnosticAttempt(original.id) ?: return@withTransaction false
+        if (current != original) return@withTransaction false
+        val metrics = checkNotNull(AttemptMetrics.from(current))
+        dao.updateAttempt(current.copy(
+            metricsJson = appJson.encodeToString(AttemptMetrics.serializer(), metrics.copy(diagnostic = report)),
+        ))
+        true
     }
 
     companion object {

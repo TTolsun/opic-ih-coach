@@ -44,6 +44,7 @@ object SrsScheduler {
         PracticeMode.BLIND, PracticeMode.RANDOM -> (coverage ?: 0f) >= 0.6f
         PracticeMode.VARIATION, PracticeMode.FREE, PracticeMode.MOCK, PracticeMode.SAIL_CONVERSATION,
         PracticeMode.FRAME_ATTACH, PracticeMode.PARAGRAPH_LADDER, PracticeMode.HOTEL_ROLEPLAY -> score >= 60
+        PracticeMode.DIAGNOSTIC -> false
     }
 }
 

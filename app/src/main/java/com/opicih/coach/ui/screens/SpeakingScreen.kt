@@ -97,6 +97,7 @@ fun SpeakingScreen(
     reviewId: Long? = null,
     onOpenFrames: () -> Unit = {},
     onHotelRoleplay: () -> Unit = {},
+    onDiagnostic: () -> Unit = {},
 ) {
     val vm: SpeakingViewModel = viewModel()
     val ui by vm.ui.collectAsStateWithLifecycle()
@@ -134,7 +135,11 @@ fun SpeakingScreen(
     Column(Modifier.fillMaxSize()) {
     Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
         ModeSelector(ui.mode) {
-            if (it == PracticeMode.HOTEL_ROLEPLAY) onHotelRoleplay() else vm.setMode(it)
+            when (it) {
+                PracticeMode.HOTEL_ROLEPLAY -> onHotelRoleplay()
+                PracticeMode.DIAGNOSTIC -> onDiagnostic()
+                else -> vm.setMode(it)
+            }
         }
 
         if (micDenied) MicPermissionBanner()

@@ -87,6 +87,13 @@ interface AppDao {
     fun hotelAttemptsFlow(): Flow<List<PracticeAttemptEntity>>
     @Query("SELECT * FROM attempts WHERE mode = 'HOTEL_ROLEPLAY' AND trainingSessionId = :sessionId")
     suspend fun hotelAttempts(sessionId: Long): List<PracticeAttemptEntity>
+    @Query("SELECT * FROM attempts WHERE mode = 'DIAGNOSTIC' ORDER BY createdAt DESC, id DESC")
+    fun diagnosticAttemptsFlow(): Flow<List<PracticeAttemptEntity>>
+    @Query("SELECT * FROM attempts WHERE mode = 'DIAGNOSTIC' AND trainingSessionId = :sessionId")
+    suspend fun diagnosticAttempts(sessionId: Long): List<PracticeAttemptEntity>
+    @Query("SELECT * FROM attempts WHERE mode = 'DIAGNOSTIC' AND id = :id")
+    suspend fun diagnosticAttempt(id: Long): PracticeAttemptEntity?
+    @Update suspend fun updateAttempt(attempt: PracticeAttemptEntity)
     @Query("SELECT * FROM attempts WHERE audioPath IS NOT NULL AND createdAt < :before")
     suspend fun attemptsWithAudioBefore(before: Long): List<PracticeAttemptEntity>
     @Query("UPDATE attempts SET audioPath = NULL WHERE id = :id") suspend fun clearAudioPath(id: Long)
