@@ -21,16 +21,12 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.automirrored.filled.MenuBook
-import androidx.compose.material.icons.filled.Assignment
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.RadioButtonUnchecked
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.WbSunny
 import androidx.compose.material3.Button
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -47,7 +43,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
@@ -77,13 +72,11 @@ import com.opicih.coach.ui.components.SourceTag
 import java.time.Instant
 import java.time.ZoneId
 
-/**
- * Home answers one question: "what do I do now?". The first unfinished task is the single primary button;
- * everything else is status or a shortcut to a concrete script.
- */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun HomeScreen(
+    onStories: () -> Unit,
+    onRecall: () -> Unit,
     onSpeak: () -> Unit,
     onMorning: () -> Unit,
     onScript: (Long) -> Unit,
@@ -116,15 +109,12 @@ fun HomeScreen(
     }
 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-        Row(verticalAlignment = Alignment.Top) {
-            // With nothing registered yet, the nearest planned exam is shown instead of "접수 완료 일정 없음",
-            // which contradicted the planned OPIc listed in 시험 현황 right below.
-            val planned = if (st.focusExam != null) null else ExamType.selectable.mapNotNull { ExamSchedule.nextOfType(st.regs, it, st.now) }
-                .filter { it.date != null }.minByOrNull { it.date!! }
-            NextExamHeader(st.focusExam, plan?.dLabel.orEmpty(), planned, st.now.toLocalDate(), Modifier.weight(1f).clickable(onClick = onExams))
-            IconButton(onClick = onCoach) { Icon(Icons.AutoMirrored.Filled.Chat, "AI 코치") }
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("내 답변 연습", modifier = Modifier.weight(1f), style = MaterialTheme.typography.headlineSmall)
             IconButton(onClick = onSettings) { Icon(Icons.Filled.Settings, "설정") }
         }
+        Button(onClick = onStories, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) { Text("공통 답변 찾기") }
+        OutlinedButton(onClick = onRecall, modifier = Modifier.fillMaxWidth()) { Text("질문 듣고 답하기") }
 
         PermissionBanners(st.alarmNeedsExact, onSettings)
 
@@ -142,12 +132,8 @@ fun HomeScreen(
             )
         }
 
-        // 1) The one thing to do now.
-        NextActionButton(st.next, onClick = { st.next?.let { open(it) } ?: onSpeak() })
-
-        // 2) Today's checklist (same tasks, with progress). No duplicate shortcut buttons below it.
         SectionCard(
-            title = "오늘의 훈련 · ${plan.focus.titleKo}",
+            title = "오늘의 훈련 · ${plan.focus.titleKo}", collapsible = true, initiallyExpanded = false,
             trailing = { Text("${(st.completion * 100).toInt()}%", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.titleMedium) },
         ) {
             st.tasks.forEach { ts ->
@@ -161,7 +147,7 @@ fun HomeScreen(
                     )
                     Spacer(Modifier.width(10.dp))
                     Text(
-                        ts.task.title, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f),
+                        if (ts.task == st.next) "다음 · ${ts.task.title}" else ts.task.title, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f),
                         color = if (ts.done) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
                     )
                     Text("${ts.task.minutes}분", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -190,19 +176,30 @@ fun HomeScreen(
             TextButton(onClick = onDiagnostic) { Text(PracticeMode.DIAGNOSTIC.label) }
         }
 
-        ExamStatusCard(st.regs, st.now, st.settings, plan, onExams)
+        SectionCard(title = "시험 관리와 추가 연습", collapsible = true, initiallyExpanded = false) {
+            TextButton(onClick = onMock) { Text("모의시험") }
+            TextButton(onClick = onCoach) { Text("AI 코치") }
+            Row {
+                // With nothing registered yet, the nearest planned exam is shown instead of "접수 완료 일정 없음",
+                // which contradicted the planned OPIc listed in 시험 현황 right below.
+                val planned = if (st.focusExam != null) null else ExamType.selectable.mapNotNull { ExamSchedule.nextOfType(st.regs, it, st.now) }
+                    .filter { it.date != null }.minByOrNull { it.date!! }
+                NextExamHeader(st.focusExam, plan.dLabel, planned, st.now.toLocalDate(), Modifier.weight(1f).clickable(onClick = onExams))
+            }
+            ExamStatusCard(st.regs, st.now, st.settings, plan, onExams)
 
-        st.nextExam?.let { n ->
-            // Same rule as the 다음 OPIc 추천 screen: a booked or planned OPIc replaces the suggested date.
-            val booked = ExamSchedule.nextOfType(st.regs, ExamType.OPIC, st.now)?.date
-            SectionCard(Modifier.clickable(onClick = onNextExam), title = "다음 OPIc 추천", trailing = { SourceTag(if (booked != null) "학습용" else n.verdict) }) {
-                val rec = n.recommended
-                Text(
-                    if (booked != null) "${booked.monthDay()} OPIc 준비 중 · 준비도 ${n.gatesPassed}/${n.gatesTotal}"
-                    else if (rec != null) "추천 ${rec.monthValue}/${rec.dayOfMonth} · 접수 ${n.registerBy?.let { "${it.monthValue}/${it.dayOfMonth}" } ?: "-"}까지 · 준비도 ${n.gatesPassed}/${n.gatesTotal}"
-                    else "응시 가능한 날짜가 없습니다",
-                    style = MaterialTheme.typography.bodyMedium,
-                )
+            st.nextExam?.let { n ->
+                // Same rule as the 다음 OPIc 추천 screen: a booked or planned OPIc replaces the suggested date.
+                val booked = ExamSchedule.nextOfType(st.regs, ExamType.OPIC, st.now)?.date
+                SectionCard(Modifier.clickable(onClick = onNextExam), title = "다음 OPIc 추천", trailing = { SourceTag(if (booked != null) "학습용" else n.verdict) }) {
+                    val rec = n.recommended
+                    Text(
+                        if (booked != null) "${booked.monthDay()} OPIc 준비 중 · 준비도 ${n.gatesPassed}/${n.gatesTotal}"
+                        else if (rec != null) "추천 ${rec.monthValue}/${rec.dayOfMonth} · 접수 ${n.registerBy?.let { "${it.monthValue}/${it.dayOfMonth}" } ?: "-"}까지 · 준비도 ${n.gatesPassed}/${n.gatesTotal}"
+                        else "응시 가능한 날짜가 없습니다",
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                }
             }
         }
 
@@ -246,28 +243,6 @@ fun HomeScreen(
             }
         }
         Spacer(Modifier.height(16.dp))
-    }
-}
-
-@Composable
-private fun NextActionButton(next: PlanTask?, onClick: () -> Unit) {
-    val (icon, label) = when (next?.type) {
-        null -> Icons.Filled.Mic to "자유 발화 더 하기"
-        TaskType.MORNING -> Icons.Filled.WbSunny to "${next.title} 시작 · ${next.minutes}분"
-        TaskType.MOCK -> Icons.Filled.Assignment to "${next.title} 시작"
-        TaskType.IMPROVE -> Icons.AutoMirrored.Filled.MenuBook to "${next.title} · ${next.minutes}분"
-        else -> Icons.Filled.Mic to "${next.title} · ${next.minutes}분"
-    }
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Text(if (next == null) "오늘 완료" else "지금 할 일", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        BigButton(icon, label, onClick)
-    }
-}
-
-@Composable
-private fun BigButton(icon: ImageVector, label: String, onClick: () -> Unit) {
-    Button(onClick = onClick, modifier = Modifier.fillMaxWidth().heightIn(min = 64.dp)) {
-        Icon(icon, null); Spacer(Modifier.width(8.dp)); Text(label, style = MaterialTheme.typography.titleMedium)
     }
 }
 

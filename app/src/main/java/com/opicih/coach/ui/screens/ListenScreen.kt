@@ -111,7 +111,7 @@ fun ListenScreen(onOpenSettings: () -> Unit) {
                 }
             }
             Spacer(Modifier.height(14.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 if (playing) {
                     Button(onClick = { ListenService.command(context, ListenService.ACTION_PAUSE) }) {
                         Icon(Icons.Filled.Pause, null); Spacer(Modifier.width(6.dp)); Text("일시정지")

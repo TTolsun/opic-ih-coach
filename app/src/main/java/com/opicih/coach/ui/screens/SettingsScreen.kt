@@ -229,9 +229,7 @@ fun SettingsScreen() {
             blocks.forEachIndexed { i, b ->
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        // "24:00 (익일 00:00)" wrapped to two lines next to the −/+/삭제 buttons; one form is enough.
                         "${i + 1}. " + if (b.startMinute >= 1440) "익일 ${StudyBlocks.label(b.startMinute - 1440)}" else StudyBlocks.label(b.startMinute),
-                        maxLines = 1,
                         color = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.weight(1f).clickable { editBlock = i }.padding(vertical = 8.dp),
                     )

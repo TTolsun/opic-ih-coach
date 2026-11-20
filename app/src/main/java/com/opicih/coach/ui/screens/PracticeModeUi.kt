@@ -12,6 +12,10 @@ import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.opicih.coach.data.db.PracticeMode
@@ -52,13 +56,14 @@ object PracticeModes {
 @Composable
 internal fun ModeSelector(current: PracticeMode, onSelect: (PracticeMode) -> Unit) {
     val cur = PracticeModes.of(current)
+    var stage by rememberSaveable(current) { mutableStateOf(cur.stage) }
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(Modifier.fillMaxWidth()) {
             SingleChoiceSegmentedButtonRow(Modifier.weight(1f)) {
                 PracticeStage.entries.forEachIndexed { i, st ->
                     SegmentedButton(
-                        selected = cur.stage == st,
-                        onClick = { if (cur.stage != st) onSelect(PracticeModes.all.first { it.stage == st }.mode) },
+                        selected = stage == st,
+                        onClick = { stage = st },
                         shape = SegmentedButtonDefaults.itemShape(i, PracticeStage.entries.size),
                         label = { Text(st.label) },
                     )
@@ -68,10 +73,10 @@ internal fun ModeSelector(current: PracticeMode, onSelect: (PracticeMode) -> Uni
         }
         // FlowRow, not a LazyRow: with the full mode names the 4th chip ran off screen with no hint to scroll.
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            PracticeModes.all.filter { it.stage == cur.stage }.forEach { m ->
+            PracticeModes.all.filter { it.stage == stage }.forEach { m ->
                 Pill(m.label, m.mode == current) { onSelect(m.mode) }
             }
         }
-        Text(cur.hint, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        if (cur.stage == stage) Text(cur.hint, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }

@@ -55,12 +55,30 @@ class StoryLinksTest {
     }
 
     @Test fun learnerMadeStoriesSurviveABackupRoundTrip() = with(BackupManager.Companion) {
-        val own = StoryEntity("U1731560000000", "어릴 적 치과", "충치 치료가 무서웠음", "user", "병원, 어린 시절")
+        val own = StoryEntity("U1731560000000", "어릴 적 치과", "충치 치료가 무서웠음", "user", "병원, 어린 시절", "I remember my first visit to the dentist.")
         val back = decode(encode(BackupManager.Snapshot(stories = listOf(own.toBackup()))))
-        assertEquals(9, back.version)
+        assertEquals(BackupManager.CURRENT_VERSION, back.version)
+        val previous = decode("""{"version":9,"stories":[{"id":"S1","titleKo":"여행","summary":"장면","tags":"travel","reusableFor":"hotel"}]}""")
+        assertEquals(null, previous.stories.single().toEntity().commonAnswer)
         assertEquals(listOf(own), back.stories.map { it.toEntity() })
         // A version-7 file has no stories field; it still decodes and restores none.
         assertTrue(decode("""{"version":7}""").stories.isEmpty())
+    }
+
+    @Test fun findsOriginalPassagesAcrossOsakaAnswersWithoutStoryLinks() {
+        val scripts = seed.filter { it.stories == "S1" }.mapIndexed { index, item ->
+            ScriptEntity(id = index + 1L, topic = item.topic, title = item.title, question = item.question, original = item.original)
+        }
+        val source = scripts.first { it.title == "Recent Trip" }
+        val matches = com.opicih.coach.learning.sharedPassages(source, scripts)
+        val vacation = matches.first { it.other.title == "Memorable Vacation" }
+        assertTrue(vacation.here in source.original)
+        assertTrue(vacation.there in vacation.other.original)
+        assertTrue(vacation.hereDetail!!.let { it != vacation.here && it in source.original })
+        assertTrue(vacation.thereDetail!!.let { it != vacation.there && it in vacation.other.original })
+        assertTrue(matches.none { it.other.id == source.id })
+        val unrelated = source.copy(id = 99, original = "The pianist played an encore.")
+        assertTrue(com.opicih.coach.learning.sharedPassages(source, listOf(unrelated)).isEmpty())
     }
 
     @Test fun everyBundledScriptHasTwoDistinctPromptsForItsOriginalAndBundledStudyVersions() {

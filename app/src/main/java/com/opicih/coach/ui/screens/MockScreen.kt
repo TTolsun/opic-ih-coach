@@ -1,5 +1,7 @@
 package com.opicih.coach.ui.screens
 
+import androidx.activity.compose.BackHandler
+
 import android.Manifest
 import android.app.Application
 import android.content.pm.PackageManager
@@ -226,7 +228,7 @@ class MockViewModel(app: Application) : AndroidViewModel(app) {
 
     fun finish(saveCurrentAnswer: Boolean = false) {
         val phase = ui.value.phase
-        if (phase != MockPhase.QUESTION && phase != MockPhase.RECORDING) return
+        if (phase !in setOf(MockPhase.QUESTION, MockPhase.RECORDING, MockPhase.ADJUST)) return
         if (phase == MockPhase.RECORDING && saveCurrentAnswer) {
             finishAnswer(endTest = true)
             return
@@ -308,6 +310,10 @@ fun MockScreen() {
     val context = LocalContext.current
     val settings by c.settings.flow.collectAsState(initial = Settings())
     var confirmEnd by remember(ui.phase) { mutableStateOf(false) }
+    val canEnd = ui.phase in setOf(MockPhase.QUESTION, MockPhase.RECORDING, MockPhase.ADJUST)
+    BackHandler(enabled = canEnd || ui.phase == MockPhase.STARTING || ui.phase == MockPhase.SAVING) {
+        if (canEnd) confirmEnd = true
+    }
     var micDenied by rememberSaveable { mutableStateOf(false) }
     fun hasMicPermission() = ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
     val perm = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
@@ -412,7 +418,7 @@ fun MockScreen() {
     }
 
     // Ending is not undoable (the remaining questions are dropped), so it always asks first.
-    if (confirmEnd && (ui.phase == MockPhase.RECORDING || ui.phase == MockPhase.QUESTION)) {
+    if (confirmEnd && canEnd) {
         val recording = ui.phase == MockPhase.RECORDING
         AlertDialog(
             onDismissRequest = { confirmEnd = false },

@@ -363,6 +363,7 @@ data class StoryEntity(
     val summary: String,
     val tags: String,
     val reusableFor: String,
+    val commonAnswer: String? = null,
 )
 
 @Entity(tableName = "questions", indices = [Index("topic")])
