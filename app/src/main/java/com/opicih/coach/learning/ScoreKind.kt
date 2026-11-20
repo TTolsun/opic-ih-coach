@@ -21,7 +21,7 @@ enum class ScoreKind(val label: String) {
             PracticeMode.READ_LISTEN, PracticeMode.SHADOWING, PracticeMode.FILL_BLANK,
             PracticeMode.KEYWORD, PracticeMode.BLIND -> MEMORIZATION
             PracticeMode.RANDOM, PracticeMode.VARIATION, PracticeMode.FREE,
-            PracticeMode.MOCK, PracticeMode.SAIL_CONVERSATION, PracticeMode.HOTEL_ROLEPLAY,
+            PracticeMode.MOCK, PracticeMode.SAIL_CONVERSATION, PracticeMode.HOTEL_ROLEPLAY, PracticeMode.DIAGNOSTIC,
             PracticeMode.FRAME_ATTACH, PracticeMode.PARAGRAPH_LADDER -> SPEAKING
         }
 
@@ -29,7 +29,7 @@ enum class ScoreKind(val label: String) {
 
         /** 말하기 점수로 집계하는 mode 이름. 준비도와 추세 계산이 이 집합을 씁니다. */
         val SPEAKING_MODES: Set<String> =
-            PracticeMode.entries.filter { of(it) == SPEAKING }.map { it.name }.toSet()
+            PracticeMode.entries.filter { of(it) == SPEAKING && it != PracticeMode.DIAGNOSTIC }.map { it.name }.toSet()
 
         /**
          * 준비도와 약점 분석에 쓰는 답변. 문단 사다리는 1문장 답에서 시작하도록 만든 단계별 연습이라, 일부러 짧은 답이

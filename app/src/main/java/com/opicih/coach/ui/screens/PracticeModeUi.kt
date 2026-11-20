@@ -42,6 +42,7 @@ object PracticeModes {
         ModeUi(PracticeMode.FRAME_ATTACH, PracticeStage.APPLY, PracticeMode.FRAME_ATTACH.label, "처음 보는 질문에 문장 틀을 써서 답하기"),
         ModeUi(PracticeMode.PARAGRAPH_LADDER, PracticeStage.APPLY, PracticeMode.PARAGRAPH_LADDER.label, "같은 질문에 1문장, 3문장, 5문장으로 늘려 답하기"),
         ModeUi(PracticeMode.HOTEL_ROLEPLAY, PracticeStage.APPLY, PracticeMode.HOTEL_ROLEPLAY.label, "호텔에 질문하고, 예약 문제의 대안을 제시한 뒤 관련 경험 말하기"),
+        ModeUi(PracticeMode.DIAGNOSTIC, PracticeStage.APPLY, PracticeMode.DIAGNOSTIC.label, "새 질문 5개에 힌트 없이 답하세요."),
     )
 
     fun of(mode: PracticeMode): ModeUi = all.firstOrNull { it.mode == mode } ?: all.first { it.mode == PracticeMode.FREE }

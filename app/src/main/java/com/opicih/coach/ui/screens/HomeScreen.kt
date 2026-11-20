@@ -57,6 +57,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.opicih.coach.alarm.AlarmScheduler
 import com.opicih.coach.alarm.Notifications
 import com.opicih.coach.data.db.ExamRegistrationEntity
+import com.opicih.coach.data.db.PracticeMode
 import com.opicih.coach.data.db.ExamType
 import com.opicih.coach.data.prefs.Settings
 import com.opicih.coach.data.repo.ExamRepository
@@ -93,6 +94,7 @@ fun HomeScreen(
     onNextExam: () -> Unit,
     onDebrief: (LocalDate, Long?) -> Unit,
     onExams: () -> Unit = {},
+    onDiagnostic: () -> Unit,
     /** Opens speaking with the task's PracticeMode name (null = default; SAIL_CONVERSATION = SAIL screen). */
     onSpeakMode: (String?) -> Unit = { onSpeak() },
     onSpeakingReview: (Long) -> Unit,
@@ -185,6 +187,7 @@ fun HomeScreen(
             }
             Spacer(Modifier.height(10.dp))
             ProgressRow("최종 목표(${st.settings.profile.finalGoal.code}) 준비도", st.readiness / 100f, "${st.readiness} / 100")
+            TextButton(onClick = onDiagnostic) { Text(PracticeMode.DIAGNOSTIC.label) }
         }
 
         ExamStatusCard(st.regs, st.now, st.settings, plan, onExams)

@@ -49,7 +49,7 @@ object ProgressCalculator {
     data class TopicStat(val topic: String, val attempts: Int, val avgScore: Int?, val avgWords: Int, val flow: Boolean)
 
     fun topicStats(attempts: List<PracticeAttemptEntity>): List<TopicStat> =
-        attempts.groupBy { it.topic }.map { (t, list) ->
+        attempts.filterNot { it.mode == PracticeMode.DIAGNOSTIC.name }.groupBy { it.topic }.map { (t, list) ->
             val scored = list.mapNotNull { attempt ->
                 val metrics = AttemptMetrics.from(attempt)
                 attempt.measuredScore(metrics)?.let { (metrics?.speakingFlow == true) to it }
@@ -68,8 +68,9 @@ object ProgressCalculator {
     }
 
     fun freeSpeakingRatio(attempts: List<PracticeAttemptEntity>): Float {
-        if (attempts.isEmpty()) return 0f
-        return attempts.count { it.mode in ScoreKind.SPEAKING_MODES }.toFloat() / attempts.size
+        val practice = attempts.filterNot { it.mode == PracticeMode.DIAGNOSTIC.name }
+        if (practice.isEmpty()) return 0f
+        return practice.count { it.mode in ScoreKind.SPEAKING_MODES }.toFloat() / practice.size
     }
 
     fun weeklyGoalRate(logs: List<DailyLogEntity>, todayEpochDay: Long, goalMinutes: Int): Float {
@@ -121,7 +122,7 @@ object ProgressCalculator {
     }
 
     private val PracticeAttemptEntity.usableForIndependentAssessment: Boolean
-        get() = AttemptMetrics.from(this)?.usableForIndependentAssessment != false
+        get() = mode != PracticeMode.DIAGNOSTIC.name && AttemptMetrics.from(this)?.usableForIndependentAssessment != false
 
     private val speechCaptures = setOf(CaptureMode.LIVE_STT.name, CAPTURE_CLOUD_STT, CaptureMode.RECORD_ONLY.name)
     private val PracticeAttemptEntity.hasSpokenTranscript: Boolean

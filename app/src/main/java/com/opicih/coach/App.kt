@@ -91,10 +91,10 @@ class AppContainer(context: Context) {
 
     fun hasGeminiKey(): Boolean = keys.get(ApiKeyStore.Provider.GEMINI) != null
 
-    fun transcriber(s: Settings): Transcriber? {
+    fun transcriber(s: Settings, forDiagnostic: Boolean = false): Transcriber? {
         if (!s.cloudSttEnabled || !s.audioUploadConsent) return null
         val key = keys.get(ApiKeyStore.Provider.GEMINI) ?: return null
-        return GeminiTranscriber(key, s.geminiModel)
+        return GeminiTranscriber(key, s.geminiModel, forDiagnostic)
     }
 }
 
