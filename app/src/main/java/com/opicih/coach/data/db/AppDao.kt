@@ -158,6 +158,7 @@ interface AppDao {
     @Update suspend fun updateTrainingSession(s: ExamTrainingSessionEntity)
 
     // ---- Stories / questions
+    @Query("SELECT * FROM stories ORDER BY id") fun storiesFlow(): Flow<List<StoryEntity>>
     @Query("SELECT * FROM stories ORDER BY id") suspend fun stories(): List<StoryEntity>
     @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun insertStories(s: List<StoryEntity>)
     @Query("SELECT * FROM questions ORDER BY topic, id") suspend fun questions(): List<QuestionEntity>

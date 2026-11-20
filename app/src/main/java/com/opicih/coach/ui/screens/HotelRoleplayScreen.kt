@@ -100,7 +100,6 @@ fun HotelRoleplayScreen() {
         Modifier.fillMaxSize().imePadding().verticalScroll(scroll).padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Text(PracticeMode.HOTEL_ROLEPLAY.label, style = MaterialTheme.typography.headlineMedium)
         ui.error?.let { Banner(it, tone = MaterialTheme.colorScheme.error) }
         if (set == null) {
             Text(PracticeModes.of(PracticeMode.HOTEL_ROLEPLAY).hint)

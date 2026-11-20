@@ -32,6 +32,8 @@ import com.opicih.coach.data.db.RevisionOrigin
 import com.opicih.coach.data.db.RevisionStatus
 import com.opicih.coach.data.db.ScriptEntity
 import com.opicih.coach.data.db.ScriptRevisionEntity
+import com.opicih.coach.data.db.StoryEntity
+import com.opicih.coach.learning.StoryMap
 import com.opicih.coach.data.db.ScriptVersion
 import com.opicih.coach.importer.DuplicateLinker
 import com.opicih.coach.importer.ParsedScript
@@ -101,6 +103,18 @@ class ScriptRepository(private val db: AppDatabase) {
 
     suspend fun save(s: ScriptEntity): Long =
         if (s.id == 0L) dao.insertScript(s) else { dao.updateScript(s.copy(updatedAt = System.currentTimeMillis())); s.id }
+
+    /** Attach both original scripts only if both still exist when the learner saves the comparison. */
+    suspend fun saveSharedStory(story: StoryEntity, firstId: Long, secondId: Long): Boolean = db.withTransaction {
+        val first = dao.script(firstId) ?: return@withTransaction false
+        val second = dao.script(secondId) ?: return@withTransaction false
+        dao.insertStories(listOf(story))
+        for (script in listOf(first, second)) {
+            val ids = StoryMap.storyIdsOf(script)
+            if (story.id !in ids) dao.updateScript(script.copy(storyIds = (ids + story.id).joinToString(","), updatedAt = System.currentTimeMillis()))
+        }
+        true
+    }
 
     suspend fun delete(s: ScriptEntity) { dao.deleteRevisionsFor(s.id); dao.deleteSegmentsFor(s.id); dao.deleteScript(s) }
 

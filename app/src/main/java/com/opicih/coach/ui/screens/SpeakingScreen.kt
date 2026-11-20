@@ -71,6 +71,8 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.opicih.coach.learning.StoryMap
+import com.opicih.coach.ui.LocalContainer
 import com.opicih.coach.analysis.TextNormalizer
 import com.opicih.coach.data.db.PracticeMode
 import com.opicih.coach.data.db.QuestionType
@@ -95,6 +97,11 @@ fun SpeakingScreen(
     scriptId: Long?,
     mode: PracticeMode?,
     reviewId: Long? = null,
+    recall: Boolean = false,
+    prompt: String? = null,
+    onMemorize: (Long) -> Unit = {},
+    onScripts: () -> Unit = {},
+    onQuestion: (Long, String) -> Unit = { _, _ -> },
     onOpenFrames: () -> Unit = {},
     onHotelRoleplay: () -> Unit = {},
     onDiagnostic: () -> Unit = {},
@@ -102,7 +109,7 @@ fun SpeakingScreen(
     val vm: SpeakingViewModel = viewModel()
     val ui by vm.ui.collectAsStateWithLifecycle()
     val context = LocalContext.current
-    LaunchedEffect(scriptId, mode, reviewId) { vm.configure(scriptId, mode, reviewId) }
+    LaunchedEffect(scriptId, mode, reviewId, recall, prompt) { vm.configure(scriptId, mode, reviewId, recall, prompt) }
 
     // Stop the mic when the app goes to background (call, home button, screen off).
     val owner = LocalLifecycleOwner.current
@@ -134,11 +141,16 @@ fun SpeakingScreen(
     // 학습본 card where it started half under the bottom navigation.
     Column(Modifier.fillMaxSize()) {
     Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-        ModeSelector(ui.mode) {
+        var chooseMode by rememberSaveable { mutableStateOf(false) }
+        if (!recall) TextButton(onClick = { chooseMode = !chooseMode },
+            enabled = ui.phase == Phase.IDLE || ui.phase == Phase.RESULT) {
+            Text(if (chooseMode) "연습 방식 접기" else "${PracticeModes.of(ui.mode).label} · 방식 변경")
+        }
+        if (!recall && chooseMode && ui.phase in setOf(Phase.IDLE, Phase.RESULT)) ModeSelector(ui.mode) {
             when (it) {
                 PracticeMode.HOTEL_ROLEPLAY -> onHotelRoleplay()
                 PracticeMode.DIAGNOSTIC -> onDiagnostic()
-                else -> vm.setMode(it)
+                else -> { vm.setMode(it); chooseMode = false }
             }
         }
 
@@ -146,7 +158,10 @@ fun SpeakingScreen(
 
         val q = ui.question
         if (q == null) {
-            SectionCard { Text(ui.error ?: "질문을 불러오는 중입니다.") }
+            SectionCard {
+                Text(ui.error ?: "질문을 불러오는 중입니다.")
+                if (recall && ui.error != null) TextButton(onClick = onScripts) { Text("내 스크립트 열기") }
+            }
             return@Column
         }
 
@@ -155,7 +170,7 @@ fun SpeakingScreen(
         // Question card
         SectionCard {
             // FlowRow so a tag that does not fit moves to the next line instead of being squeezed.
-            FlowRow(
+            if (!recall || ui.phase == Phase.RESULT) FlowRow(
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp),
                 itemVerticalAlignment = Alignment.CenterVertically,
@@ -197,11 +212,36 @@ fun SpeakingScreen(
                 // After a result the panel below has a labeled "다음 질문" button; the icon would repeat it.
                 if (ui.phase != Phase.RESULT) IconButton(onClick = { vm.next() }) { Icon(Icons.Filled.SkipNext, "다음 질문") }
             }
-            if (!examLike && ui.phase == Phase.IDLE) q.script?.let { StoryReuseQuestions(it) }
+            if (!examLike && ui.phase == Phase.IDLE) q.script?.let { source -> StoryReuseQuestions(source, onQuestion = { onQuestion(source.id, it) }) }
+        }
+
+        q.recallScript?.let { source ->
+            var hint by rememberSaveable(q.text, source.id) { mutableStateOf(false) }
+            if (ui.phase == Phase.IDLE || ui.phase == Phase.RESULT) {
+                if (hint || ui.phase == Phase.RESULT) {
+                    val container = LocalContainer.current
+                    val stories by remember { container.dao.storiesFlow() }.collectAsStateWithLifecycle(initialValue = emptyList())
+                    val ids = StoryMap.storyIdsOf(source)
+                    SectionCard(title = "활용할 수 있는 내 답변") {
+                        Text(source.title)
+                        stories.filter { it.id in ids }.forEach { story ->
+                            Text(story.titleKo)
+                            Text(story.commonAnswer ?: story.summary)
+                        }
+                        TextButton(onClick = { onMemorize(source.id) }) { Text("이 대본 외우기") }
+                    }
+                } else TextButton(onClick = { hint = true }) { Text("내 이야기 힌트") }
+            }
         }
 
         // Mode-specific support panel
         ModePanel(ui, vm)
+        if (ui.phase == Phase.IDLE && ui.mode == PracticeMode.READ_LISTEN) {
+            TextButton(onClick = { vm.setMode(PracticeMode.KEYWORD) }) { Text("키워드로 말하기") }
+        }
+        if (ui.phase == Phase.IDLE && ui.mode == PracticeMode.KEYWORD) {
+            TextButton(onClick = { vm.setMode(PracticeMode.BLIND) }) { Text("안 보고 말하기") }
+        }
         PracticePanel(ui, onOpenFrames)
 
         ui.error?.let { Banner(it, "닫기", tone = MaterialTheme.colorScheme.error) { vm.dismissError() } }

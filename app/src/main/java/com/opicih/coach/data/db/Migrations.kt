@@ -5,6 +5,8 @@ package com.opicih.coach.data.db
  * against a real SQLite file (see MigrationTest). AppDatabase only executes these lists.
  */
 object MigrationSql {
+    val V10_TO_V11 = listOf("ALTER TABLE stories ADD COLUMN commonAnswer TEXT")
+
     val V1_TO_V2 = listOf(
         "ALTER TABLE exams ADD COLUMN topicsSeen TEXT NOT NULL DEFAULT ''",
         "ALTER TABLE exams ADD COLUMN stuckPoints TEXT NOT NULL DEFAULT ''",

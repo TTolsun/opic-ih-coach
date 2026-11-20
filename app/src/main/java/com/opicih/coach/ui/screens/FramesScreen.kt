@@ -48,8 +48,6 @@ fun FramesScreen() {
     LazyColumn(Modifier.fillMaxSize().padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         item {
             Spacer(Modifier.height(12.dp))
-            Text("문장 틀", style = MaterialTheme.typography.headlineMedium)
-            Spacer(Modifier.height(8.dp))
             FilledTonalButton(onClick = {
                 scope.launch {
                     val n = c.frames.findNew()

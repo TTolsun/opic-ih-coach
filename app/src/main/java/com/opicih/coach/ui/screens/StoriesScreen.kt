@@ -14,6 +14,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.runtime.key
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -25,18 +26,23 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.material3.FilledTonalButton
+import com.opicih.coach.learning.SharedPassage
+import com.opicih.coach.learning.sharedPassages
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.AlertDialog
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.ui.unit.dp
+import com.opicih.coach.data.db.ContentSource
 import com.opicih.coach.data.db.ScriptEntity
 import com.opicih.coach.data.db.StoryEntity
 import com.opicih.coach.learning.StoryMap
 import com.opicih.coach.ui.LocalContainer
-import com.opicih.coach.ui.components.Banner
 import com.opicih.coach.ui.components.SectionCard
 import com.opicih.coach.ui.components.SourceTag
 
@@ -45,33 +51,32 @@ import com.opicih.coach.ui.components.SourceTag
  * so this screen shows the stories first and the scripts under them.
  */
 @Composable
-fun StoriesScreen(onOpenScript: (Long) -> Unit) {
+fun StoriesScreen(onOpenScript: (Long) -> Unit, onQuestion: (Long, String) -> Unit, onScripts: () -> Unit) {
     val c = LocalContainer.current
     val scope = rememberCoroutineScope()
     val scripts by c.dao.scriptsFlow().collectAsState(initial = null)
-    // Re-read after an edit (stories have no Flow query; they only change here and in the script picker).
-    var reload by remember { mutableIntStateOf(0) }
-    val stories by produceState<List<StoryEntity>?>(null, reload) { value = c.dao.stories() }
+    val stories by remember { c.dao.storiesFlow() }.collectAsState(initial = null)
     var editing by remember { mutableStateOf<StoryEntity?>(null) }
     val list = scripts ?: return
     val all = stories ?: return
-    val map = StoryMap.build(all, list)
+    val map = remember(all, list) { StoryMap.build(all, list.filter { it.source != ContentSource.AI_SAMPLE.name }) }
 
     LazyColumn(Modifier.fillMaxSize().padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         item {
             Spacer(Modifier.height(12.dp))
-            Text(
-                "실제 이야기 ${map.uses.size}개가 답변 ${map.uses.flatMap { it.scripts }.distinctBy { it.id }.size}개에 쓰입니다. " +
-                    "새 질문을 받으면 질문에 맞는 이야기를 골라 그 장면으로 답하세요. 문장을 외우기보다 장면과 순서를 기억하는 편이 낫습니다.",
-                style = MaterialTheme.typography.bodyMedium,
-            )
+            if (map.uses.isEmpty() && map.withoutStory.isEmpty()) {
+                Text("이야기에 연결할 대본이 없습니다.")
+                TextButton(onClick = onScripts) { Text("스크립트 추가하기") }
+            }
         }
-        items(map.uses, key = { it.story.id }) { use -> StoryCard(use, onOpenScript) { editing = use.story } }
+        items(map.uses, key = { it.story.id }) { use ->
+            StoryCard(use, onOpenScript, onQuestion, onEdit = { editing = it })
+        }
         if (map.withoutStory.isNotEmpty()) {
             item {
-                SectionCard(title = "이야기가 없는 답변 ${map.withoutStory.size}개") {
+                SectionCard(title = "아직 연결하지 않은 답변 ${map.withoutStory.size}개") {
                     Text(
-                        "묘사나 습관만 있는 답변입니다. 시험에서 이 주제가 나오면 위 이야기 중 하나를 짧게 붙이면 문단이 길어집니다.",
+                        "대본을 열어 공통 대목을 찾거나 이야기를 연결하세요.",
                         style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                     Spacer(Modifier.height(6.dp))
@@ -85,16 +90,17 @@ fun StoriesScreen(onOpenScript: (Long) -> Unit) {
     editing?.let { story ->
         EditStoryDialog(story, onDismiss = { editing = null }) { updated ->
             editing = null
-            scope.launch { c.dao.insertStories(listOf(updated)); reload++ }
+            scope.launch { c.dao.insertStories(listOf(updated)) }
         }
     }
 }
 
 /** Rename a story or rewrite its summary and topics. The id stays, so every linked answer keeps the link. */
 @Composable
-private fun EditStoryDialog(story: StoryEntity, onDismiss: () -> Unit, onSave: (StoryEntity) -> Unit) {
+internal fun EditStoryDialog(story: StoryEntity, onDismiss: () -> Unit, onSave: (StoryEntity) -> Unit) {
     var title by remember { mutableStateOf(story.titleKo) }
     var summary by remember { mutableStateOf(story.summary) }
+    var answer by rememberSaveable(story.id) { mutableStateOf(story.commonAnswer.orEmpty()) }
     var topics by remember { mutableStateOf(story.reusableFor) }
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -102,13 +108,14 @@ private fun EditStoryDialog(story: StoryEntity, onDismiss: () -> Unit, onSave: (
         text = {
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(title, { title = it }, label = { Text("이야기 이름") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(answer, { answer = it }, label = { Text("함께 외울 영어 답변") }, minLines = 2, modifier = Modifier.fillMaxWidth())
                 OutlinedTextField(summary, { summary = it }, label = { Text("장면 요약") }, minLines = 3, modifier = Modifier.fillMaxWidth())
                 OutlinedTextField(topics, { topics = it }, label = { Text("쓸 수 있는 주제") }, singleLine = true, modifier = Modifier.fillMaxWidth())
             }
         },
         confirmButton = {
             TextButton(enabled = title.isNotBlank(), onClick = {
-                onSave(story.copy(titleKo = title.trim(), summary = summary.trim(), reusableFor = topics.trim()))
+                onSave(story.copy(titleKo = title.trim(), summary = summary.trim(), reusableFor = topics.trim(), commonAnswer = answer.trim().ifBlank { null }))
             }) { Text("저장") }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("취소") } },
@@ -116,23 +123,74 @@ private fun EditStoryDialog(story: StoryEntity, onDismiss: () -> Unit, onSave: (
 }
 
 @Composable
-private fun StoryCard(use: StoryMap.StoryUse, onOpenScript: (Long) -> Unit, onEdit: () -> Unit) {
-    val own = use.story.tags == "user"
-    SectionCard(title = use.story.titleKo, trailing = { SourceTag((if (own) "직접 만듦 · " else "") + "답변 ${use.scripts.size}개") }) {
-        if (use.story.summary.isNotBlank()) Text(use.story.summary, style = MaterialTheme.typography.bodyMedium)
-        if (use.story.reusableFor.isNotBlank()) {
-            Text("이런 질문에 쓸 수 있습니다: ${use.story.reusableFor}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+private fun StoryCard(
+    use: StoryMap.StoryUse,
+    onOpenScript: (Long) -> Unit,
+    onQuestion: (Long, String) -> Unit,
+    onEdit: (StoryEntity) -> Unit,
+) {
+    SectionCard(title = use.story.titleKo, collapsible = true, initiallyExpanded = false,
+        trailing = { SourceTag("답변 ${use.scripts.size}개") }) {
+        if (use.story.summary.isNotBlank()) Text(use.story.summary)
+        use.story.commonAnswer?.let { answer ->
+            val c = LocalContainer.current
+            var visible by rememberSaveable(answer) { mutableStateOf(true) }
+            if (visible) Text(answer, style = MaterialTheme.typography.titleMedium)
+            Row {
+                TextButton(onClick = { c.tts.speak(answer) }) { Text("공통 답변 듣기") }
+                TextButton(onClick = { visible = !visible }) { Text(if (visible) "가리고 떠올리기" else "답변 확인") }
+            }
         }
-        if (use.sharedAcrossTopics) {
-            Spacer(Modifier.height(6.dp))
-            Banner(
-                "${use.topics.joinToString(" · ")} 주제가 같은 이야기를 씁니다. 한 시험에 함께 나오면 같은 이야기를 두 번 하게 되니, 한쪽은 다른 장면을 준비해 두세요.",
-                tone = MaterialTheme.colorScheme.tertiary,
-            )
+        TextButton(onClick = { onEdit(use.story) }) {
+            Text(if (use.story.commonAnswer == null) "공통 답변 작성" else "공통 답변 편집")
         }
-        Spacer(Modifier.height(6.dp))
-        use.scripts.forEach { ScriptRow(it, onOpenScript) }
-        TextButton(onClick = onEdit) { Text("편집") }
+        var selectedId by rememberSaveable { mutableStateOf(use.scripts.first().id) }
+        val selected = use.scripts.firstOrNull { it.id == selectedId } ?: use.scripts.first()
+        use.scripts.forEach { script ->
+            TextButton(onClick = { selectedId = script.id }) {
+                Text((if (script.id == selected.id) "✓ " else "") + script.question)
+            }
+        }
+        FilledTonalButton(onClick = { onQuestion(selected.id, selected.question) }) { Text("이 질문에 답하기") }
+        TextButton(onClick = { onOpenScript(selected.id) }) { Text("대본 열기 · ${selected.title}") }
+        PassageComparison(selected, use.scripts, onUse = { onEdit(use.story.copy(commonAnswer = it.here)) })
+    }
+}
+
+@Composable
+internal fun PassageComparison(source: ScriptEntity, library: List<ScriptEntity>, onUse: (SharedPassage) -> Unit) {
+    if (library.none { it.id != source.id }) return
+    key(source.id, source.original, library) {
+        val matches by produceState<List<SharedPassage>?>(null) {
+            value = withContext(Dispatchers.Default) { sharedPassages(source, library) }
+        }
+        val examples = matches
+        var expandAll by rememberSaveable { mutableStateOf(false) }
+        if (examples == null) {
+            Text("원문 비교 중…")
+        } else if (examples.isEmpty()) {
+            Text("공통 표현을 찾지 못했습니다.")
+        } else {
+            (if (expandAll) examples else examples.take(1)).forEach { match ->
+                Text("함께 쓸 수 있는 원문", style = MaterialTheme.typography.labelLarge)
+                Text(match.here)
+                Text(match.other.question, style = MaterialTheme.typography.labelLarge)
+                Text(match.there)
+                match.hereDetail?.let {
+                    Text("${source.title}에서 덧붙인 내용", style = MaterialTheme.typography.labelLarge)
+                    Text(it)
+                }
+                match.thereDetail?.let {
+                    Text("${match.other.title}에서 덧붙인 내용", style = MaterialTheme.typography.labelLarge)
+                    Text(it)
+                }
+                TextButton(onClick = { onUse(match) }) { Text("이 문장으로 공통 답변 쓰기") }
+                Spacer(Modifier.height(8.dp))
+            }
+            if (examples.size > 1) TextButton(onClick = { expandAll = !expandAll }) {
+                Text(if (expandAll) "비교 접기" else "다른 비교 ${examples.size - 1}개 보기")
+            }
+        }
     }
 }
 

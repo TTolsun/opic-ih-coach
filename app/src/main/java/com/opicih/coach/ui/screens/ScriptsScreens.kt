@@ -61,8 +61,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import com.opicih.coach.data.db.StoryEntity
 import com.opicih.coach.learning.StoryMap
-import androidx.compose.runtime.produceState
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.opicih.coach.data.db.ContentSource
@@ -90,6 +90,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun ScriptsScreen(
     onOpen: (Long) -> Unit,
@@ -118,17 +119,16 @@ fun ScriptsScreen(
                 OutlinedTextField(query, { query = it }, leadingIcon = { Icon(Icons.Filled.Search, null) }, placeholder = { Text("검색") }, singleLine = true, modifier = Modifier.fillMaxWidth())
                 if (!pendingOnly) {
                     Spacer(Modifier.height(8.dp))
-                    // Equal widths so the row ends where the search field and cards end.
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        FilledTonalButton(onClick = onImport, modifier = Modifier.weight(1f), contentPadding = PaddingValues(horizontal = 8.dp)) { Icon(Icons.Filled.FileOpen, null); Spacer(Modifier.width(4.dp)); Text("가져오기", maxLines = 1) }
-                        OutlinedButton(onClick = onNew, modifier = Modifier.weight(1f), contentPadding = PaddingValues(horizontal = 8.dp)) { Icon(Icons.Filled.Edit, null); Spacer(Modifier.width(4.dp)); Text("직접 작성", maxLines = 1) }
-                        OutlinedButton(onClick = onFrames, modifier = Modifier.weight(1f), contentPadding = PaddingValues(horizontal = 8.dp)) { Text("문장 틀", maxLines = 1) }
+                    FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        FilledTonalButton(onClick = onImport, contentPadding = PaddingValues(horizontal = 12.dp)) { Icon(Icons.Filled.FileOpen, null); Spacer(Modifier.width(4.dp)); Text("가져오기") }
+                        OutlinedButton(onClick = onNew, contentPadding = PaddingValues(horizontal = 12.dp)) { Icon(Icons.Filled.Edit, null); Spacer(Modifier.width(4.dp)); Text("직접 작성") }
+                        OutlinedButton(onClick = onFrames, contentPadding = PaddingValues(horizontal = 12.dp)) { Text("문장 틀") }
                     }
                     if (scripts.isNotEmpty()) {
                         Spacer(Modifier.height(8.dp))
                         FilledTonalButton(onClick = onListen, modifier = Modifier.fillMaxWidth()) { Icon(Icons.Filled.Headphones, null); Spacer(Modifier.width(6.dp)); Text("소리로 듣기 (하루 종일 재생)") }
                         Spacer(Modifier.height(8.dp))
-                        OutlinedButton(onClick = onStories, modifier = Modifier.fillMaxWidth()) { Text("이야기 묶음 보기 (어떤 답변이 같은 이야기를 쓰는지)") }
+                        OutlinedButton(onClick = onStories, modifier = Modifier.fillMaxWidth()) { Text("공통 답변 찾기") }
                     }
                 }
                 if (filtered.isEmpty()) {
@@ -169,7 +169,7 @@ fun ScriptsScreen(
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun ScriptDetailScreen(id: Long, onPractice: (Long, PracticeMode) -> Unit, onEdit: (Long) -> Unit, onDeleted: () -> Unit, onStories: () -> Unit = {}) {
+fun ScriptDetailScreen(id: Long, onPractice: (Long, PracticeMode) -> Unit, onQuestion: (Long, String) -> Unit, onEdit: (Long) -> Unit, onDeleted: () -> Unit, onStories: () -> Unit = {}) {
     val c = LocalContainer.current
     val scope = rememberCoroutineScope()
     val script by c.dao.scriptFlow(id).collectAsState(initial = null)
@@ -194,15 +194,34 @@ fun ScriptDetailScreen(id: Long, onPractice: (Long, PracticeMode) -> Unit, onEdi
             Text("${s.topic} · ${s.title}", style = MaterialTheme.typography.titleLarge)
             // The question is a caption here, not reading material, so it uses a tighter line height than EnglishReading.
             Text(s.question, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            StoryReuseQuestions(s.copy(activeVersion = tab.name))
+            StoryReuseQuestions(s.copy(activeVersion = tab.name)) { onQuestion(s.id, it) }
             Spacer(Modifier.height(6.dp))
             val dueIn = s.dueEpochDay - LocalDate.now().toEpochDay()
             Text(if (dueIn <= 0) "오늘 복습" else "${dueIn}일 뒤 복습 · 예상 발화 ${s.estSeconds}초", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             // Which real story this answer tells, and where else that story is used (C: 이야기 묶음).
             val allScripts by c.dao.scriptsFlow().collectAsState(initial = emptyList())
-            // Re-read when the links change, so a story created in the picker shows up right after saving.
-            val stories by produceState(emptyList<com.opicih.coach.data.db.StoryEntity>(), s.storyIds) { value = c.dao.stories() }
-            StoryMap.siblings(s, stories, allScripts).forEach { (story, others) ->
+            val personalScripts = remember(allScripts) { allScripts.filter { it.source != ContentSource.AI_SAMPLE.name } }
+            val stories by remember { c.dao.storiesFlow() }.collectAsState(initial = emptyList())
+            var draft by remember(s.id) { mutableStateOf<Pair<StoryEntity, Long>?>(null) }
+            SectionCard(title = "다른 대본과 원문 비교", collapsible = true, initiallyExpanded = false) {
+                if (personalScripts.none { it.id != s.id }) Text("비교할 대본이 한 편 더 필요합니다.")
+                else PassageComparison(s, personalScripts) { match ->
+                    val sharedIds = StoryMap.storyIdsOf(s).intersect(StoryMap.storyIdsOf(match.other).toSet())
+                    val existing = stories.firstOrNull { it.id in sharedIds }
+                    val story = existing ?: StoryEntity("U${java.util.UUID.randomUUID()}", s.title, "", "user", "")
+                    draft = story.copy(commonAnswer = match.here) to match.other.id
+                }
+            }
+            draft?.let { (story, otherId) ->
+                EditStoryDialog(story, onDismiss = { draft = null }) { edited ->
+                    draft = null
+                    scope.launch {
+                        val saved = c.scripts.saveSharedStory(edited, s.id, otherId)
+                        message = if (saved) "두 대본에 공통 답변을 저장했습니다." else "비교할 대본이 삭제되었습니다."
+                    }
+                }
+            }
+            StoryMap.siblings(s, stories, personalScripts).forEach { (story, others) ->
                 Spacer(Modifier.height(6.dp))
                 Text(
                     "이야기: ${story.titleKo}" + if (others.isEmpty()) "" else " · 다른 답변 ${others.size}개에서도 사용 (${others.map { it.topic }.distinct().joinToString()})",
@@ -212,7 +231,7 @@ fun ScriptDetailScreen(id: Long, onPractice: (Long, PracticeMode) -> Unit, onEdi
             }
             // The learner links (or unlinks) stories here, including scripts they imported themselves.
             var pickStory by remember { mutableStateOf(false) }
-            if (stories.isNotEmpty()) TextButton(onClick = { pickStory = true }) {
+            TextButton(onClick = { pickStory = true }) {
                 Text(if (StoryMap.storyIdsOf(s).isEmpty()) "이야기 연결하기" else "이야기 바꾸기")
             }
             if (pickStory) StoryPickerDialog(
@@ -225,12 +244,8 @@ fun ScriptDetailScreen(id: Long, onPractice: (Long, PracticeMode) -> Unit, onEdi
             }
         }
 
-        // Practice entry points
-        // FlowRow: a scrolling row cut "키워드" off at the screen edge with no sign that it scrolled.
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            listOf(PracticeMode.READ_LISTEN, PracticeMode.SHADOWING, PracticeMode.FILL_BLANK, PracticeMode.KEYWORD, PracticeMode.BLIND, PracticeMode.RANDOM, PracticeMode.VARIATION).forEach { m ->
-                Pill(m.label, false) { onPractice(s.id, m) }
-            }
+        Button(onClick = { onPractice(s.id, PracticeMode.READ_LISTEN) }, modifier = Modifier.fillMaxWidth()) {
+            Text("이 대본 외우기")
         }
 
         // Versions

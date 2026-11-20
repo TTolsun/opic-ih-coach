@@ -16,10 +16,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.unit.dp
 import com.opicih.coach.data.db.ScriptEntity
 import com.opicih.coach.ui.LocalContainer
-import com.opicih.coach.ui.components.Bullet
 
 @Composable
-internal fun StoryReuseQuestions(script: ScriptEntity) {
+internal fun StoryReuseQuestions(script: ScriptEntity, onQuestion: (String) -> Unit) {
     val c = LocalContainer.current
     val stored by remember(script.id) { c.dao.scriptFlow(script.id) }.collectAsState(initial = script)
     val current = stored?.copy(activeVersion = script.activeVersion) ?: return
@@ -32,9 +31,11 @@ internal fun StoryReuseQuestions(script: ScriptEntity) {
             var expanded by rememberSaveable { mutableStateOf(false) }
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 TextButton(onClick = { expanded = !expanded }) {
-                    Text(if (expanded) "같은 이야기 질문 접기" else "같은 이야기 질문 2개")
+                    Text(if (expanded) "같은 이야기 질문 접기" else "같은 이야기 질문 ${questions.size}개")
                 }
-                if (expanded) questions.forEach { Bullet(it) }
+                if (expanded) questions.forEach { question ->
+                    TextButton(onClick = { onQuestion(question) }) { Text(question) }
+                }
             }
         }
     }

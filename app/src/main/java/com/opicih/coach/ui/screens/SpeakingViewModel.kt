@@ -46,6 +46,7 @@ data class QuestionItem(
     val frames: List<FrameChip> = emptyList(),
     val reviewId: Long? = null,
     val missionQuestion: String? = null,
+    val recallScript: ScriptEntity? = null,
 )
 
 private data class Variation(val instruction: String, val tense: String? = null, val question: String? = null)
@@ -93,6 +94,7 @@ class SpeakingViewModel(app: Application) : AndroidViewModel(app) {
     private var configured = false
     private var openingReview = false
     private var reviewRoute = false
+    private var recallRoute = false
 
     init {
         viewModelScope.launch {
@@ -103,7 +105,7 @@ class SpeakingViewModel(app: Application) : AndroidViewModel(app) {
                     val q = u.question?.let { q -> q.script?.let { s -> list.firstOrNull { it.id == s.id }?.let { q.copy(script = it) } } ?: q }
                     u.copy(scripts = list, question = q)
                 }
-                if (_ui.value.question == null && configured && !reviewRoute) next()
+                if (_ui.value.question == null && configured && !recallRoute && !reviewRoute) next()
             }
         }
         viewModelScope.launch {
@@ -120,9 +122,15 @@ class SpeakingViewModel(app: Application) : AndroidViewModel(app) {
     private var activeChoice: CaptureChoice? = null
 
     /** Called once from navigation arguments. */
-    fun configure(scriptId: Long?, mode: PracticeMode?, reviewId: Long?) {
+    fun configure(scriptId: Long?, mode: PracticeMode?, reviewId: Long?, recall: Boolean, prompt: String?) {
         if (configured) return
         configured = true
+        recallRoute = recall
+        if (recall) {
+            _ui.update { it.copy(mode = PracticeMode.FREE) }
+            nextRecall(scriptId, prompt)
+            return
+        }
         reviewRoute = reviewId != null
         openingReview = reviewRoute
         viewModelScope.launch {
@@ -157,9 +165,35 @@ class SpeakingViewModel(app: Application) : AndroidViewModel(app) {
         showQuestion(questionFor(s, _ui.value.mode))
     }
 
+    /** A suggested answer is revealed on request. A different relevant story is equally valid. */
+    private fun nextRecall(scriptId: Long? = null, prompt: String? = null) {
+        questionLoad?.cancel()
+        questionLoad = viewModelScope.launch {
+            val scripts = c.dao.scripts().filter { it.question.isNotBlank() && (it.source != ContentSource.AI_SAMPLE.name || it.id == scriptId) }
+            val previous = _ui.value.question
+            val source = if (scriptId != null && scriptId > 0) scripts.find { it.id == scriptId }
+                else scripts.filter { it.id != previous?.recallScript?.id }.ifEmpty { scripts }.randomOrNull()
+            if (source == null) {
+                showQuestion(null)
+                _ui.update { it.copy(error = "연습할 대본이 없습니다.") }
+                return@launch
+            }
+            val text = prompt?.takeIf { it.isNotBlank() } ?: run {
+                val pool = (c.seed.reuseQuestions(source) + source.question).distinct()
+                pool.filter { it != previous?.text }.ifEmpty { pool }.random()
+            }
+            stopAudio()
+            showQuestion(QuestionItem(source.topic, text, source.questionType, "내 대본 연습", recallScript = source))
+        }
+    }
+
     /** Next question: due scripts first for script modes, Survey/focus topics first for free speaking. */
     fun next() {
         if (openingReview || _ui.value.phase in setOf(Phase.RECORDING, Phase.PROCESSING)) return
+        if (recallRoute) {
+            nextRecall()
+            return
+        }
         questionLoad?.cancel()
         questionLoad = viewModelScope.launch {
             val st = c.settings.current()

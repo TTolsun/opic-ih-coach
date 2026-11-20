@@ -155,8 +155,13 @@ internal fun ResultPanel(r: AnalyzedAttempt, ui: SpeakingUi, vm: SpeakingViewMod
                 FilledTonalButton(onClick = { vm.playRecording(1.0f) }) { Icon(Icons.Filled.PlayArrow, null); Text("내 녹음", maxLines = 1) }
                 OutlinedButton(onClick = { vm.playRecording(0.75f) }) { Text("0.75x", maxLines = 1) }
             }
+            when (ui.mode) {
+                PracticeMode.READ_LISTEN -> FilledTonalButton(onClick = { vm.setMode(PracticeMode.KEYWORD) }) { Text("키워드로 말하기") }
+                PracticeMode.KEYWORD -> FilledTonalButton(onClick = { vm.setMode(PracticeMode.BLIND) }) { Text("안 보고 말하기") }
+                else -> Unit
+            }
             OutlinedButton(onClick = { vm.next() }) { Icon(Icons.Filled.SkipNext, null); Text("다음 질문", maxLines = 1) }
-            if (a.mode == PracticeMode.FREE.name && !ui.transferUnavailable) {
+            if (ui.question?.recallScript == null && a.mode == PracticeMode.FREE.name && !ui.transferUnavailable) {
                 OutlinedButton(onClick = vm::nextSameType) { Text("같은 유형 새 질문") }
             }
         }

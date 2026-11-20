@@ -1,10 +1,10 @@
 package com.opicih.coach.ui
 
 import androidx.compose.foundation.layout.padding
+import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.MenuBook
-import androidx.compose.material.icons.filled.Assignment
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Insights
 import androidx.compose.material.icons.filled.Mic
@@ -71,14 +71,14 @@ private val tabs = listOf(
     Tab("home", "홈", Icons.Filled.Home),
     Tab("scripts", "스크립트", Icons.AutoMirrored.Filled.MenuBook),
     Tab("speaking", "말하기", Icons.Filled.Mic),
-    Tab("mock", "모의시험", Icons.Filled.Assignment),
     Tab("progress", "기록", Icons.Filled.Insights),
 )
 
 private val titles = mapOf(
+    "speakingHotel" to PracticeMode.HOTEL_ROLEPLAY.label, "frames" to "문장 틀",
     "script/{id}" to "스크립트", "scriptEdit/{id}" to "스크립트 편집", "import" to "스크립트 가져오기",
     "settings" to "설정", "nextExam" to "다음 OPIc 추천", "exams" to "시험 일정", "sail" to "SAIL 대화 연습", "morning" to "아침 표현 루틴", "coach" to "AI 코치",
-    "listen" to "스크립트 듣기", "review/{id}" to "다시 말하기", "stories" to "이야기 묶음", "diagnostic" to PracticeMode.DIAGNOSTIC.label,
+    "mock" to "모의시험", "recall?scriptId={scriptId}&question={question}" to "질문 듣고 답하기", "listen" to "스크립트 듣기", "review/{id}" to "다시 말하기", "stories" to "공통 답변 찾기", "diagnostic" to PracticeMode.DIAGNOSTIC.label,
     "pendingRevisions" to "승인 대기 개선안", "examDebrief/{day}/{registrationId}" to "시험 복기",
 )
 
@@ -86,9 +86,14 @@ private val titles = mapOf(
 @Composable
 fun AppNav(startRoute: String?, onRouteConsumed: () -> Unit) {
     val nav = rememberNavController()
+    fun recall(id: Long, question: String) {
+        nav.navigate("recall?scriptId=$id&question=${android.net.Uri.encode(question)}")
+    }
     val entry by nav.currentBackStackEntryAsState()
     val route = entry?.destination?.route
-    val isTab = tabs.any { route?.startsWith(it.route) == true && !route.startsWith("scripts/") }
+    val tabRoute = route?.substringBefore('?')
+    val isTab = tabs.any { it.route == tabRoute }
+    val backDispatcher = LocalOnBackPressedDispatcherOwner.current?.onBackPressedDispatcher
 
     // Study time: only counted while the app is RESUMED on a study screen.
     val container = LocalContainer.current
@@ -127,7 +132,7 @@ fun AppNav(startRoute: String?, onRouteConsumed: () -> Unit) {
         topBar = {
             if (!isTab && route != "morning") CenterAlignedTopAppBar(
                 title = { Text(titles[route] ?: "") },
-                navigationIcon = { IconButton(onClick = { nav.popBackStack() }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "뒤로") } },
+                navigationIcon = { IconButton(onClick = { backDispatcher?.onBackPressed() ?: nav.popBackStack() }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "뒤로") } },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = MaterialTheme.colorScheme.background),
             )
         },
@@ -135,7 +140,7 @@ fun AppNav(startRoute: String?, onRouteConsumed: () -> Unit) {
             if (isTab) NavigationBar(containerColor = MaterialTheme.colorScheme.surfaceContainerLow) {
                 tabs.forEach { t ->
                     NavigationBarItem(
-                        selected = route?.startsWith(t.route) == true,
+                        selected = tabRoute == t.route,
                         onClick = { nav.goTab(t.route) },
                         icon = { Icon(t.icon, null) },
                         label = { Text(t.label) },
@@ -152,10 +157,12 @@ fun AppNav(startRoute: String?, onRouteConsumed: () -> Unit) {
         NavHost(nav, startDestination = "home", modifier = Modifier.padding(pad)) {
             composable("home") {
                 HomeScreen(
+                    onStories = { nav.navigate("stories") },
+                    onRecall = { nav.navigate("recall") },
                     onSpeak = { nav.goTab("speaking") },
                     onMorning = { nav.navigate("morning") { launchSingleTop = true } },
                     onScript = { nav.navigate("script/$it") },
-                    onMock = { nav.goTab("mock") },
+                    onMock = { nav.navigate("mock") },
                     onReviewRevisions = { nav.navigate("pendingRevisions") },
                     onCoach = { nav.navigate("coach") },
                     onSettings = { nav.navigate("settings") },
@@ -196,7 +203,7 @@ fun AppNav(startRoute: String?, onRouteConsumed: () -> Unit) {
                 val id = e.arguments?.getLong("scriptId")?.takeIf { it > 0 }
                 val mode = e.arguments?.getString("mode")?.let { PracticeMode.of(it) }
                 SpeakingScreen(
-                    id, mode,
+                    id, mode, onQuestion = ::recall,
                     onOpenFrames = { nav.navigate("frames") },
                     onHotelRoleplay = { nav.navigate("speakingHotel") },
                     onDiagnostic = { nav.navigate("diagnostic") },
@@ -204,14 +211,26 @@ fun AppNav(startRoute: String?, onRouteConsumed: () -> Unit) {
             }
             composable("review/{id}", arguments = listOf(navArgument("id") { type = NavType.LongType })) { e ->
                 SpeakingScreen(
-                    null, PracticeMode.FREE, reviewId = e.arguments!!.getLong("id"),
+                    null, PracticeMode.FREE, reviewId = e.arguments!!.getLong("id"), onQuestion = ::recall,
                     onOpenFrames = { nav.navigate("frames") },
                     onHotelRoleplay = { nav.navigate("speakingHotel") },
                     onDiagnostic = { nav.navigate("diagnostic") },
                 )
             }
+            composable(
+                "recall?scriptId={scriptId}&question={question}",
+                arguments = listOf(
+                    navArgument("scriptId") { type = NavType.LongType; defaultValue = 0L },
+                    navArgument("question") { type = NavType.StringType; nullable = true; defaultValue = null },
+                ),
+            ) { entry ->
+                SpeakingScreen(entry.arguments?.getLong("scriptId"), PracticeMode.VARIATION,
+                    recall = true, prompt = entry.arguments?.getString("question"),
+                    onMemorize = { nav.navigate("speaking?scriptId=$it&mode=${PracticeMode.READ_LISTEN.name}") },
+                    onScripts = { nav.goTab("scripts") })
+            }
             composable("frames") { FramesScreen() }
-            composable("stories") { StoriesScreen(onOpenScript = { nav.navigate("script/$it") }) }
+            composable("stories") { StoriesScreen(onOpenScript = { nav.navigate("script/$it") }, onQuestion = ::recall, onScripts = { nav.goTab("scripts") }) }
             composable("mock") { MockScreen() }
             composable("speakingHotel") { HotelRoleplayScreen() }
             composable("diagnostic") { SpeakingDiagnosticScreen() }
@@ -219,6 +238,7 @@ fun AppNav(startRoute: String?, onRouteConsumed: () -> Unit) {
             composable("script/{id}", arguments = listOf(navArgument("id") { type = NavType.LongType })) { e ->
                 ScriptDetailScreen(
                     id = e.arguments!!.getLong("id"),
+                    onQuestion = ::recall,
                     onPractice = { sid, m -> nav.navigate("speaking?scriptId=$sid&mode=${m.name}") },
                     onEdit = { nav.navigate("scriptEdit/$it") },
                     onDeleted = { nav.popBackStack() },
@@ -259,7 +279,7 @@ fun AppNav(startRoute: String?, onRouteConsumed: () -> Unit) {
 
 /** Routes whose open time counts as study (not home / progress / settings / exams / nextExam / import / scriptEdit). */
 internal fun isStudyRoute(route: String?): Boolean = route != null && (
-    route == "scripts" || route == "pendingRevisions" || route == "script/{id}" || route == "review/{id}" || route == "stories" || route == "diagnostic" ||
+    route.startsWith("recall?") || route == "scripts" || route == "pendingRevisions" || route == "script/{id}" || route == "review/{id}" || route == "stories" || route == "diagnostic" ||
         listOf("speaking", "mock", "sail", "coach", "morning").any { route.startsWith(it) }
     )
 
