@@ -9,7 +9,6 @@ import com.opicih.coach.learning.ListenPart
 import com.opicih.coach.learning.ListenRole
 import com.opicih.coach.learning.ListenSegment
 import com.opicih.coach.learning.ListenSegments
-import com.opicih.coach.learning.ListenStep
 import com.opicih.coach.learning.ShuffleQueue
 import com.opicih.coach.playback.ListenPlayer
 import com.opicih.coach.playback.ListenPrefs
@@ -46,12 +45,10 @@ private class FakeSpeaker(
 
 private fun cycle(id: Long, withKorean: Boolean = false) = ListenCycle(
     scriptId = id, title = "t$id", topic = "topic",
-    steps = buildList {
-        add(ListenStep(ListenPart.QUESTION, ListenLang.EN, "q$id"))
-        if (withKorean) add(ListenStep(ListenPart.QUESTION, ListenLang.KO, "질문$id"))
-        add(ListenStep(ListenPart.FULL, ListenLang.EN, "a$id"))
-        if (withKorean) add(ListenStep(ListenPart.FULL, ListenLang.KO, "답변$id"))
-    },
+    steps = ListenCycleBuilder.build(
+        "q$id", if (withKorean) "질문$id" else null,
+        "a$id", if (withKorean) "답변$id" else null,
+    ),
 )
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -74,7 +71,7 @@ class ListenPlayerTest {
         val p = player(backgroundScope, sp, ids = listOf(1), withKorean = true)
         p.play()
         advanceTimeBy(450)
-        assertEquals(listOf("q1", "질문1", "a1", "답변1"), sp.spoken.take(4).map { it.first })
+        assertEquals(listOf("질문1", "q1", "답변1", "a1"), sp.spoken.take(4).map { it.first })
         assertEquals(
             listOf(ListenRole.QUESTION, ListenRole.QUESTION, ListenRole.ANSWER, ListenRole.ANSWER),
             sp.spoken.take(4).map { it.third },
@@ -92,10 +89,10 @@ class ListenPlayerTest {
     @Test fun stateCarriesTheLanguageOfTheStepBeingRead() = runTest {
         val p = player(backgroundScope, FakeSpeaker(speakMs = 1000), ids = listOf(1), withKorean = true)
         p.play()
-        advanceTimeBy(500) // q1 (EN)
-        assertEquals("q1" to ListenLang.EN, p.state.value.text to p.state.value.lang)
-        advanceTimeBy(1000) // 질문1 (KO)
+        advanceTimeBy(500)
         assertEquals("질문1" to ListenLang.KO, p.state.value.text to p.state.value.lang)
+        advanceTimeBy(1000)
+        assertEquals("q1" to ListenLang.EN, p.state.value.text to p.state.value.lang)
     }
 
     @Test fun noScriptRepeatsBeforeTheWholeRoundIsPlayed() = runTest {
@@ -193,7 +190,7 @@ class ListenCycleTest {
         )
         val steps = ListenCycleBuilder.build("Q", "질문", "Full", "전체", seg, Random(1))
         assertEquals(
-            listOf("Q", "질문", "Full", "전체", "P1", "문단1", "S1", "문장1"),
+            listOf("질문", "Q", "전체", "Full", "문단1", "P1", "문장1", "S1"),
             steps.map { it.text },
         )
         assertEquals(
@@ -204,7 +201,7 @@ class ListenCycleTest {
 
     @Test fun withoutSegmentsOnlyQuestionAndFullPlay() {
         val steps = ListenCycleBuilder.build("Q", null, "Full", "전체")
-        assertEquals(listOf("Q", "Full", "전체"), steps.map { it.text })
+        assertEquals(listOf("Q", "전체", "Full"), steps.map { it.text })
     }
 
     @Test fun blankKoreanDropsOnlyTheKoreanStep() {

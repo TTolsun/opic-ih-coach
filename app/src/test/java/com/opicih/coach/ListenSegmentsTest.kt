@@ -49,6 +49,14 @@ class ScriptSegmenterTest {
         assertEquals(listOf("I met Mr. Kim at the park.", "We talked for an hour."), plan.sentences)
     }
 
+    @Test fun quotedSentencesKeepTheirClosingPunctuationInPlayback() {
+        val quoted = "I thought, \"Did I get taller again?\""
+        val next = "Then I went home."
+        for (separator in listOf(" ", "\n", "")) {
+            assertEquals(listOf(quoted, next), ScriptSegmenter.plan(quoted + separator + next).sentences)
+        }
+    }
+
     @Test fun wordsThatMerelyEndLikeAnAbbreviationStillEndTheSentence() {
         val plan = ScriptSegmenter.plan("There are three rooms. One is my bedroom. It ended fast. I went home. I saw Dr. Lee. We left.")
         assertEquals(
@@ -124,7 +132,7 @@ class SegmentPlaybackTest {
             listOf(ListenPart.QUESTION, ListenPart.QUESTION, ListenPart.FULL, ListenPart.FULL, ListenPart.PARAGRAPH, ListenPart.PARAGRAPH, ListenPart.SENTENCE, ListenPart.SENTENCE),
             steps.map { it.part },
         )
-        assertEquals(listOf("P", "문단", "S", "문장"), steps.drop(4).map { it.text })
+        assertEquals(listOf("문단", "P", "문장", "S"), steps.drop(4).map { it.text })
     }
 }
 

@@ -85,7 +85,8 @@ object TextNormalizer {
 
     fun sentences(text: String): List<String> =
         text.replace(Regex("[\\u200B-\\u200D\\uFEFF]"), "")
-            .split(Regex("""(?<=[.!?])["'”’)\]]*(?:\s+|(?=[A-Z][a-z]|I\b))|\R+"""))
+            .replace(Regex("""(?<=[.!?])(["'”’)\]]*)(?:\s+|(?=[A-Z][a-z]|I\b))"""), "$1\n")
+            .split(Regex("""\R+"""))
             .map { it.trim() }
             .filter { words(it).isNotEmpty() }
 

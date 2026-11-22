@@ -222,7 +222,8 @@ class SeedLoader(private val context: Context, private val db: AppDatabase, priv
             }
             planStoryLinks(seed, dao.scripts()).forEach { dao.updateScript(it) }
         }
-        if (settings.current().templateSeedVersion < TEMPLATE_VERSION) {
+        val templateVersion = settings.current().templateSeedVersion
+        if (templateVersion < 1) {
             val templates = readAsset("seed/roleplay_templates.json")?.let {
                 json.decodeFromString(SeedScripts.serializer(), it).scripts
             }.orEmpty()
@@ -240,6 +241,25 @@ class SeedLoader(private val context: Context, private val db: AppDatabase, priv
                     )
                 }
             }
+        }
+        if (templateVersion < TEMPLATE_VERSION) {
+            val appointments = readAsset("seed/appointments.json")?.let {
+                json.decodeFromString<List<AppointmentSeed>>(it)
+            }.orEmpty()
+            val today = LocalDate.now().toEpochDay()
+            db.withTransaction {
+                val scripts = dao.scripts()
+                for (item in appointments) {
+                    val script = scripts.firstOrNull(item::matches) ?: item.newScript(today).let {
+                        it.copy(id = dao.insertScript(it))
+                    }
+                    val rows = item.translationsFor(script, dao.segmentsFor(script.id))
+                    if (rows.isNotEmpty()) {
+                        dao.deleteSegmentsFor(script.id)
+                        dao.insertSegments(rows)
+                    }
+                }
+            }
             settings.update { it.copy(templateSeedVersion = TEMPLATE_VERSION) }
         }
     }
@@ -249,7 +269,7 @@ class SeedLoader(private val context: Context, private val db: AppDatabase, priv
 
     companion object {
         const val SEED_VERSION = 1
-        /** 1: roleplay templates (질문하기, 문제 해결, 관련 경험). */
-        const val TEMPLATE_VERSION = 1
+        /** 1: hotel roleplay. 2: appointment scripts with aligned translations. */
+        const val TEMPLATE_VERSION = 2
     }
 }
