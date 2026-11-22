@@ -53,6 +53,8 @@ import com.opicih.coach.learning.ExamPolicy
 import com.opicih.coach.ui.LocalContainer
 import com.opicih.coach.ui.components.Banner
 import com.opicih.coach.ui.components.Bullet
+import com.opicih.coach.ui.components.InfoButton
+import com.opicih.coach.ui.components.InfoTopics
 import com.opicih.coach.ui.components.MetricTile
 import com.opicih.coach.ui.components.ProgressRow
 import com.opicih.coach.ui.components.SectionCard
@@ -82,18 +84,28 @@ fun ProgressScreen(onNextExam: () -> Unit = {}, onExams: () -> Unit = {}) {
         val withText = attempts.filter { it.wordCount > 0 }
         // Two even rows of three: a FlowRow wrapped these as 4 + 2 tiles of different widths.
         val tiles = listOf(
+            "연속 학습" to "${ProgressCalculator.streak(logs, today)}일",
             "누적 발화" to "${totalSpeak / 60000}분",
             "연습 횟수" to "${attempts.size}회",
             "평균 답변" to "${if (withText.isEmpty()) 0 else withText.map { it.wordCount }.average().toInt()}단어",
             "자유 발화" to "${(ProgressCalculator.freeSpeakingRatio(attempts) * 100).toInt()}%",
             "주간 목표" to "${(ProgressCalculator.weeklyGoalRate(logs, today, s.studyLevel.minutes) * 100).toInt()}%",
-            "연속 학습" to "${ProgressCalculator.streak(logs, today)}일",
         )
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             tiles.chunked(3).forEach { row ->
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     row.forEach { (label, value) -> MetricTile(label, value, Modifier.weight(1f)) }
                 }
+            }
+        }
+
+        val readiness = remember(scripts, attempts) { ProgressCalculator.ihReadiness(scripts, attempts) }
+        SectionCard {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    ProgressRow("최종 목표(${s.profile.finalGoal.code}) 준비도", readiness / 100f, "$readiness / 100")
+                }
+                InfoButton(InfoTopics.MEASUREMENT)
             }
         }
 

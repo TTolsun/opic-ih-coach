@@ -99,6 +99,9 @@ fun SpeakingScreen(
     reviewId: Long? = null,
     recall: Boolean = false,
     prompt: String? = null,
+    reviewPosition: String? = null,
+    nextLabel: String = "다음 질문",
+    onReviewNext: (() -> Unit)? = null,
     onMemorize: (Long) -> Unit = {},
     onScripts: () -> Unit = {},
     onQuestion: (Long, String) -> Unit = { _, _ -> },
@@ -106,7 +109,8 @@ fun SpeakingScreen(
     onHotelRoleplay: () -> Unit = {},
     onDiagnostic: () -> Unit = {},
 ) {
-    val vm: SpeakingViewModel = viewModel()
+    val container = LocalContainer.current
+    val vm: SpeakingViewModel = viewModel { SpeakingViewModel(container, container.newSpeakingCapture()) }
     val ui by vm.ui.collectAsStateWithLifecycle()
     val context = LocalContext.current
     LaunchedEffect(scriptId, mode, reviewId, recall, prompt) { vm.configure(scriptId, mode, reviewId, recall, prompt) }
@@ -142,11 +146,12 @@ fun SpeakingScreen(
     Column(Modifier.fillMaxSize()) {
     Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
         var chooseMode by rememberSaveable { mutableStateOf(false) }
-        if (!recall) TextButton(onClick = { chooseMode = !chooseMode },
+        if (reviewPosition != null) Text("오늘의 복습 $reviewPosition · ${ui.question?.script?.title.orEmpty()}", style = MaterialTheme.typography.titleMedium)
+        else if (!recall) TextButton(onClick = { chooseMode = !chooseMode },
             enabled = ui.phase == Phase.IDLE || ui.phase == Phase.RESULT) {
             Text(if (chooseMode) "연습 방식 접기" else "${PracticeModes.of(ui.mode).label} · 방식 변경")
         }
-        if (!recall && chooseMode && ui.phase in setOf(Phase.IDLE, Phase.RESULT)) ModeSelector(ui.mode) {
+        if (reviewPosition == null && !recall && chooseMode && ui.phase in setOf(Phase.IDLE, Phase.RESULT)) ModeSelector(ui.mode) {
             when (it) {
                 PracticeMode.HOTEL_ROLEPLAY -> onHotelRoleplay()
                 PracticeMode.DIAGNOSTIC -> onDiagnostic()
@@ -162,6 +167,7 @@ fun SpeakingScreen(
                 Text(ui.error ?: "질문을 불러오는 중입니다.")
                 if (recall && ui.error != null) TextButton(onClick = onScripts) { Text("내 스크립트 열기") }
             }
+            if (onReviewNext != null && ui.error != null) TextButton(onClick = onReviewNext) { Text(nextLabel) }
             return@Column
         }
 
@@ -208,25 +214,26 @@ fun SpeakingScreen(
                     TextButton(onClick = { vm.playQuestion(0.75f) }) { Text("0.75x") }
                 }
                 Spacer(Modifier.weight(1f))
-                if (ui.mode.usesScript) IconButton(onClick = { showPicker = true }) { Icon(Icons.Filled.List, "스크립트 선택") }
+                if (ui.mode.usesScript && reviewPosition == null) IconButton(onClick = { showPicker = true }) { Icon(Icons.Filled.List, "스크립트 선택") }
                 // After a result the panel below has a labeled "다음 질문" button; the icon would repeat it.
-                if (ui.phase != Phase.RESULT) IconButton(onClick = { vm.next() }) { Icon(Icons.Filled.SkipNext, "다음 질문") }
+                if (ui.phase != Phase.RESULT && reviewPosition == null) IconButton(onClick = { vm.next() }) { Icon(Icons.Filled.SkipNext, "다음 질문") }
             }
-            if (!examLike && ui.phase == Phase.IDLE) q.script?.let { source -> StoryReuseQuestions(source, onQuestion = { onQuestion(source.id, it) }) }
+            if (reviewPosition == null && !examLike && ui.phase == Phase.IDLE) q.script?.let { source -> StoryReuseQuestions(source, onQuestion = { onQuestion(source.id, it) }) }
         }
 
         q.recallScript?.let { source ->
             var hint by rememberSaveable(q.text, source.id) { mutableStateOf(false) }
             if (ui.phase == Phase.IDLE || ui.phase == Phase.RESULT) {
                 if (hint || ui.phase == Phase.RESULT) {
-                    val container = LocalContainer.current
                     val stories by remember { container.dao.storiesFlow() }.collectAsStateWithLifecycle(initialValue = emptyList())
                     val ids = StoryMap.storyIdsOf(source)
                     SectionCard(title = "활용할 수 있는 내 답변") {
                         Text(source.title)
-                        stories.filter { it.id in ids }.forEach { story ->
+                        if (source.active == com.opicih.coach.data.db.ScriptVersion.SCENE) {
+                            Text(source.keywordList().joinToString(" · "))
+                        } else stories.filter { it.id in ids }.forEach { story ->
                             Text(story.titleKo)
-                            Text(story.commonAnswer ?: story.summary)
+                            Text(story.summary)
                         }
                         TextButton(onClick = { onMemorize(source.id) }) { Text("이 대본 외우기") }
                     }
@@ -248,7 +255,7 @@ fun SpeakingScreen(
 
         ui.check?.let { if (ui.result != null) CheckCard(it, vm) }
 
-        ui.result?.let { ResultPanel(it, ui, vm, onRetry = { onMic() }) }
+        ui.result?.let { ResultPanel(it, ui, vm, onRetry = { onMic() }, onNext = onReviewNext ?: vm::next, nextLabel = nextLabel) }
 
         Spacer(Modifier.height(24.dp))
     }
@@ -318,7 +325,7 @@ fun SpeakingScreen(
                     OutlinedTextField(text, { text = it }, minLines = 5, modifier = Modifier.fillMaxWidth())
                 }
             },
-            confirmButton = { TextButton(onClick = { showTyped = false; vm.submitTyped(text) }) { Text("분석") } },
+            confirmButton = { TextButton(enabled = text.isNotBlank(), onClick = { showTyped = false; vm.submitTyped(text) }) { Text("분석") } },
             dismissButton = { TextButton(onClick = { showTyped = false }) { Text("취소") } },
         )
     }
@@ -368,8 +375,7 @@ private fun ModePanel(ui: SpeakingUi, vm: SpeakingViewModel) {
     val text = s.studyText
     when (ui.mode) {
         PracticeMode.READ_LISTEN -> SectionCard(title = "학습본 (${s.active.label})", trailing = { ModelButtons(vm, text) }) {
-            GlossaryText(text, s.id)
-            s.koreanMeaning?.let { Spacer(Modifier.height(8.dp)); Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+            StudyPassage(s)
         }
         PracticeMode.SHADOWING -> {
             val sentences = vm.shadowSentences()
@@ -405,7 +411,7 @@ private fun ModePanel(ui: SpeakingUi, vm: SpeakingViewModel) {
                 }
             }
         }
-        PracticeMode.KEYWORD -> SectionCard(trailing = { if (s.keywords == null) SourceTag("자동 추출") }) {
+        PracticeMode.KEYWORD -> SectionCard(trailing = { if (s.keywordList().isEmpty()) SourceTag("자동 추출") }) {
             val kws = s.keywordList().ifEmpty { com.opicih.coach.analysis.ScriptComparator.pickKeywords(text, 5) }
             kws.forEachIndexed { i, k -> Bullet(k, mark = "${i + 1}") }
         }

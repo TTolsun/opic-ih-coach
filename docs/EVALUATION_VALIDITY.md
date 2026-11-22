@@ -38,7 +38,7 @@ ACTFL의 2024년 말하기 지침은 기능과 과업, 정확성, 맥락과 내�
 
 1. **말하기 화면에서 캡처합니다.** `SpeakingViewModel`은 `CapturePolicy`로 캡처를 선택하고 `AnswerCapture.stop`에서 전사와 음향 정보를 받습니다. 자유 발화·모의시험·틀 붙이기·문단 사다리는 녹음 전사 설정, 음성 전송 동의, Gemini 키가 모두 있을 때 녹음과 원문 전사를 선택합니다. 기기 STT는 인식기 RMS와 전사를, 녹음은 PCM RMS와 선택적 전사를 사용합니다. 처음부터 직접 입력하거나 인식 실패 뒤 직접 입력하면 `submitTyped`가 음향과 오디오 경로가 없는 `TYPED`를 저장합니다. [CapturePolicy](../app/src/main/java/com/opicih/coach/learning/CapturePolicy.kt) · [AnswerCapture](../app/src/main/java/com/opicih/coach/speech/AnswerCapture.kt) · [SpeakingViewModel](../app/src/main/java/com/opicih/coach/ui/screens/SpeakingViewModel.kt)
 2. **로컬 평가를 계산하고 조건에 따라 AI 평가를 적용합니다.** `PracticeRepository.analyzeAndSave`는 전사 태그를 제외한 텍스트로 담화 지표를 계산합니다. 텍스트가 없는 녹음은 음향만 분석합니다. `AppContainer.realAi`는 AI 사용 설정, 텍스트 전송 동의, 키를 확인합니다. 전사에 5단어 이상 있으면 Gemini에 질문, 미션, 원래 전사와 지표를 보냅니다. AI 성공 시 AI 피드백과 점수를 쓰면서 로컬 측정 한계와 오류 항목을 합칩니다. 실패 시 로컬 결과를 저장합니다. `BLIND` 등 암기 모드만 AI에 목표 스크립트를 보냅니다. 모의시험 문항과 SAIL 대화의 개별 턴은 로컬로 평가합니다. SAIL 추가 질문과 종합 피드백에는 선택적으로 Gemini를 사용합니다. [AppContainer](../app/src/main/java/com/opicih/coach/App.kt) · [PracticeRepository](../app/src/main/java/com/opicih/coach/data/repo/Repositories.kt) · [MockScreen](../app/src/main/java/com/opicih/coach/ui/screens/MockScreen.kt) · [SailConversationViewModel](../app/src/main/java/com/opicih/coach/ui/screens/SailConversationViewModel.kt)
-3. **시도, 피드백, 관측치를 저장하고 집계합니다.** Room의 시도 기록에 `captureMode`, `feedbackSource`, `score`, `metricsJson`, `feedbackJson`을 저장합니다. 오류 노트에는 피드백의 `errors`를 누적합니다. 기록 화면의 오류 추세는 원문 전사 플래그가 있는 시도를 사용합니다. 다음 OPIc 조건은 최근 시험 이후 시도 중 `READINESS_MODES`에 속하고 단어가 있는 최대 15개 시도의 점수와 단어 수를 평균합니다. 긴 무음 평균에서 직접 입력을 뺍니다. 모의시험 조건은 같은 `mockId`의 시도가 5개 이상이면 점수를 평균합니다. 홈의 학습용 IH 준비도는 스크립트 숙련도 30%, 최근 최대 10개 말하기 점수 50%, 주제 다양성 20%를 합칩니다. [ScoreKind](../app/src/main/java/com/opicih/coach/learning/ScoreKind.kt) · [ProgressCalculator](../app/src/main/java/com/opicih/coach/learning/ProgressCalculator.kt) · [ErrorTrend](../app/src/main/java/com/opicih/coach/learning/ErrorTrend.kt) · [RetestAdvisor](../app/src/main/java/com/opicih/coach/learning/RetestAdvisor.kt)
+3. **시도, 피드백, 관측치를 저장하고 집계합니다.** Room의 시도 기록에 `captureMode`, `feedbackSource`, `score`, `metricsJson`, `feedbackJson`을 저장합니다. 오류 노트에는 피드백의 `errors`를 누적합니다. 기록 화면의 오류 추세는 원문 전사 플래그가 있는 시도를 사용합니다. 다음 OPIc 조건은 최근 시험 이후 시도 중 `READINESS_MODES`에 속하고 단어가 있는 최대 15개 시도의 점수와 단어 수를 평균합니다. 긴 무음 평균에서 직접 입력을 뺍니다. 모의시험 조건은 같은 `mockId`의 시도가 5개 이상이면 점수를 평균합니다. 기록 탭의 학습용 IH 준비도는 스크립트 숙련도 30%, 최근 최대 10개 말하기 점수 50%, 주제 다양성 20%를 합칩니다. [ScoreKind](../app/src/main/java/com/opicih/coach/learning/ScoreKind.kt) · [ProgressCalculator](../app/src/main/java/com/opicih/coach/learning/ProgressCalculator.kt) · [ErrorTrend](../app/src/main/java/com/opicih/coach/learning/ErrorTrend.kt) · [RetestAdvisor](../app/src/main/java/com/opicih/coach/learning/RetestAdvisor.kt)
 
 ## 실제 기기 자료와 검토 범위
 
@@ -74,7 +74,7 @@ ACTFL의 2024년 말하기 지침은 기능과 과업, 정확성, 맥락과 내�
 
 | 재현 절차 | 실제 결과와 영향 |
 | --- | --- |
-| B를 자유 발화의 직접 입력 시도 3건으로 집계합니다. | 연습 발화 0분에도 평균 116단어·88점으로 IH의 길이와 점수 조건을 통과했습니다. 홈 학습용 준비도는 46점입니다. |
+| B를 자유 발화의 직접 입력 시도 3건으로 집계합니다. | 연습 발화 0분에도 평균 116단어·88점으로 IH의 길이와 점수 조건을 통과했습니다. 학습용 준비도는 46점입니다. |
 | 여기에 음향 지표가 없는 `LIVE_STT` B를 한 건 더합니다. | 긴 무음이 미측정에서 평균 0회로 바뀌어 유창성 조건도 통과했습니다. |
 | 로컬 A·D와 AI 85점으로 만든 B를 집계합니다. | 평가 출처에 따른 구분 없이 평균 57점입니다. 여기서 85는 집계 확인용 합성값입니다. |
 | 한 모의시험에 텍스트가 없는 녹음 시도 5개를 넣습니다. | 모의시험 1회, 최고 0점으로 집계됐습니다. 평가할 텍스트가 없는 경우와 실제 평가 0점이 같은 값이 됩니다. |

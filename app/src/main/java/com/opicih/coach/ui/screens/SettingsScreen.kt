@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -36,6 +37,8 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TimePicker
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.rememberTimePickerState
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.ui.semantics.Role
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -173,7 +176,7 @@ fun SettingsScreen() {
             // Home shows "IH 준비도" and "최종 목표 IH"; say here how those relate to the grades picked above.
             Text(
                 "최종 목표는 ${s.profile.finalGoal.code}" + (s.gradeDeadline?.let { " (${it.monthDay()}까지)" } ?: "") +
-                    "입니다. 다음 시험 추천의 준비도 조건은 위 목표 등급(${s.targetGrade.code}) 기준이고, 홈의 ${s.profile.finalGoal.code} 준비도는 최종 목표 기준입니다.",
+                    "입니다. 다음 시험 추천의 준비도 조건은 위 목표 등급(${s.targetGrade.code}) 기준이고, 기록 탭의 ${s.profile.finalGoal.code} 준비도는 최종 목표 기준입니다.",
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
@@ -196,7 +199,7 @@ fun SettingsScreen() {
             Row(Modifier.fillMaxWidth().clickable { showTime = true }.padding(vertical = 6.dp)) {
                 Text("시간", modifier = Modifier.weight(1f)); Text("%02d:%02d".format(s.alarmHour, s.alarmMinute), color = MaterialTheme.colorScheme.primary)
             }
-            Text("다음 알람: ${AlarmScheduler.describe(LocalDateTime.now(), s.alarmHour, s.alarmMinute)}", style = MaterialTheme.typography.labelSmall)
+            Text(if (s.alarmEnabled) "다음 알람: ${AlarmScheduler.describe(LocalDateTime.now(), s.alarmHour, s.alarmMinute)}" else "아침 알람 꺼짐", style = MaterialTheme.typography.labelSmall)
             ToggleRow("정확한 시간 알람 (알람 아이콘 표시)", s.useExactAlarm) { v -> save { it.copy(useExactAlarm = v) } }
             ToggleRow("소리", s.alarmSound) { v -> save { it.copy(alarmSound = v) } }
             ToggleRow("진동", s.alarmVibrate) { v -> save { it.copy(alarmVibrate = v) } }
@@ -427,10 +430,10 @@ private fun NumberRow(label: String, value: Int, onChange: (Int) -> Unit) {
 
 @Composable
 private fun ToggleRow(label: String, value: Boolean, enabled: Boolean = true, onChange: (Boolean) -> Unit) {
-    Row(Modifier.fillMaxWidth().padding(vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(Modifier.fillMaxWidth().toggleable(value = value, enabled = enabled, role = Role.Switch, onValueChange = onChange).heightIn(min = 48.dp).padding(vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
         Text(label, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f),
             color = if (enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant)
-        Switch(value, onChange, enabled = enabled)
+        Switch(value, onCheckedChange = null, enabled = enabled)
     }
 }
 

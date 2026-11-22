@@ -5,6 +5,7 @@ import android.content.pm.PackageManager
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -21,11 +22,10 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.RadioButtonUnchecked
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.Button
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -40,9 +40,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.Role
 import androidx.compose.material3.TextButton
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
@@ -52,6 +53,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.opicih.coach.alarm.AlarmScheduler
 import com.opicih.coach.alarm.Notifications
 import com.opicih.coach.data.db.ExamRegistrationEntity
+import com.opicih.coach.data.db.MockTestEntity
 import com.opicih.coach.data.db.PracticeMode
 import com.opicih.coach.data.db.ExamType
 import com.opicih.coach.data.prefs.Settings
@@ -64,9 +66,6 @@ import com.opicih.coach.learning.TaskType
 import com.opicih.coach.ui.components.Banner
 import com.opicih.coach.ui.components.Bullet
 import com.opicih.coach.ui.components.Pill
-import com.opicih.coach.ui.components.ProgressRow
-import com.opicih.coach.ui.components.InfoButton
-import com.opicih.coach.ui.components.InfoTopics
 import com.opicih.coach.ui.components.SectionCard
 import com.opicih.coach.ui.components.SourceTag
 import java.time.Instant
@@ -75,12 +74,13 @@ import java.time.ZoneId
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun HomeScreen(
-    onStories: () -> Unit,
     onRecall: () -> Unit,
     onSpeak: () -> Unit,
     onMorning: () -> Unit,
     onScript: (Long) -> Unit,
     onMock: () -> Unit,
+    onRecentMock: (MockTestEntity) -> Unit,
+    onScriptReview: (List<Long>, PracticeMode) -> Unit,
     onReviewRevisions: () -> Unit,
     onCoach: () -> Unit,
     onSettings: () -> Unit,
@@ -105,7 +105,10 @@ fun HomeScreen(
         TaskType.MORNING -> onMorning()
         TaskType.MOCK -> onMock()
         TaskType.IMPROVE -> onReviewRevisions()
-        TaskType.REVIEW, TaskType.SPEAK, TaskType.FREE, TaskType.ROLEPLAY -> onSpeakMode(t.mode)
+        TaskType.REVIEW -> onScriptReview(st.reviewIds, t.mode?.let(PracticeMode::of) ?: PracticeMode.READ_LISTEN)
+        TaskType.FREE -> onSpeakMode(t.mode ?: PracticeMode.FREE.name)
+        TaskType.ROLEPLAY -> onSpeakMode(t.mode ?: PracticeMode.HOTEL_ROLEPLAY.name)
+        TaskType.SPEAK -> onSpeakMode(t.mode ?: PracticeMode.BLIND.name)
     }
 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
@@ -113,46 +116,56 @@ fun HomeScreen(
             Text("내 답변 연습", modifier = Modifier.weight(1f), style = MaterialTheme.typography.headlineSmall)
             IconButton(onClick = onSettings) { Icon(Icons.Filled.Settings, "설정") }
         }
-        Button(onClick = onStories, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) { Text("공통 답변 찾기") }
-        OutlinedButton(onClick = onRecall, modifier = Modifier.fillMaxWidth()) { Text("질문 듣고 답하기") }
+        SectionCard(
+            title = plan?.let { "오늘의 훈련 · ${it.focus.titleKo}" } ?: "오늘의 훈련",
+            trailing = { if (plan != null) Text("${(st.completion * 100).toInt()}%", style = MaterialTheme.typography.labelLarge) },
+        ) {
+            if (plan == null) LinearProgressIndicator(Modifier.fillMaxWidth())
+            st.tasks.forEach { ts ->
+                val next = ts.task === st.next
+                val resumingReview = ts.task.type == TaskType.REVIEW && st.reviewIds.size in 1 until ts.task.targetCount
+                val title = if (resumingReview) "남은 대본 ${st.reviewIds.size}개 이어서 복습" else ts.task.title
+                val colors = MaterialTheme.colorScheme
+                val foreground = when {
+                    next -> colors.onPrimary
+                    ts.done -> colors.onSurfaceVariant
+                    else -> colors.onSurface
+                }
+                Row(
+                    Modifier.fillMaxWidth().clip(MaterialTheme.shapes.medium)
+                        .background(if (next) colors.primary else Color.Transparent)
+                        .clickable(enabled = ts.task.type != TaskType.REVIEW || st.reviewIds.isNotEmpty(), role = Role.Button) { open(ts.task) }
+                        .heightIn(min = 48.dp).padding(horizontal = 10.dp, vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(
+                        if (ts.done) Icons.Filled.CheckCircle else Icons.Filled.RadioButtonUnchecked,
+                        contentDescription = if (ts.done) "완료" else null, tint = foreground,
+                    )
+                    Spacer(Modifier.width(10.dp))
+                    Text(
+                        if (next) "다음 · $title" else title,
+                        style = if (next) MaterialTheme.typography.titleMedium else MaterialTheme.typography.bodyLarge,
+                        modifier = Modifier.weight(1f), color = foreground,
+                    )
+                    if (!resumingReview) Text("${ts.task.minutes}분", style = MaterialTheme.typography.labelMedium, color = foreground)
+                }
+            }
+        }
+        OutlinedButton(onClick = onRecall, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("질문 듣고 답하기") }
 
         PermissionBanners(st.alarmNeedsExact, onSettings)
-
         ExamReviewBanner(st.examsToReview, onExams)
         st.awaitingConfirm?.let { r ->
             Banner("${r.type.label} ${ExamSchedule.formatWhen(r)} 시험에 응시했나요? 확인하면 다음 시험 기준으로 계획이 바뀝니다.", "확인", tone = MaterialTheme.colorScheme.secondary, onAction = onExams)
         }
 
         if (plan == null) return@Column
-
         reviews.firstOrNull { (it.speakingReviewDueEpochDay ?: Long.MAX_VALUE) <= today }?.let { review ->
             Banner(
                 "다시 말할 질문이 있습니다.", "다시 말하기",
                 onAction = { onSpeakingReview(review.id) },
             )
-        }
-
-        SectionCard(
-            title = "오늘의 훈련 · ${plan.focus.titleKo}", collapsible = true, initiallyExpanded = false,
-            trailing = { Text("${(st.completion * 100).toInt()}%", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.titleMedium) },
-        ) {
-            st.tasks.forEach { ts ->
-                Row(
-                    Modifier.fillMaxWidth().heightIn(min = 48.dp).clickable { open(ts.task) },
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Icon(
-                        if (ts.done) Icons.Filled.CheckCircle else Icons.Filled.RadioButtonUnchecked, null,
-                        tint = if (ts.done) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    Spacer(Modifier.width(10.dp))
-                    Text(
-                        if (ts.task == st.next) "다음 · ${ts.task.title}" else ts.task.title, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f),
-                        color = if (ts.done) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
-                    )
-                    Text("${ts.task.minutes}분", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            }
         }
 
         st.debriefDue?.let { d ->
@@ -165,28 +178,11 @@ fun HomeScreen(
             Banner("승인 대기 개선안 ${st.pendingRevisions}개", "검토", tone = MaterialTheme.colorScheme.primary, onAction = onReviewRevisions)
         }
 
-        // 3) Status: one card, one caveat.
-        SectionCard(title = "내 상태", trailing = { InfoButton(InfoTopics.MEASUREMENT) }) {
-            Row {
-                Stat("연속 학습", "${st.streak}일", Modifier.weight(1f))
-                Stat("누적 발화", "${st.totalSpeakingMin}분", Modifier.weight(1f))
-            }
-            Spacer(Modifier.height(10.dp))
-            ProgressRow("최종 목표(${st.settings.profile.finalGoal.code}) 준비도", st.readiness / 100f, "${st.readiness} / 100")
-            TextButton(onClick = onDiagnostic) { Text(PracticeMode.DIAGNOSTIC.label) }
-        }
-
         SectionCard(title = "시험 관리와 추가 연습", collapsible = true, initiallyExpanded = false) {
+            TextButton(onClick = onDiagnostic) { Text(PracticeMode.DIAGNOSTIC.label) }
             TextButton(onClick = onMock) { Text("모의시험") }
             TextButton(onClick = onCoach) { Text("AI 코치") }
-            Row {
-                // With nothing registered yet, the nearest planned exam is shown instead of "접수 완료 일정 없음",
-                // which contradicted the planned OPIc listed in 시험 현황 right below.
-                val planned = if (st.focusExam != null) null else ExamType.selectable.mapNotNull { ExamSchedule.nextOfType(st.regs, it, st.now) }
-                    .filter { it.date != null }.minByOrNull { it.date!! }
-                NextExamHeader(st.focusExam, plan.dLabel, planned, st.now.toLocalDate(), Modifier.weight(1f).clickable(onClick = onExams))
-            }
-            ExamStatusCard(st.regs, st.now, st.settings, plan, onExams)
+            ExamStatusCard(st.regs, st.now, st.settings, plan, st.focusExam, onExams)
 
             st.nextExam?.let { n ->
                 // Same rule as the 다음 OPIc 추천 screen: a booked or planned OPIc replaces the suggested date.
@@ -200,21 +196,6 @@ fun HomeScreen(
                         style = MaterialTheme.typography.bodyMedium,
                     )
                 }
-            }
-        }
-
-        // 4) Concrete shortcuts: each opens a specific script.
-        if (st.due.isNotEmpty()) SectionCard(title = "복습 예정 스크립트 ${st.due.size}개") {
-            // The title promised N scripts but only 4 were reachable; the rest open in place.
-            var showAllDue by rememberSaveable { mutableStateOf(false) }
-            (if (showAllDue) st.due else st.due.take(4)).forEach { sc ->
-                Row(Modifier.fillMaxWidth().heightIn(min = 44.dp).clickable { onScript(sc.id) }, verticalAlignment = Alignment.CenterVertically) {
-                    Text("${sc.topic} · ${sc.title}", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
-                    Text(sc.mastery.label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            }
-            if (st.due.size > 4) {
-                TextButton(onClick = { showAllDue = !showAllDue }) { Text(if (showAllDue) "접기" else "나머지 ${st.due.size - 4}개 더 보기") }
             }
         }
 
@@ -237,20 +218,12 @@ fun HomeScreen(
         }
 
         st.lastMock?.let { m ->
-            SectionCard(Modifier.clickable(onClick = onMock), title = "최근 모의시험", trailing = { Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, "결과 보기") }) {
+            SectionCard(Modifier.clickable { onRecentMock(m) }, title = "최근 모의시험", trailing = { SourceTag(if (m.reportJson != null) "결과 보기" else "다시 시작") }) {
                 val date = Instant.ofEpochMilli(m.startedAt).atZone(ZoneId.systemDefault()).toLocalDate()
                 Text("$date · ${m.questionCount}문항 · ${if (m.finishedAt != null) "완료" else "중단"}", style = MaterialTheme.typography.bodyMedium)
             }
         }
         Spacer(Modifier.height(16.dp))
-    }
-}
-
-@Composable
-private fun Stat(label: String, value: String, modifier: Modifier = Modifier) {
-    Column(modifier) {
-        Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Text(value, style = MaterialTheme.typography.titleLarge)
     }
 }
 
@@ -284,7 +257,6 @@ private fun NextExamHeader(r: ExamRegistrationEntity?, dLabel: String, planned: 
         }
         if (r == null) {
             Text("접수 완료 일정 없음", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Text("시험 일정 보기", style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.primary)
             return@Column
         }
         Text("Next Exam: ${r.type.label}", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -300,12 +272,15 @@ private fun NextExamHeader(r: ExamRegistrationEntity?, dLabel: String, planned: 
 
 /** Facts and unverified items, labelled as such. */
 @Composable
-private fun ExamStatusCard(regs: List<ExamRegistrationEntity>, now: java.time.ZonedDateTime, s: Settings, plan: DayPlan, onExams: () -> Unit) {
+private fun ExamStatusCard(regs: List<ExamRegistrationEntity>, now: java.time.ZonedDateTime, s: Settings, plan: DayPlan, focused: ExamRegistrationEntity?, onExams: () -> Unit) {
     val today = now.toLocalDate()
-    SectionCard(Modifier.clickable(onClick = onExams), title = "시험 현황", trailing = { SourceTag("일정 관리") }) {
+    SectionCard(Modifier.clickable(onClick = onExams), title = "시험 현황", trailing = { SourceTag("일정 보기") }) {
+        val planned = if (focused == null) ExamType.selectable.mapNotNull { ExamSchedule.nextOfType(regs, it, now) }
+            .filter { it.date != null }.minByOrNull { it.date!! } else null
+        NextExamHeader(focused, plan.dLabel, planned, today, Modifier.fillMaxWidth())
         for (type in ExamType.selectable) {
             val next = ExamSchedule.nextOfType(regs, type, now)
-            next?.let { Bullet("${type.label} ${it.date?.monthDay() ?: it.dateLocal} · ${it.state.label}") }
+            next?.takeUnless { it.id == (focused ?: planned)?.id }?.let { Bullet("${type.label} ${it.date?.monthDay() ?: it.dateLocal} · ${it.state.label}") }
         }
         val retake = com.opicih.coach.learning.RetakeSummaries.of(s, regs, today)
         ExamSchedule.lastCompleted(regs, ExamType.SAIL)?.let { last ->

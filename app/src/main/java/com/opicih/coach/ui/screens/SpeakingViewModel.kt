@@ -1,9 +1,11 @@
 package com.opicih.coach.ui.screens
 
-import android.app.Application
-import androidx.lifecycle.AndroidViewModel
+import com.opicih.coach.learning.FrameChip
+import com.opicih.coach.learning.QuestionItem
+import com.opicih.coach.learning.scriptQuestion
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.opicih.coach.App
+import com.opicih.coach.AppContainer
 import com.opicih.coach.analysis.TextNormalizer
 import com.opicih.coach.data.db.ContentSource
 import com.opicih.coach.data.db.PracticeMode
@@ -23,7 +25,7 @@ import com.opicih.coach.learning.LadderLevel
 import com.opicih.coach.learning.LadderResult
 import com.opicih.coach.learning.ParagraphLadder
 import com.opicih.coach.learning.transferCandidates
-import com.opicih.coach.speech.AnswerCapture
+import com.opicih.coach.speech.SpeakingCapture
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -33,26 +35,6 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import java.io.File
 import java.time.LocalDate
-
-data class QuestionItem(
-    val topic: String,
-    val text: String,
-    val type: String,
-    val sourceLabel: String,
-    val script: ScriptEntity? = null,
-    val mission: String? = null,
-    val requiredTense: String? = null,
-    /** FRAME_ATTACH: the approved frames the learner should use in this answer. */
-    val frames: List<FrameChip> = emptyList(),
-    val reviewId: Long? = null,
-    val missionQuestion: String? = null,
-    val recallScript: ScriptEntity? = null,
-)
-
-private data class Variation(val instruction: String, val tense: String? = null, val question: String? = null)
-
-/** A frame shown on the speaking screen. */
-data class FrameChip(val pattern: String, val hintKo: String)
 
 /** How an answer did against the mode's own goal (frame use, ladder level). Shown under the result card. */
 data class PracticeCheck(
@@ -83,15 +65,14 @@ data class SpeakingUi(
     val transferUnavailable: Boolean = false,
 )
 
-class SpeakingViewModel(app: Application) : AndroidViewModel(app) {
-    private val c = (app as App).container
-    private val capture = AnswerCapture(app, c.backup.audioDir())
+class SpeakingViewModel(private val c: AppContainer, private val capture: SpeakingCapture) : ViewModel() {
     private val _ui = MutableStateFlow(SpeakingUi())
     val ui: StateFlow<SpeakingUi> = _ui
     private var bank: List<QuestionEntity> = emptyList()
     private var tick: Job? = null
     private var questionLoad: Job? = null
     private var configured = false
+    private var loadingInitialScript = false
     private var openingReview = false
     private var reviewRoute = false
     private var recallRoute = false
@@ -105,7 +86,7 @@ class SpeakingViewModel(app: Application) : AndroidViewModel(app) {
                     val q = u.question?.let { q -> q.script?.let { s -> list.firstOrNull { it.id == s.id }?.let { q.copy(script = it) } } ?: q }
                     u.copy(scripts = list, question = q)
                 }
-                if (_ui.value.question == null && configured && !recallRoute && !reviewRoute) next()
+                if (_ui.value.question == null && configured && !loadingInitialScript && !recallRoute && !reviewRoute) next()
             }
         }
         viewModelScope.launch {
@@ -124,6 +105,7 @@ class SpeakingViewModel(app: Application) : AndroidViewModel(app) {
     /** Called once from navigation arguments. */
     fun configure(scriptId: Long?, mode: PracticeMode?, reviewId: Long?, recall: Boolean, prompt: String?) {
         if (configured) return
+        loadingInitialScript = scriptId != null && scriptId > 0
         configured = true
         recallRoute = recall
         if (recall) {
@@ -149,7 +131,11 @@ class SpeakingViewModel(app: Application) : AndroidViewModel(app) {
             val s = scriptId?.takeIf { it > 0 }?.let { c.dao.script(it) }
             val m = mode ?: if (s != null) PracticeMode.KEYWORD else PracticeMode.BLIND
             _ui.update { it.copy(mode = m) }
-            if (s != null) setScript(s) else next()
+            if (s != null) setScript(s)
+            else if (loadingInitialScript) {
+                _ui.update { it.copy(error = "이 대본을 찾을 수 없습니다.") }
+            } else next()
+            if (s != null) loadingInitialScript = false
         }
     }
 
@@ -162,7 +148,7 @@ class SpeakingViewModel(app: Application) : AndroidViewModel(app) {
 
     fun setScript(s: ScriptEntity) {
         questionLoad?.cancel()
-        showQuestion(questionFor(s, _ui.value.mode))
+        showQuestion(scriptQuestion(s, _ui.value.mode, bank))
     }
 
     /** A suggested answer is revealed on request. A different relevant story is equally valid. */
@@ -205,7 +191,7 @@ class SpeakingViewModel(app: Application) : AndroidViewModel(app) {
                 val pick = scripts.filter { it.id != current?.script?.id }
                     .sortedWith(compareBy<ScriptEntity> { it.dueEpochDay > today }.thenBy { it.masteryScore }.thenBy { it.dueEpochDay })
                     .let { list -> list.take(4).shuffled().firstOrNull() ?: scripts.firstOrNull() }
-                pick?.let { questionFor(it, mode) }
+                pick?.let { scriptQuestion(it, mode, bank) }
             } else {
                 if (bank.isEmpty()) bank = c.dao.questions()
                 val preferred = st.focusTopics + st.surveyTopics
@@ -300,44 +286,6 @@ class SpeakingViewModel(app: Application) : AndroidViewModel(app) {
         val next = u.ladder?.next() ?: return
         if (u.phase == Phase.RECORDING) return
         _ui.update { it.copy(ladder = next, question = it.question?.copy(mission = next.missionKo), result = null, check = null, phase = Phase.IDLE, error = null, replays = 0, showTypedFallback = false) }
-    }
-
-    private fun questionFor(s: ScriptEntity, mode: PracticeMode): QuestionItem {
-        val label = ContentSource.of(s.source).label
-        return when (mode) {
-            PracticeMode.RANDOM -> {
-                val alt = bank.filter { b -> b.type == s.questionType && (b.topic.contains(s.topic.substringBefore(" "), true) || s.topic.contains(b.topic.substringBefore(" "), true)) && b.text != s.question }
-                    .randomOrNull()?.text ?: rephrase(s)
-                QuestionItem(s.topic, alt, s.questionType, PracticeMode.RANDOM.label, s)
-            }
-            PracticeMode.VARIATION -> {
-                val (mission, tense, question) = variations(s).random()
-                QuestionItem(s.topic, s.question, s.questionType, PracticeMode.VARIATION.label, s, mission, tense, missionQuestion = question)
-            }
-            else -> QuestionItem(s.topic, s.question, s.questionType, label, s)
-        }
-    }
-
-    private fun rephrase(s: ScriptEntity): String {
-        val t = s.title.lowercase()
-        return when (QuestionType.of(s.questionType)) {
-            QuestionType.DESCRIPTION -> "I'd like to know more about $t. Can you describe it in as much detail as possible?"
-            QuestionType.ROUTINE -> "Walk me through what you typically do. I'm curious about your $t."
-            QuestionType.PAST_EXPERIENCE -> "Tell me about one specific time related to $t. What happened, and how did you feel?"
-            QuestionType.COMPARISON -> "How has this changed over the years? Tell me about $t then and now."
-            else -> "Tell me more about $t."
-        }
-    }
-
-    private fun variations(s: ScriptEntity): List<Variation> {
-        val replacement = bank.filter { it.topic != s.topic && it.type == s.questionType }.randomOrNull()?.text
-            ?: "Tell me about something you enjoy doing on weekends."
-        return listOf(
-            Variation("같은 이야기를 미래 계획으로 바꿔 말하세요. 예: \"Next month, I'm planning to...\"", "FUTURE"),
-            Variation("같은 주제로 과거의 구체적인 경험 하나를 말하세요. 예: \"Last year, I...\"", "PAST"),
-            Variation("과거와 지금을 비교해서 말하세요. 예: \"Back then, ... These days, ...\"", "PAST_AND_PRESENT"),
-            Variation("이 답변을 다른 질문에 재활용하세요: \"$replacement\"", question = replacement),
-        )
     }
 
     fun playQuestion(rate: Float = 1.0f) {

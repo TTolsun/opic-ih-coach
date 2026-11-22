@@ -1,7 +1,7 @@
 package com.opicih.coach.data.repo
 
 import androidx.room.withTransaction
-import com.opicih.coach.ai.AiCoach
+import com.opicih.coach.ai.KoreanTranslator
 import com.opicih.coach.data.db.AppDatabase
 import com.opicih.coach.data.db.ScriptEntity
 import com.opicih.coach.data.db.ScriptSegmentEntity
@@ -82,7 +82,7 @@ class SegmentRepository(
     }
 
     /** 스크립트 하나의 번역을 만들어 저장한다. 개수가 맞지 않거나 실패하면 아무것도 저장하지 않는다. */
-    suspend fun generateOne(s: ScriptEntity, ai: AiCoach): Result<Unit> {
+    suspend fun generateOne(s: ScriptEntity, ai: KoreanTranslator): Result<Unit> {
         val plan = ScriptSegmenter.plan(s.studyText)
         if (plan.sentences.isEmpty()) return Result.failure(IllegalStateException("스크립트에 문장이 없습니다."))
         return ai.translateToKorean(listOf(s.question) + plan.sentences).mapCatching { ko ->
@@ -121,7 +121,7 @@ class SegmentRepository(
      * 번역이 없거나 낡은 스크립트를 차례로 만든다. 처음 실패에서 멈추고, 이미 만든 것은 남는다.
      * [limit]으로 앞의 몇 개만 만들 수 있다(시범 생성: 말투를 귀로 확인한 뒤 나머지를 만들기 위해).
      */
-    fun start(ai: AiCoach, limit: Int = Int.MAX_VALUE) {
+    fun start(ai: KoreanTranslator, limit: Int = Int.MAX_VALUE) {
         if (job?.isActive == true) return
         job = scope.launch {
             val todo = pending().take(limit)

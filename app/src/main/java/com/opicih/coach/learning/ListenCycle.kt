@@ -73,6 +73,7 @@ object ListenCycleBuilder {
      * 그래서 지금 재생하는 학습본의 번역이라고 믿을 수 있을 때만 쓴다. 믿을 수 없으면 한국어 단계를 건너뛴다.
      */
     fun koreanMatchesStudyText(s: ScriptEntity): Boolean = when (s.active) {
+        ScriptVersion.SCENE -> s.sceneText != null
         ScriptVersion.IH_TARGET -> s.ihTarget != null
         ScriptVersion.ORIGINAL -> s.ihTarget == null
         else -> false
@@ -87,7 +88,7 @@ object ListenCycleBuilder {
                 question = s.question,
                 questionKo = segments?.questionKo ?: questionKo,
                 answer = s.studyText,
-                answerKo = segments?.fullKo ?: s.koreanMeaning?.takeIf { koreanMatchesStudyText(s) },
+                answerKo = segments?.fullKo ?: s.studyMeaning?.takeIf { koreanMatchesStudyText(s) },
                 segments = segments,
                 random = random,
             ),

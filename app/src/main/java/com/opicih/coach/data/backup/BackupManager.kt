@@ -39,8 +39,8 @@ class BackupManager(private val context: Context, private val db: AppDatabase) {
         /** 1 = learning data only. 2 = adds the exam schedule. 3 = adds mock tests and the columns v2 dropped.
          *  4 = adds script glossary lookups. 5 = adds sentence frames. 6 = adds English-Korean script segments.
          *  7 = adds pending free-speaking reviews. 8 = adds stories (the learner can create their own).
-         *  9 = adds AI-made glossary entries. 10 = adds each story's shared answer. */
-        const val CURRENT_VERSION = 10
+         *  9 = adds AI-made glossary entries. 10 = adds each story's shared answer. 11 = adds its source passages. 12 = adds ready-to-practice scripts. */
+        const val CURRENT_VERSION = 12
         private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
         fun encode(snap: Snapshot): String = json.encodeToString(Snapshot.serializer(), snap)
         /** Columns missing from older files fall back to the entity defaults. */
@@ -70,12 +70,13 @@ class BackupManager(private val context: Context, private val db: AppDatabase) {
         // ---- Entity <-> mirror mapping (pure, unit tested)
         fun ScriptEntity.toBackup() = BScript(id, topic, title, question, questionType, original, natural, ihTarget, shortVersion, keywords,
             activeVersion, koreanMeaning, source, masteryState, masteryScore, srsStep, dueEpochDay, storyIds,
-            difficulty, estSeconds, lastReviewedAt, linkedGroupId, createdAt, updatedAt)
+            difficulty, estSeconds, lastReviewedAt, linkedGroupId, createdAt, updatedAt, sceneText, sceneKeywords, sceneMeaning)
         fun BScript.toEntity() = ScriptEntity(id = id, topic = topic, title = title, question = question, questionType = questionType,
             original = original, natural = natural, ihTarget = ihTarget, shortVersion = shortVersion, keywords = keywords,
             activeVersion = activeVersion, koreanMeaning = koreanMeaning, difficulty = difficulty, estSeconds = estSeconds, source = source,
             masteryState = masteryState, masteryScore = masteryScore, srsStep = srsStep, dueEpochDay = dueEpochDay,
-            lastReviewedAt = lastReviewedAt, linkedGroupId = linkedGroupId, storyIds = storyIds, createdAt = createdAt, updatedAt = updatedAt)
+            lastReviewedAt = lastReviewedAt, linkedGroupId = linkedGroupId, storyIds = storyIds, createdAt = createdAt, updatedAt = updatedAt,
+            sceneText = sceneText, sceneKeywords = sceneKeywords, sceneMeaning = sceneMeaning)
 
         fun ScriptRevisionEntity.toBackup() = BRevision(scriptId, version, text, reasonKo, origin, status, createdAt)
         fun BRevision.toEntity() = ScriptRevisionEntity(scriptId = scriptId, version = version, text = text, reasonKo = reasonKo,
@@ -135,8 +136,8 @@ class BackupManager(private val context: Context, private val db: AppDatabase) {
         fun GlossaryEntryEntity.toBackup() = BGlossary(phrase, forms, kind, meaningKo, noteKo, easier, sourceScriptId, origin, createdAt)
         fun BGlossary.toEntity() = GlossaryEntryEntity(phrase = phrase, forms = forms, kind = kind, meaningKo = meaningKo, noteKo = noteKo,
             easier = easier, sourceScriptId = sourceScriptId, origin = origin, createdAt = createdAt)
-        fun StoryEntity.toBackup() = BStory(id, titleKo, summary, tags, reusableFor, commonAnswer)
-        fun BStory.toEntity() = StoryEntity(id, titleKo, summary, tags, reusableFor, commonAnswer)
+        fun StoryEntity.toBackup() = BStory(id, titleKo, summary, tags, reusableFor, commonAnswer, sourcePassages)
+        fun BStory.toEntity() = StoryEntity(id, titleKo, summary, tags, reusableFor, commonAnswer, sourcePassages)
         fun ScriptSegmentEntity.toBackup() = BSegment(scriptId, version, sourceHash, kind, idx, en, ko, createdAt)
         fun BSegment.toEntity() = ScriptSegmentEntity(scriptId = scriptId, version = version, sourceHash = sourceHash, kind = kind,
             idx = idx, en = en, ko = ko, createdAt = createdAt)
@@ -180,6 +181,7 @@ class BackupManager(private val context: Context, private val db: AppDatabase) {
         val dueEpochDay: Long, val storyIds: String?,
         val difficulty: Int = 3, val estSeconds: Int = 60, val lastReviewedAt: Long? = null, val linkedGroupId: String? = null,
         val createdAt: Long = System.currentTimeMillis(), val updatedAt: Long = System.currentTimeMillis(),
+        val sceneText: String? = null, val sceneKeywords: String? = null, val sceneMeaning: String? = null,
     )
     @Serializable data class BRevision(val scriptId: Long, val version: String, val text: String, val reasonKo: String, val origin: String, val status: String, val createdAt: Long)
     @Serializable data class BAttempt(
@@ -212,7 +214,7 @@ class BackupManager(private val context: Context, private val db: AppDatabase) {
         val phrase: String, val forms: String, val kind: String, val meaningKo: String, val noteKo: String?, val easier: String?,
         val sourceScriptId: Long?, val origin: String, val createdAt: Long,
     )
-    @Serializable data class BStory(val id: String, val titleKo: String, val summary: String, val tags: String, val reusableFor: String, val commonAnswer: String? = null)
+    @Serializable data class BStory(val id: String, val titleKo: String, val summary: String, val tags: String, val reusableFor: String, val commonAnswer: String? = null, val sourcePassages: String? = null)
     @Serializable data class BSegment(val scriptId: Long, val version: String, val sourceHash: String, val kind: String, val idx: Int, val en: String, val ko: String, val createdAt: Long = 0)
     @Serializable data class BTrainingSession(val id: Long, val examType: String, val kind: String, val startedAt: Long, val finishedAt: Long?, val turnCount: Int, val aiCalls: Int, val summaryJson: String?)
 

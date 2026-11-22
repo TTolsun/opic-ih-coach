@@ -62,7 +62,7 @@ import java.time.LocalDate
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-internal fun ResultPanel(r: AnalyzedAttempt, ui: SpeakingUi, vm: SpeakingViewModel, onRetry: () -> Unit) {
+internal fun ResultPanel(r: AnalyzedAttempt, ui: SpeakingUi, vm: SpeakingViewModel, onRetry: () -> Unit, onNext: () -> Unit, nextLabel: String) {
     val fb = r.feedback
     val a = r.attempt
     val isAi = fb.source == "AI"
@@ -160,7 +160,7 @@ internal fun ResultPanel(r: AnalyzedAttempt, ui: SpeakingUi, vm: SpeakingViewMod
                 PracticeMode.KEYWORD -> FilledTonalButton(onClick = { vm.setMode(PracticeMode.BLIND) }) { Text("안 보고 말하기") }
                 else -> Unit
             }
-            OutlinedButton(onClick = { vm.next() }) { Icon(Icons.Filled.SkipNext, null); Text("다음 질문", maxLines = 1) }
+            OutlinedButton(onClick = onNext) { Icon(Icons.Filled.SkipNext, null); Text(nextLabel, maxLines = 1) }
             if (ui.question?.recallScript == null && a.mode == PracticeMode.FREE.name && !ui.transferUnavailable) {
                 OutlinedButton(onClick = vm::nextSameType) { Text("같은 유형 새 질문") }
             }

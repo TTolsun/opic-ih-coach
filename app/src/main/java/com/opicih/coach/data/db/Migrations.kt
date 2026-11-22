@@ -5,6 +5,9 @@ package com.opicih.coach.data.db
  * against a real SQLite file (see MigrationTest). AppDatabase only executes these lists.
  */
 object MigrationSql {
+    val V12_TO_V13 = listOf("sceneText", "sceneKeywords", "sceneMeaning").map { "ALTER TABLE scripts ADD COLUMN $it TEXT" }
+    val V11_TO_V12 = listOf("ALTER TABLE stories ADD COLUMN sourcePassages TEXT")
+
     val V10_TO_V11 = listOf("ALTER TABLE stories ADD COLUMN commonAnswer TEXT")
 
     val V1_TO_V2 = listOf(

@@ -72,6 +72,7 @@ class AppContainer(context: Context) {
     val practice = PracticeRepository(db)
     val importer = ImportService(ctx)
     val backup = BackupManager(ctx, db)
+    fun newSpeakingCapture(): com.opicih.coach.speech.SpeakingCapture = com.opicih.coach.speech.AnswerCapture(ctx, backup.audioDir())
     val exams = ExamRepository(db, settings)
     val seed = SeedLoader(ctx, db, settings)
     val localCoach = LocalCoach()
@@ -112,7 +113,10 @@ class App : Application() {
             runCatching { container.exams.bootstrapIfNeeded() }
             // 내장 한국어 번역을 가져온다(번역이 없거나 낡은 스크립트 중 해시가 맞는 것만).
             runCatching {
-                this@App.assets.open("seed/segments_ko.json").bufferedReader(Charsets.UTF_8).use { container.segments.importBundled(it.readText()) }
+                val bundledFiles = this@App.assets.list("seed").orEmpty().toSet()
+                for (file in listOf("scene_scripts.json", "segments_ko.json").filter { it in bundledFiles }) {
+                    this@App.assets.open("seed/$file").bufferedReader(Charsets.UTF_8).use { container.segments.importBundled(it.readText()) }
+                }
             }
             val s = container.settings.current()
             com.opicih.coach.alarm.AlarmCoordinator.applyAll(this@App, s)

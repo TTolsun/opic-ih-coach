@@ -1,0 +1,1008 @@
+{
+  "version": 1,
+  "items": [
+    {
+      "title": "Recent Trip",
+      "question": "Tell me about a trip you took to another country recently. Where did you go, and what did you do there?",
+      "questionKo": "최근에 다른 나라로 다녀온 여행에 대해 말해 주세요. 어디에 갔고, 거기서 무엇을 했나요?",
+      "hash": "c56769505bb58e5a",
+      "keywords": [
+        "last summer",
+        "Jeju Air",
+        "Osaka Castle",
+        "hotel hot spring"
+      ],
+      "sentences": [
+        {
+          "en": "Last summer, my family and I spent four days in Osaka.",
+          "ko": "지난여름에 가족과 오사카에서 나흘을 보냈어요."
+        },
+        {
+          "en": "We flew there on Jeju Air and stayed for three nights.",
+          "ko": "제주항공을 타고 가서 3박을 했어요."
+        },
+        {
+          "en": "One place I remember clearly is Osaka Castle.",
+          "ko": "오사카성은 특히 또렷하게 기억나요."
+        },
+        {
+          "en": "There were people everywhere, but even in that crowd, the castle itself was what caught my eye.",
+          "ko": "어딜 봐도 사람이 많았지만, 그 와중에도 제 눈에 들어온 건 성이었어요."
+        },
+        {
+          "en": "Our hotel had a hot spring, and the beer was unlimited.",
+          "ko": "호텔에는 온천이 있었고 맥주도 마음껏 마실 수 있었어요."
+        },
+        {
+          "en": "After walking around Osaka Castle, it felt so good to soak in the hot water.",
+          "ko": "오사카성을 돌아본 뒤 뜨거운 물에 몸을 담그니 정말 좋았어요."
+        }
+      ],
+      "paragraphBreak": 4
+    },
+    {
+      "title": "Memorable Experience",
+      "question": "Did anything memorable or unexpected happen during your trip abroad?",
+      "questionKo": "해외여행 중에 기억에 남거나 예상 밖의 일이 있었나요?",
+      "hash": "3f38d53df5f9cc4b",
+      "keywords": [
+        "Dotonbori",
+        "sweet takoyaki",
+        "stomachache",
+        "medicine",
+        "back to the hotel"
+      ],
+      "sentences": [
+        {
+          "en": "The surprise on my trip to Osaka was how quickly a great meal went wrong.",
+          "ko": "오사카 여행에서는 맛있게 먹던 중에 그렇게 갑자기 탈이 날 줄 몰랐어요."
+        },
+        {
+          "en": "My family and I went to Dotonbori for takoyaki.",
+          "ko": "가족과 다코야키를 먹으러 도톤보리에 갔어요."
+        },
+        {
+          "en": "There were several kinds, and the sweet ones were my favorite.",
+          "ko": "종류가 여러 가지였는데 저는 달달한 게 제일 좋았어요."
+        },
+        {
+          "en": "I was really enjoying them when my stomach started to hurt.",
+          "ko": "한창 맛있게 먹고 있었는데 배가 아프기 시작했어요."
+        },
+        {
+          "en": "It got bad enough that I had to find a drugstore.",
+          "ko": "약국을 찾아야 할 정도로 아파졌어요."
+        },
+        {
+          "en": "I bought some medicine, went back to the hotel, and got some sleep.",
+          "ko": "약을 사서 호텔에 돌아가 푹 잤어요."
+        }
+      ],
+      "paragraphBreak": 3
+    },
+    {
+      "title": "Favorite Destination",
+      "question": "Where do you like to go for domestic trips? Describe your favorite travel destination in your country.",
+      "questionKo": "국내 여행은 어디로 가는 걸 좋아하세요? 우리나라에서 가장 좋아하는 여행지를 설명해 주세요.",
+      "hash": "ab936d03c66eb8ab",
+      "keywords": [
+        "Gangwon-do",
+        "mountains",
+        "apple orchard",
+        "view from the ladder"
+      ],
+      "sentences": [
+        {
+          "en": "My favorite place for a trip in Korea is Gangwon-do.",
+          "ko": "국내 여행지 중에서는 강원도를 가장 좋아해요."
+        },
+        {
+          "en": "We have beautiful stretches of coast in Korea, but what draws me to Gangwon-do is the mountains.",
+          "ko": "우리나라에는 아름다운 해안도 많지만, 제가 강원도에 끌리는 건 산 때문이에요."
+        },
+        {
+          "en": "Last fall, I went apple picking in Gangwon-do.",
+          "ko": "지난가을에 강원도로 사과를 따러 갔어요."
+        },
+        {
+          "en": "I climbed a ladder to reach the apples, and from up there I could see the mountains beyond the orchard.",
+          "ko": "사과를 따려고 사다리에 올라갔더니 과수원 너머로 산이 보였어요."
+        },
+        {
+          "en": "I went there to pick fruit, but that view from the ladder is what stayed with me.",
+          "ko": "과일을 따러 갔는데, 지금도 기억에 남는 건 사다리 위에서 본 풍경이에요."
+        }
+      ],
+      "paragraphBreak": 2
+    },
+    {
+      "title": "Travel Routine",
+      "question": "What do you usually prepare before you go on a trip? What are some things you always do while traveling?",
+      "questionKo": "여행을 떠나기 전에 보통 무엇을 준비하나요? 여행하는 동안 항상 하는 일에는 어떤 것들이 있나요?",
+      "hash": "480c3bab566c0aa9",
+      "keywords": [
+        "four-hour drive",
+        "portable charger",
+        "restaurants",
+        "quiet trip"
+      ],
+      "sentences": [
+        {
+          "en": "Before a trip, I usually check how long the drive will be.",
+          "ko": "여행 전에는 대개 차로 얼마나 걸리는지 확인해요."
+        },
+        {
+          "en": "I try to pick somewhere within a four-hour drive because I don't enjoy long stretches behind the wheel.",
+          "ko": "운전을 오래 하는 게 싫어서 차로 네 시간 안에 갈 수 있는 곳을 고르는 편이에요."
+        },
+        {
+          "en": "The one thing I always pack is a portable charger.",
+          "ko": "꼭 챙기는 건 휴대용 충전기예요."
+        },
+        {
+          "en": "Once I get there, I use my phone to look up places to eat, and I also use it for games and the news.",
+          "ko": "도착하면 휴대폰으로 맛집을 찾고, 게임을 하거나 뉴스도 봐요."
+        },
+        {
+          "en": "I don't usually book a hotel in advance.",
+          "ko": "호텔을 미리 예약하는 편은 아니에요."
+        },
+        {
+          "en": "I'm a bit of a homebody, so a short, quiet trip suits me.",
+          "ko": "집에 있는 걸 좋아해서 짧게 조용히 다녀오는 여행이 저한테 잘 맞아요."
+        }
+      ],
+      "paragraphBreak": 3
+    },
+    {
+      "title": "Travel Experience",
+      "question": "Tell me about a memorable domestic trip you went on recently. Where did you go, and what did you do?",
+      "questionKo": "최근에 다녀온 기억에 남는 국내 여행에 대해 말해 주세요. 어디에 갔고, 무엇을 했나요?",
+      "hash": "c78f1d1aea130027",
+      "keywords": [
+        "apple picking",
+        "eating as I picked",
+        "drugstore",
+        "friend's house"
+      ],
+      "sentences": [
+        {
+          "en": "Last fall, I went apple picking in Gangwon-do.",
+          "ko": "지난가을에 강원도로 사과를 따러 갔어요."
+        },
+        {
+          "en": "The apples looked so good that I kept eating them as I picked.",
+          "ko": "사과가 너무 맛있어 보여서 따면서 계속 먹었어요."
+        },
+        {
+          "en": "I didn't realize how many I'd eaten until my stomach started to hurt.",
+          "ko": "배가 아프기 시작하고 나서야 제가 얼마나 많이 먹었는지 깨달았어요."
+        },
+        {
+          "en": "I had to rush to a nearby drugstore for some medicine.",
+          "ko": "급히 근처 약국에 가서 약을 사야 했어요."
+        },
+        {
+          "en": "Later, I took a long nap at my friend's house, and when I woke up, I felt much better.",
+          "ko": "나중에 친구 집에서 한숨 푹 자고 일어나니 훨씬 나아졌어요."
+        },
+        {
+          "en": "Those apples were delicious, but I remember the nap just as clearly.",
+          "ko": "사과도 맛있었지만, 그때 잔 낮잠도 그만큼 또렷하게 기억나요."
+        }
+      ],
+      "paragraphBreak": 3
+    },
+    {
+      "title": "Favorite Movies",
+      "question": "What kind of movies do you like to watch? Who is your favorite actor or actress?",
+      "questionKo": "어떤 종류의 영화를 즐겨 보나요? 가장 좋아하는 배우는 누구인가요?",
+      "hash": "2b7f660694343a49",
+      "keywords": [
+        "romance",
+        "La La Land",
+        "two leads",
+        "dreams",
+        "ending"
+      ],
+      "sentences": [
+        {
+          "en": "I like romance movies, and La La Land is the one that comes to mind.",
+          "ko": "로맨스 영화를 좋아하는데, 가장 먼저 떠오르는 건 라라랜드예요."
+        },
+        {
+          "en": "As for actors, I really like Emma Stone in that movie, especially in her scenes with the other lead.",
+          "ko": "배우 중에서는 그 영화에 나온 에마 스톤의 연기가 좋아요. 특히 상대 배우와 함께 나오는 장면들이요."
+        },
+        {
+          "en": "You can see how close their characters are when they sing and dance together.",
+          "ko": "함께 노래하고 춤추는 모습을 보면 두 인물이 얼마나 가까운지 느껴져요."
+        },
+        {
+          "en": "But they also have different dreams, and eventually they go their separate ways.",
+          "ko": "하지만 둘은 꿈이 달라서 결국 각자의 길을 가요."
+        },
+        {
+          "en": "That's what makes the ending so moving for me.",
+          "ko": "그래서 저는 결말이 참 뭉클해요."
+        },
+        {
+          "en": "I can understand their choices and still wish they'd stayed together.",
+          "ko": "두 사람의 선택은 이해되면서도, 둘이 계속 함께했으면 하는 마음이 들어요."
+        }
+      ],
+      "paragraphBreak": 3
+    },
+    {
+      "title": "Movie Routine",
+      "question": "What is your routine when you go to the movies? What do you do before and after the movie?",
+      "questionKo": "영화를 보러 갈 때 어떤 루틴이 있나요? 영화 전후에 무엇을 하나요?",
+      "hash": "0500ea233a4dbe35",
+      "keywords": [
+        "movie app",
+        "showtime",
+        "popcorn",
+        "seat",
+        "review"
+      ],
+      "sentences": [
+        {
+          "en": "My movie routine starts on my phone.",
+          "ko": "제 영화관 나들이는 휴대폰에서 시작해요."
+        },
+        {
+          "en": "I check the showtimes on the app before I go, so I know which showing I want.",
+          "ko": "가기 전에 앱으로 시간을 보고 어느 회차를 볼지 정해요."
+        },
+        {
+          "en": "At the theater, I grab some popcorn and a drink before I find my seat.",
+          "ko": "영화관에서는 자리를 찾기 전에 팝콘하고 음료를 사요."
+        },
+        {
+          "en": "After the movie, I like to leave a rating or write a short review.",
+          "ko": "영화가 끝나면 평점을 남기거나 짧게 후기를 쓰는 걸 좋아해요."
+        },
+        {
+          "en": "That's my favorite part of the routine because I get to put my reaction into words while the movie is still fresh in my mind.",
+          "ko": "영화의 여운이 남아 있을 때 제 감상을 말로 정리할 수 있어서 그 시간이 가장 좋아요."
+        }
+      ],
+      "paragraphBreak": 3
+    },
+    {
+      "title": "Memorable Experience",
+      "question": "Have you ever had a memorable or unexpected experience at a movie theater? What happened?",
+      "questionKo": "영화관에서 기억에 남거나 예상치 못한 경험을 한 적이 있나요? 무슨 일이 있었나요?",
+      "hash": "7459bde143d69518",
+      "keywords": [
+        "Basketball",
+        "snacks",
+        "final shot",
+        "restroom",
+        "missed the ending"
+      ],
+      "sentences": [
+        {
+          "en": "I once missed the ending of a movie even though I was right there at the theater.",
+          "ko": "영화관까지 가서 결말을 놓친 적이 있어요."
+        },
+        {
+          "en": "Last year, I went to see a movie called Basketball.",
+          "ko": "작년에 바스켓볼이라는 영화를 보러 갔어요."
+        },
+        {
+          "en": "I was starving, so I bought a lot of snacks and drinks before it started.",
+          "ko": "너무 배가 고파서 시작하기 전에 간식하고 음료를 잔뜩 샀어요."
+        },
+        {
+          "en": "Just as the main character was about to take the final shot, I got a terrible stomachache.",
+          "ko": "주인공이 마지막 슛을 던지려는 바로 그때 배가 너무 아팠어요."
+        },
+        {
+          "en": "I had to run to the restroom.",
+          "ko": "화장실로 뛰어갈 수밖에 없었어요."
+        },
+        {
+          "en": "By the time I got back to my seat, the movie was over.",
+          "ko": "자리로 돌아왔을 때는 이미 영화가 끝나 있었어요."
+        },
+        {
+          "en": "Of all the scenes to miss, it had to be that one!",
+          "ko": "하필 놓쳐도 그 장면을 놓친 거예요!"
+        }
+      ],
+      "paragraphBreak": 4
+    },
+    {
+      "title": "Vacation at Home",
+      "question": "How do you usually spend your vacation? Do you prefer staying at home or going out? Tell me about your vacation routine.",
+      "questionKo": "보통 휴가를 어떻게 보내나요? 집에 있는 것과 밖에 나가는 것 중 어느 쪽을 더 좋아하나요? 휴가 루틴을 이야기해 주세요.",
+      "hash": "4b5be53c1bf9ece5",
+      "keywords": [
+        "vacation at home",
+        "gray sofa",
+        "big TV",
+        "lose track of time",
+        "recharge"
+      ],
+      "sentences": [
+        {
+          "en": "On vacation, I'm happy to stay home.",
+          "ko": "휴가 때는 집에 있어도 좋아요."
+        },
+        {
+          "en": "My favorite spot is the big gray sofa in my living room.",
+          "ko": "제가 제일 좋아하는 자리는 거실의 커다란 회색 소파예요."
+        },
+        {
+          "en": "I settle in there and play video games on the big TV.",
+          "ko": "거기에 편하게 앉아서 큰 TV로 게임을 해요."
+        },
+        {
+          "en": "The games look so realistic that I lose track of time.",
+          "ko": "게임 화면이 워낙 실감 나서 시간 가는 줄 몰라요."
+        },
+        {
+          "en": "When I get caught up in a game like that, the stress of the week seems to disappear.",
+          "ko": "집에서 휴가를 보내는 게 좋은 이유예요. 게임에 푹 빠져 있다 보면 한 주 동안 쌓인 스트레스가 풀리거든요."
+        }
+      ],
+      "paragraphBreak": 2
+    },
+    {
+      "title": "Going Outside",
+      "question": "You mentioned you like active vacations. What do you do when you go outside?",
+      "questionKo": "활동적인 휴가를 좋아한다고 하셨죠. 밖에 나가면 무엇을 하나요?",
+      "hash": "895ced7367a63d4f",
+      "keywords": [
+        "after gaming",
+        "Central Park",
+        "jogging",
+        "Butter",
+        "fresh air"
+      ],
+      "sentences": [
+        {
+          "en": "When I've been playing games at home for a while, I like to get outside for some fresh air.",
+          "ko": "집에서 한동안 게임을 하다 보면 바람을 쐬러 나가고 싶어져요."
+        },
+        {
+          "en": "I go jogging in Central Park near my house.",
+          "ko": "집 근처 센트럴파크에 가서 조깅을 해요."
+        },
+        {
+          "en": "I put on some music, and one song I love to run to is Butter by BTS.",
+          "ko": "음악을 틀고 뛰는데, 특히 방탄소년단의 버터를 들으며 뛰는 걸 좋아해요."
+        },
+        {
+          "en": "The beat gives me energy, and it feels good to be moving after sitting on the sofa.",
+          "ko": "박자를 들으면 힘이 나고, 소파에 앉아 있다가 몸을 움직이니 기분도 좋아요."
+        },
+        {
+          "en": "That's usually the outdoor part of my vacation day.",
+          "ko": "휴가 때 밖에서는 보통 그렇게 시간을 보내요."
+        }
+      ],
+      "paragraphBreak": 2
+    },
+    {
+      "title": "Memorable Vacation",
+      "question": "Tell me about a memorable vacation you took recently.",
+      "questionKo": "최근에 다녀온 기억에 남는 휴가에 대해 말해 주세요.",
+      "hash": "236edfde4b536663",
+      "keywords": [
+        "four days in Osaka",
+        "hot spring",
+        "Dotonbori",
+        "takoyaki",
+        "looking back"
+      ],
+      "sentences": [
+        {
+          "en": "Last summer, my family and I spent four days in Osaka.",
+          "ko": "지난여름에 가족과 오사카에서 나흘을 보냈어요."
+        },
+        {
+          "en": "What I remember is how relaxing the trip was, apart from one evening.",
+          "ko": "딱 하루 저녁만 빼면 참 편안했던 여행으로 기억해요."
+        },
+        {
+          "en": "Our hotel had a hot spring, and the beer was unlimited.",
+          "ko": "호텔에는 온천이 있었고 맥주도 마음껏 마실 수 있었어요."
+        },
+        {
+          "en": "It was a great place to unwind at the end of the day.",
+          "ko": "하루 일정을 마치고 쉬기 참 좋은 곳이었어요."
+        },
+        {
+          "en": "Then one evening, my family and I went to Dotonbori for takoyaki.",
+          "ko": "그러다 어느 날 저녁에는 가족과 도톤보리에 다코야키를 먹으러 갔어요."
+        },
+        {
+          "en": "I ate too much and ended up at a drugstore with a stomachache.",
+          "ko": "너무 많이 먹는 바람에 배탈이 나서 결국 약국에 갔어요."
+        },
+        {
+          "en": "When I think of that vacation, I remember both the hot spring and that unexpected stop.",
+          "ko": "그 휴가를 생각하면 온천도, 뜻밖에 들렀던 약국도 함께 떠올라요."
+        }
+      ],
+      "paragraphBreak": 4
+    },
+    {
+      "title": "Description of Your House",
+      "question": "Could you describe your home in detail? What does it look like, and how many rooms are there?",
+      "questionKo": "집을 자세히 묘사해 주실 수 있나요? 어떻게 생겼고 방은 몇 개인가요?",
+      "hash": "f0a4f9c92a01d2ec",
+      "keywords": [
+        "sixth floor",
+        "three rooms",
+        "dressing room",
+        "books",
+        "living room"
+      ],
+      "sentences": [
+        {
+          "en": "I live in an apartment on the sixth floor.",
+          "ko": "저는 아파트 6층에 살아요."
+        },
+        {
+          "en": "It has three rooms, including a dressing room and a study.",
+          "ko": "방은 세 개이고, 그중 하나는 옷방이고 하나는 서재예요."
+        },
+        {
+          "en": "The study is full of books, so it has a very different feel from the living room.",
+          "ko": "서재는 책이 가득해서 거실과는 분위기가 많이 달라요."
+        },
+        {
+          "en": "My favorite spot is the big gray sofa in my living room.",
+          "ko": "제가 제일 좋아하는 자리는 거실의 커다란 회색 소파예요."
+        },
+        {
+          "en": "That's where I play games on the TV or stretch out for a nap.",
+          "ko": "거기서 TV로 게임을 하기도 하고 쭉 뻗어서 낮잠을 자기도 해요."
+        }
+      ],
+      "paragraphBreak": 3
+    },
+    {
+      "title": "Favorite Furniture",
+      "question": "Tell me about your favorite piece of furniture in your house. What is it, and why do you like it?",
+      "questionKo": "집에서 가장 좋아하는 가구에 대해 말해 주세요. 무엇이고, 왜 좋아하나요?",
+      "hash": "9edabf32c05140ad",
+      "keywords": [
+        "gray sofa",
+        "space to stretch out",
+        "games",
+        "nap"
+      ],
+      "sentences": [
+        {
+          "en": "I'd pick the sofa in my living room.",
+          "ko": "저는 거실에 있는 소파를 고를래요."
+        },
+        {
+          "en": "It's big and gray, and what I love about it is that I have room to stretch out.",
+          "ko": "크고 회색인데, 몸을 쭉 펼 수 있을 만큼 넓은 게 가장 좋아요."
+        },
+        {
+          "en": "When I'm playing video games, I can sit there comfortably with the TV in front of me.",
+          "ko": "게임을 할 때는 TV를 앞에 두고 편하게 앉아 있을 수 있어요."
+        },
+        {
+          "en": "And when I feel sleepy, I can just lie down right where I am.",
+          "ko": "그러다 졸리면 그 자리에서 바로 누우면 돼요."
+        },
+        {
+          "en": "For me, a piece of furniture that works just as well for a game as it does for a nap is hard to beat.",
+          "ko": "게임하기에도, 낮잠 자기에도 좋은 가구라서 저는 이보다 좋은 게 없는 것 같아요."
+        }
+      ],
+      "paragraphBreak": 2
+    },
+    {
+      "title": "Comparison (Past vs. Present)",
+      "question": "Compare the furniture you have now to the furniture you had when you were a child. How is it different?",
+      "questionKo": "지금 가진 가구와 어릴 때 가졌던 가구를 비교해 보세요. 어떻게 다른가요?",
+      "hash": "cb6a304410a3a888",
+      "keywords": [
+        "small childhood sofa",
+        "jumping",
+        "broke",
+        "larger sofa",
+        "resting"
+      ],
+      "sentences": [
+        {
+          "en": "The biggest difference is the sofa.",
+          "ko": "가장 큰 차이는 소파예요."
+        },
+        {
+          "en": "When I was a kid, our sofa was small, but I treated it like a trampoline.",
+          "ko": "어릴 때 우리 집 소파는 작았지만 저는 트램펄린처럼 쓰곤 했어요."
+        },
+        {
+          "en": "I used to jump on it so much that I actually broke it.",
+          "ko": "하도 뛰어서 진짜로 소파를 망가뜨렸어요."
+        },
+        {
+          "en": "The one I have now is much bigger, with plenty of room to lie down.",
+          "ko": "지금 쓰는 건 훨씬 커서 누울 공간도 넉넉해요."
+        },
+        {
+          "en": "These days, I use it to play games or take a nap.",
+          "ko": "요즘은 그 위에서 게임을 하거나 낮잠을 자요."
+        },
+        {
+          "en": "So the size has changed, but I think the way I use it has changed even more.",
+          "ko": "크기도 달라졌지만, 제가 소파를 쓰는 방식이 더 많이 바뀐 것 같아요."
+        }
+      ],
+      "paragraphBreak": 3
+    },
+    {
+      "title": "Past Experience",
+      "question": "Tell me about a memorable experience regarding furniture you had in your childhood.",
+      "questionKo": "어린 시절 가구와 관련해 기억에 남는 경험에 대해 말해 주세요.",
+      "hash": "b0924b08db60e433",
+      "keywords": [
+        "trampoline",
+        "broken sofa",
+        "mother's reaction",
+        "replacement",
+        "making it up to her"
+      ],
+      "sentences": [
+        {
+          "en": "When I was a kid, our sofa was small, but I treated it like a trampoline.",
+          "ko": "어릴 때 우리 집 소파는 작았지만 저는 트램펄린처럼 쓰곤 했어요."
+        },
+        {
+          "en": "I could spend ages jumping on it, and my mom would get so upset with me.",
+          "ko": "한참을 그 위에서 뛰놀아서 엄마가 정말 화를 내시곤 했어요."
+        },
+        {
+          "en": "At the time, I was just having fun.",
+          "ko": "그때는 마냥 재미있었어요."
+        },
+        {
+          "en": "Later, I felt bad about breaking something my mom had to use every day.",
+          "ko": "나중에는 엄마가 매일 쓰시는 걸 제가 망가뜨렸다는 게 마음에 걸렸어요."
+        },
+        {
+          "en": "Recently, I bought her a new sofa to make it up to her.",
+          "ko": "얼마 전에 그때 일을 만회하고 싶어서 엄마께 새 소파를 사 드렸어요."
+        },
+        {
+          "en": "She was really touched, and seeing how happy she was made me feel better about that old sofa.",
+          "ko": "엄마가 정말 감동하셨고, 기뻐하시는 모습을 보니 옛날 소파 일이 한결 마음 편해졌어요."
+        }
+      ],
+      "paragraphBreak": 3
+    },
+    {
+      "title": "Routine at Home",
+      "question": "What do you usually do when you are at home? Tell me about your typical routine on your days off.",
+      "questionKo": "집에 있을 때 보통 무엇을 하나요? 쉬는 날의 전형적인 루틴을 이야기해 주세요.",
+      "hash": "a5383b047eaab0a5",
+      "keywords": [
+        "day off",
+        "sofa",
+        "big TV",
+        "realistic games",
+        "stress"
+      ],
+      "sentences": [
+        {
+          "en": "On a day off, I usually head straight for the sofa in the living room.",
+          "ko": "쉬는 날이면 보통 거실 소파로 바로 가요."
+        },
+        {
+          "en": "I settle in there and play video games on the big TV.",
+          "ko": "거기에 편하게 앉아서 큰 TV로 게임을 해요."
+        },
+        {
+          "en": "The games look so realistic that I lose track of time.",
+          "ko": "게임 화면이 워낙 실감 나서 시간 가는 줄 몰라요."
+        },
+        {
+          "en": "I can be sitting in the same spot for ages and barely notice it.",
+          "ko": "같은 자리에 한참 앉아 있어도 거의 의식하지 못해요."
+        },
+        {
+          "en": "By the time I stop playing, I feel much more relaxed.",
+          "ko": "게임을 마칠 때쯤이면 긴장이 많이 풀려 있어요."
+        }
+      ],
+      "paragraphBreak": 3
+    },
+    {
+      "title": "Park Description",
+      "question": "Describe a park you often visit. What does it look like, and what do people usually do there?",
+      "questionKo": "자주 가는 공원을 묘사해 주세요. 어떻게 생겼고, 사람들은 보통 거기서 무엇을 하나요?",
+      "hash": "a49d9af7c155fa6a",
+      "keywords": [
+        "Central Park",
+        "near home",
+        "joggers",
+        "running together"
+      ],
+      "sentences": [
+        {
+          "en": "The park I go to most often is Central Park near my house.",
+          "ko": "제가 가장 자주 가는 곳은 집 근처 센트럴파크예요."
+        },
+        {
+          "en": "What stands out to me is how many people I see jogging there.",
+          "ko": "갈 때마다 눈에 띄는 건 조깅하는 사람이 많다는 점이에요."
+        },
+        {
+          "en": "Some people are out for a walk, and others, like me, are there for a run.",
+          "ko": "어떤 사람은 산책하고, 저처럼 달리러 온 사람도 있어요."
+        },
+        {
+          "en": "I like that feeling of exercising together, even though we're all doing our own thing.",
+          "ko": "각자 운동을 하는데도 함께 뛰는 듯한 느낌이 들어서 좋아요."
+        },
+        {
+          "en": "When I picture the park, that's the scene that comes to mind.",
+          "ko": "그 공원을 떠올리면 제일 먼저 생각나는 풍경이 바로 그거예요."
+        }
+      ],
+      "paragraphBreak": 2
+    },
+    {
+      "title": "Park/Music Routine",
+      "question": "What do you usually do at the park? Do you listen to music while exercising?",
+      "questionKo": "공원에서는 보통 무엇을 하나요? 운동하면서 음악을 듣나요?",
+      "hash": "20659f25e744074d",
+      "keywords": [
+        "knee pads",
+        "Bluetooth earphones",
+        "jogging",
+        "Butter",
+        "beat"
+      ],
+      "sentences": [
+        {
+          "en": "I go jogging in Central Park near my house.",
+          "ko": "집 근처 센트럴파크에 가서 조깅을 해요."
+        },
+        {
+          "en": "Before I start, I put on my knee pads and my Bluetooth earphones.",
+          "ko": "뛰기 전에 무릎 보호대를 차고 블루투스 이어폰을 껴요."
+        },
+        {
+          "en": "One song I love to run to is Butter by BTS.",
+          "ko": "특히 방탄소년단의 버터를 들으며 뛰는 걸 좋아해요."
+        },
+        {
+          "en": "It has such an upbeat rhythm that running feels easier when it's on.",
+          "ko": "박자가 워낙 경쾌해서 그 노래를 들으면 달리기가 한결 가볍게 느껴져요."
+        },
+        {
+          "en": "For me, the fresh air and the music are both part of the workout.",
+          "ko": "저한테는 바깥 공기도 음악도 운동의 일부예요."
+        }
+      ],
+      "paragraphBreak": 2
+    },
+    {
+      "title": "Favorite Musician",
+      "question": "Who is your favorite musician or composer? Why do you like their music?",
+      "questionKo": "가장 좋아하는 음악가나 작곡가는 누구인가요? 그 음악이 왜 좋은가요?",
+      "hash": "eff76ea1104c14ef",
+      "keywords": [
+        "BTS",
+        "seven members",
+        "performance videos",
+        "Butter",
+        "jogging"
+      ],
+      "sentences": [
+        {
+          "en": "My favorite group is BTS.",
+          "ko": "제가 가장 좋아하는 그룹은 방탄소년단이에요."
+        },
+        {
+          "en": "There are seven members, and I especially enjoy watching them perform together.",
+          "ko": "멤버가 일곱 명인데, 저는 이들이 함께 무대를 하는 모습이 특히 좋아요."
+        },
+        {
+          "en": "Their performance videos are what I'd show someone who wanted to know why I like them.",
+          "ko": "제가 왜 그들을 좋아하는지 궁금해하는 사람이 있다면 공연 영상을 보여 주고 싶어요."
+        },
+        {
+          "en": "One song I love to run to is Butter by BTS.",
+          "ko": "특히 방탄소년단의 버터를 들으며 뛰는 걸 좋아해요."
+        },
+        {
+          "en": "Even without the video, that beat gives me the same lift I get from watching them on stage.",
+          "ko": "영상을 보지 않아도 그 박자를 들으면 무대를 볼 때처럼 기운이 나요."
+        }
+      ],
+      "paragraphBreak": 3
+    },
+    {
+      "title": "Music Taste Change",
+      "question": "How has your music taste changed from when you were younger to now? Tell me about the music you used to like and what you listen to these days.",
+      "questionKo": "어릴 때와 지금을 비교하면 음악 취향이 어떻게 바뀌었나요? 예전에 좋아하던 음악과 요즘 듣는 음악을 이야기해 주세요.",
+      "hash": "f8c824ba92b6ba64",
+      "keywords": [
+        "army",
+        "Rain",
+        "Rainism",
+        "BTS",
+        "still like dance music"
+      ],
+      "sentences": [
+        {
+          "en": "When I was in the army, I listened to a lot of dance music.",
+          "ko": "군 복무를 할 때 댄스 음악을 많이 들었어요."
+        },
+        {
+          "en": "Back then, my favorite was Rain, especially his song Rainism.",
+          "ko": "그때 가장 좋아한 가수는 비였고, 특히 레이니즘을 좋아했어요."
+        },
+        {
+          "en": "Something about that beat made me feel like a dancer myself.",
+          "ko": "그 박자를 듣고 있으면 저도 댄서가 된 기분이 들었어요."
+        },
+        {
+          "en": "These days, Rainism takes me right back to that time, but I'm more likely to put on BTS.",
+          "ko": "요즘 레이니즘을 들으면 그때가 바로 떠오르지만, 평소엔 방탄소년단 노래를 더 자주 틀어요."
+        },
+        {
+          "en": "Butter is one of my favorites, especially when I go jogging.",
+          "ko": "특히 조깅할 때는 버터를 즐겨 들어요."
+        },
+        {
+          "en": "The artist has changed, but I still go for music that makes me want to move.",
+          "ko": "좋아하는 가수는 바뀌었어도, 여전히 몸을 움직이고 싶게 하는 음악이 좋아요."
+        }
+      ],
+      "paragraphBreak": 3
+    },
+    {
+      "title": "Memorable Experience at the Park",
+      "question": "Tell me about something interesting or unexpected that happened while you were at the park.",
+      "questionKo": "공원에 있을 때 일어난 재미있거나 예상치 못한 일에 대해 말해 주세요.",
+      "hash": "476512b7cc225944",
+      "keywords": [
+        "jogging",
+        "distracted by music",
+        "collision",
+        "apology",
+        "pay attention"
+      ],
+      "sentences": [
+        {
+          "en": "One time at the park, I got so caught up in my music that I didn't see a woman walking toward me.",
+          "ko": "한번은 공원에서 음악에 너무 빠져서 마주 오는 분을 못 봤어요."
+        },
+        {
+          "en": "I was jogging, and I ran right into her.",
+          "ko": "조깅을 하다가 그분과 정면으로 부딪혔어요."
+        },
+        {
+          "en": "She looked shocked, and I felt awful because it was my fault.",
+          "ko": "그분은 깜짝 놀라셨고, 제 잘못이라 정말 죄송했어요."
+        },
+        {
+          "en": "I kept apologizing until she told me she was okay.",
+          "ko": "괜찮다고 말씀하실 때까지 계속 사과했어요."
+        },
+        {
+          "en": "I still enjoy running with music, but that moment comes back to me whenever I need a reminder to look up.",
+          "ko": "지금도 음악을 들으며 뛰는 걸 좋아하지만, 앞을 잘 봐야겠다고 생각할 때면 그때 일이 떠올라요."
+        }
+      ],
+      "paragraphBreak": 3
+    },
+    {
+      "title": "Geography Description",
+      "question": "Describe the geography of your country. What does the landscape look like?",
+      "questionKo": "우리나라의 지리를 설명해 주세요. 경치는 어떤 모습인가요?",
+      "hash": "056d1e367265df25",
+      "keywords": [
+        "peninsula",
+        "sea on three sides",
+        "mountains",
+        "autumn leaves",
+        "seasons"
+      ],
+      "sentences": [
+        {
+          "en": "South Korea is on a peninsula in East Asia, so the sea is on three sides of the country.",
+          "ko": "한국은 동아시아의 반도에 있어서 삼면이 바다예요."
+        },
+        {
+          "en": "What you notice inland is how mountainous it is.",
+          "ko": "내륙에서는 산이 참 많다는 게 눈에 띄어요."
+        },
+        {
+          "en": "You see mountains in so many places, and the view changes with the seasons.",
+          "ko": "곳곳에서 산을 볼 수 있고, 그 풍경은 계절마다 달라져요."
+        },
+        {
+          "en": "My favorite time to see them is in the fall, when the leaves turn different colors.",
+          "ko": "저는 나뭇잎이 여러 색으로 물드는 가을의 산을 가장 좋아해요."
+        },
+        {
+          "en": "When I picture Korea, I think of that long coastline and mountains that look different throughout the year.",
+          "ko": "제가 떠올리는 한국의 모습은 긴 해안선과 한 해 동안 표정이 바뀌는 산들이에요."
+        }
+      ],
+      "paragraphBreak": 2
+    },
+    {
+      "title": "Neighboring Countries",
+      "question": "Tell me about the neighboring countries of your country. What are they like?",
+      "questionKo": "우리나라의 이웃 나라들에 대해 말해 주세요. 어떤 나라들인가요?",
+      "hash": "9c6a268e8b18ee59",
+      "keywords": [
+        "China",
+        "business trip",
+        "tall buildings",
+        "Japan",
+        "complicated history"
+      ],
+      "sentences": [
+        {
+          "en": "Two countries close to Korea are China and Japan, and I think of them in different ways.",
+          "ko": "한국과 가까운 나라로 중국과 일본이 있는데, 두 나라를 생각할 때 떠오르는 게 달라요."
+        },
+        {
+          "en": "I went to China on a business trip, and what I remember seeing was tall buildings and expensive cars.",
+          "ko": "중국에는 출장을 갔는데, 높은 건물과 비싼 차를 본 게 기억나요."
+        },
+        {
+          "en": "It gave me a sense of how fast parts of the country had developed, and it also made me think about the gap between rich and poor.",
+          "ko": "일부 지역이 얼마나 빠르게 발전했는지 느꼈고, 빈부 격차도 생각하게 됐어요."
+        },
+        {
+          "en": "With Japan, I have good memories of visiting Osaka with my family.",
+          "ko": "일본에는 가족과 오사카를 다녀온 좋은 추억이 있어요."
+        },
+        {
+          "en": "At the same time, Korea's history with Japan is painful, and I feel sad when I think about it.",
+          "ko": "한편으로는 일본과의 역사에 아픈 일들이 있어서 그걸 떠올리면 슬퍼요."
+        },
+        {
+          "en": "Both feelings are part of how I see our neighbor.",
+          "ko": "저는 이웃 나라인 일본을 생각하면 그 두 가지 감정을 함께 느껴요."
+        }
+      ],
+      "paragraphBreak": 3
+    },
+    {
+      "title": "1. Asking Questions",
+      "question": "You want to book a hotel for your next trip. Call the hotel and ask three or four questions about the rooms and services.",
+      "questionKo": "다음 여행에 묵을 호텔에 전화해서 객실과 서비스에 관해 세네 가지 질문을 해 주세요.",
+      "hash": "f6a96403ba05b356",
+      "keywords": [
+        "family of three",
+        "20th to 23rd",
+        "nightly rate",
+        "breakfast",
+        "parking"
+      ],
+      "sentences": [
+        {
+          "en": "Hi, I'm calling about a room for my family.",
+          "ko": "안녕하세요, 가족이 묵을 방 때문에 전화드렸어요."
+        },
+        {
+          "en": "Do you have a room for three people from the 20th to the 23rd?",
+          "ko": "20일부터 23일까지 세 명이 묵을 수 있는 방이 있나요?"
+        },
+        {
+          "en": "How much would that be per night?",
+          "ko": "1박에 얼마인가요?"
+        },
+        {
+          "en": "And does that price include breakfast for all three of us?",
+          "ko": "그 가격에 세 명 모두의 아침 식사가 포함되나요?"
+        },
+        {
+          "en": "We're planning to rent a car, so would we be able to park at the hotel?",
+          "ko": "렌터카를 이용할 예정인데 호텔에 주차할 수 있을까요?"
+        },
+        {
+          "en": "Thanks for your help.",
+          "ko": "알려 주셔서 감사해요."
+        },
+        {
+          "en": "I'll check with my family and call you back.",
+          "ko": "가족과 상의하고 다시 전화드릴게요."
+        }
+      ],
+      "paragraphBreak": 3
+    },
+    {
+      "title": "2. Solving a Problem",
+      "question": "When you arrive at the hotel, they say your reservation does not exist. Explain the situation to the front desk and offer two or three alternatives.",
+      "questionKo": "호텔에 도착하니 예약 내역이 없다고 합니다. 상황을 설명하고 두세 가지 대안을 제시해 주세요.",
+      "hash": "0855ffbb6661b17e",
+      "keywords": [
+        "booked online",
+        "confirmation email",
+        "smaller room",
+        "nearby hotel",
+        "refund"
+      ],
+      "sentences": [
+        {
+          "en": "Excuse me, I booked a room on your website two weeks ago, but I understand you can't find the reservation.",
+          "ko": "실례합니다. 2주 전에 호텔 홈페이지에서 방을 예약했는데 예약 내역을 찾을 수 없다고 하셔서요."
+        },
+        {
+          "en": "Here's my confirmation email, and I've already paid by credit card.",
+          "ko": "여기 예약 확인 메일이 있고, 카드로 결제도 했어요."
+        },
+        {
+          "en": "I've just had a long flight, so I'd really like to sort this out tonight.",
+          "ko": "긴 비행을 마치고 와서 오늘 밤에 해결되면 좋겠어요."
+        },
+        {
+          "en": "If you have a smaller room, I'd be happy to take it.",
+          "ko": "더 작은 방이라도 남아 있다면 그 방에 묵을게요."
+        },
+        {
+          "en": "If you're completely full, could you help me find a room at a nearby hotel?",
+          "ko": "혹시 만실이라면 근처 호텔에 방을 구할 수 있게 도와주시겠어요?"
+        },
+        {
+          "en": "If neither option works, could I get a full refund so I can book somewhere else?",
+          "ko": "둘 다 어렵다면 다른 곳을 예약할 수 있도록 전액 환불해 주실 수 있나요?"
+        }
+      ],
+      "paragraphBreak": 3
+    },
+    {
+      "title": "3. Related Experience",
+      "question": "Have you ever had a problem while you were traveling? Tell me what happened and how you solved it.",
+      "questionKo": "여행 중 어떤 문제가 있었나요? 무슨 일이 있었고 어떻게 해결했는지 말해 주세요.",
+      "hash": "cd4b921a13a66fa7",
+      "keywords": [
+        "Dotonbori",
+        "stomachache",
+        "Japanese labels",
+        "front desk",
+        "drugstore",
+        "carry medicine"
+      ],
+      "sentences": [
+        {
+          "en": "I had to find medicine late at night on a family trip to Osaka.",
+          "ko": "가족과 오사카를 여행할 때 늦은 밤에 약을 찾아야 했어요."
+        },
+        {
+          "en": "My family and I went to Dotonbori for takoyaki.",
+          "ko": "가족과 다코야키를 먹으러 도톤보리에 갔어요."
+        },
+        {
+          "en": "A few hours later, I had a terrible stomachache.",
+          "ko": "몇 시간 뒤에 배가 심하게 아팠어요."
+        },
+        {
+          "en": "I couldn't read Japanese, so I wasn't sure where to go or what medicine to buy.",
+          "ko": "일본어를 읽지 못해서 어디로 가야 할지, 무슨 약을 사야 할지 몰랐어요."
+        },
+        {
+          "en": "I asked at the hotel front desk, and they pointed me to a nearby drugstore.",
+          "ko": "호텔 프런트에 물어봤더니 근처 약국을 알려 줬어요."
+        },
+        {
+          "en": "I got the medicine, went back to the hotel to rest, and felt much better the next morning.",
+          "ko": "약을 구해서 호텔에 돌아가 쉬었더니 다음 날 아침에는 훨씬 나아졌어요."
+        },
+        {
+          "en": "Ever since then, I've carried some basic medicine when I travel abroad.",
+          "ko": "그 뒤로는 해외에 갈 때 상비약을 챙겨요."
+        }
+      ],
+      "paragraphBreak": 4
+    }
+  ]
+}

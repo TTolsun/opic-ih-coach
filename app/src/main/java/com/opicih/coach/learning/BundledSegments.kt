@@ -13,7 +13,16 @@ data class BundledItem(
     val question: String = "",
     val questionKo: String,
     val sentences: List<BundledSentence>,
-)
+    val keywords: List<String> = emptyList(),
+    val paragraphBreak: Int? = null,
+) {
+    fun answerText(): String = buildString {
+        sentences.forEachIndexed { index, sentence ->
+            if (index > 0) append(if (index == paragraphBreak) "\n\n" else " ")
+            append(sentence.en)
+        }
+    }
+}
 
 @Serializable data class BundledFile(val version: Int = 1, val items: List<BundledItem> = emptyList())
 

@@ -23,25 +23,34 @@ data class CaptureResult(
     val warning: String? = null,
 )
 
+interface SpeakingCapture {
+    val liveState: StateFlow<LiveRecognizer.Snapshot>
+    val recorderLevel: StateFlow<Float>
+    val elapsedMs: Long
+    fun start(scope: CoroutineScope, captureMode: CaptureMode, preferOffline: Boolean = false, requireOnDevice: Boolean = false): String?
+    suspend fun stop(transcriber: Transcriber?): CaptureResult
+    fun release()
+}
+
 /**
  * One answer capture, shared by the Speaking and Mock screens.
  * LIVE_STT: SpeechRecognizer with auto-restart + onRmsChanged pause estimate (no audio file: the mic is busy).
  * RECORD_ONLY: PCM WAV recording + precise RMS pause analysis; text only if a cloud transcriber is configured.
  */
-class AnswerCapture(private val context: Context, private val audioDir: File) {
+class AnswerCapture(private val context: Context, private val audioDir: File) : SpeakingCapture {
     private val live = LiveRecognizer(context)
     private val recorder = PcmRecorder()
     private var mode: CaptureMode = CaptureMode.LIVE_STT
     private var startedAt = 0L
-    val liveState get() = live.state
-    val recorderLevel get() = recorder.level
+    override val liveState get() = live.state
+    override val recorderLevel get() = recorder.level
 
     /** @return null on success, otherwise an error message. */
-    fun start(
+    override fun start(
         scope: CoroutineScope,
         captureMode: CaptureMode,
-        preferOffline: Boolean = false,
-        requireOnDevice: Boolean = false,
+        preferOffline: Boolean,
+        requireOnDevice: Boolean,
     ): String? {
         mode = captureMode
         startedAt = SystemClock.elapsedRealtime()
@@ -54,9 +63,9 @@ class AnswerCapture(private val context: Context, private val audioDir: File) {
         }
     }
 
-    val elapsedMs: Long get() = if (startedAt == 0L) 0 else SystemClock.elapsedRealtime() - startedAt
+    override val elapsedMs: Long get() = if (startedAt == 0L) 0 else SystemClock.elapsedRealtime() - startedAt
 
-    suspend fun stop(transcriber: Transcriber?): CaptureResult {
+    override suspend fun stop(transcriber: Transcriber?): CaptureResult {
         val duration = elapsedMs
         startedAt = 0L
         return when (mode) {
@@ -91,7 +100,7 @@ class AnswerCapture(private val context: Context, private val audioDir: File) {
         startedAt = 0L
     }
 
-    fun release() { live.release(); recorder.cancel() }
+    override fun release() { live.release(); recorder.cancel() }
 
     companion object {
         /** onRmsChanged dB above which a frame counts as speech (engine dependent, typically -2..10). */

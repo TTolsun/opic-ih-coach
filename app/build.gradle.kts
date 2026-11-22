@@ -16,8 +16,8 @@ android {
         applicationId = "com.opicih.coach"
         minSdk = 26
         targetSdk = 36
-        versionCode = 11
-        versionName = "0.5.0"
+        versionCode = 16
+        versionName = "0.6.4"
     }
 
     buildTypes {
