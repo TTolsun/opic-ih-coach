@@ -38,7 +38,7 @@ data class ListenCycle(val scriptId: Long, val title: String, val topic: String,
 
 object ListenCycleBuilder {
     /**
-     * 질문(영·한) → 답변 전체(영·한) → 문단 하나(영·한) → 문장 하나(영·한) 순서로 단계를 만든다.
+     * 질문(한·영) → 답변 전체(한·영) → 문단 하나(한·영) → 문장 하나(한·영) 순서로 단계를 만든다.
      * 한국어 텍스트가 비어 있으면 그 한국어 단계만 빠지고, 영어 단계는 그대로 남는다.
      */
     fun build(
@@ -52,8 +52,8 @@ object ListenCycleBuilder {
         val steps = mutableListOf<ListenStep>()
         fun pair(part: ListenPart, en: String?, ko: String?) {
             if (en.isNullOrBlank()) return
-            steps += ListenStep(part, ListenLang.EN, en.trim())
             if (!ko.isNullOrBlank()) steps += ListenStep(part, ListenLang.KO, ko.trim())
+            steps += ListenStep(part, ListenLang.EN, en.trim())
         }
         pair(ListenPart.QUESTION, question, questionKo)
         pair(ListenPart.FULL, answer, answerKo)

@@ -20,7 +20,7 @@ OPIc 최종 목표 **IH**를 위한 개인용 Android 말하기 훈련 앱입니
 
 1. GitHub Releases의 `app-release.apk`를 휴대폰으로 받습니다. 기존 Debug 설치본과 같은 키로 서명되어 있어서, 지우지 않고 덮어 설치하면 학습 기록이 유지됩니다.
 2. 설치 시 "출처를 알 수 없는 앱" 허용을 요청하면 허용합니다.
-3. 앱을 열면 사용자 스크립트 23문항과 개선안(승인 대기), 표현 41개, 질문 은행 81문항이 자동으로 들어갑니다.
+3. 앱을 열면 일반 대본 23편, 호텔 롤플레이 3편, Appointments 4편과 표현 41개, 질문 은행 81문항이 자동으로 들어갑니다. 스크립트 듣기는 각 질문과 답변을 한국어로 먼저 읽고 영어로 이어서 읽습니다.
 
 ### 직접 빌드
 
@@ -190,7 +190,7 @@ OPIc 재응시 규칙은 공식 시험관리규정 제5조를 따릅니다(응�
 
 ## 6. 개인 스크립트를 빼고 공유하려면
 
-개인 답변은 시드 폴더의 `user_scripts_2026.json`, `scene_scripts.json`, `segments_ko.json`과 테스트 자료 `app/src/test/resources/my_scripts_2026.txt`에 들어 있습니다. 호텔 롤플레이의 관련 경험도 제외하려면 `roleplay_templates.json`을 함께 빼세요. 앱에서는 직접 작성하거나 가져온 대본으로 연습할 수 있습니다. 이 자료를 검증하는 테스트는 해당 파일이 필요합니다.
+개인 답변은 시드 폴더의 `user_scripts_2026.json`, `scene_scripts.json`, `segments_ko.json`, `appointments.json`과 테스트 자료 `app/src/test/resources/my_scripts_2026.txt`에 들어 있습니다. 호텔 롤플레이의 관련 경험도 제외하려면 `roleplay_templates.json`을 함께 빼세요. 앱에서는 직접 작성하거나 가져온 대본으로 연습할 수 있습니다. 이 자료를 검증하는 테스트는 해당 파일이 필요합니다.
 
 ---
 

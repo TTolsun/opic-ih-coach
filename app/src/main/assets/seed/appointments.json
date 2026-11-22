@@ -1,0 +1,70 @@
+[
+  {
+    "title": "Routine Health Checkup - IH",
+    "type": "PAST_EXPERIENCE",
+    "question": "Tell me about a time you went to a hospital or clinic. Why did you go, what did you do there, and what happened in the end?",
+    "original": "I went to my company's on-site clinic for a routine health checkup. I wanted to make sure everything was okay, so I went in for the usual tests. They also measured my height as part of the checkup.\nWhen I got my results, everything came back normal. I was relieved to hear that I was in good health. The one thing that surprised me was my height. It seems to go up a little every year, and this time, I was 186 centimeters tall. I remember looking at the number and thinking, \"Wait, did I get taller again?\"\nThat's the part of the checkup I remember most. I left feeling good about my health, and I'm already curious what my height will be at next year's checkup.",
+    "questionKo": "병원이나 의원에 갔던 경험에 대해 말해 주세요. 왜 갔고, 거기서 무엇을 했으며, 결국 어떻게 되었나요?",
+    "sentenceKo": [
+      "정기 건강검진을 받으러 사내 의원에 갔어요.",
+      "모든 게 괜찮은지 확인하고 싶어서 평소 받는 검사들을 받으러 갔어요.",
+      "검사의 일환으로 키도 쟀어요.",
+      "결과를 받았을 때, 모든 항목이 정상으로 나왔어요.",
+      "건강 상태가 좋다는 말을 듣고 안도했어요.",
+      "저를 놀라게 한 한 가지는 제 키였어요.",
+      "매년 조금씩 커지는 것 같은데, 이번에는 186센티미터가 나왔어요.",
+      "숫자를 보면서 \"잠깐만, 나 키가 또 컸나?\" 하고 생각했던 게 기억나요.",
+      "그게 건강검진에서 가장 기억에 남는 부분이에요.",
+      "건강 상태에 대해 기분 좋게 나왔고, 내년 건강검진 때 제 키가 얼마일지 벌써 궁금해요."
+    ]
+  },
+  {
+    "title": "Childhood Visit to the Dentist - IH",
+    "type": "PAST_EXPERIENCE",
+    "question": "Tell me about a time you went to a hospital or clinic as a child. Why did you go, and what happened?",
+    "original": "When I was a kid, my mom used to take me to the dentist, and I absolutely hated going. The sound of the drill scared me the most. As soon as I heard it, I'd get nervous. The treatment itself was painful, so I remember sitting in the chair just waiting for it to be over.\nOnce the appointment was over, my mom would buy me a LEGO set. I loved LEGO, so that was something I could look forward to. I'd go from being scared in the dentist's chair to getting excited about what I was going to build. Looking back, that little reward made those visits a lot easier for me.",
+    "questionKo": "어릴 적 병원이나 의원에 갔던 경험에 대해 이야기해 주세요. 왜 갔었고 무슨 일이 있었나요?",
+    "sentenceKo": [
+      "어렸을 때 엄마가 저를 치과에 데려가시곤 했는데, 저는 치과에 가는 것을 정말 싫어했어요.",
+      "드릴 소리가 가장 무서웠어요.",
+      "그 소리를 듣자마자 긴장이 되곤 했어요.",
+      "치료 자체도 아파서 의자에 앉아 빨리 끝나기만을 기다렸던 기억이 나요.",
+      "진료가 끝나면 엄마가 레고 세트를 사주곤 하셨어요.",
+      "제가 레고를 정말 좋아해서 그건 기대가 되는 일이었어요.",
+      "치과 의자에서 무서워하다가도 무엇을 만들지 생각하며 신이 나곤 했어요.",
+      "돌이켜보면 그 작은 보상 덕분에 치과 치료를 훨씬 수월하게 받을 수 있었어요."
+    ]
+  },
+  {
+    "title": "Appointment Locations - IH",
+    "type": "DESCRIPTION",
+    "question": "People often have appointments for different things. Tell me about the kinds of places you go for different appointments.",
+    "original": "The place I go depends on what the appointment is for. For my annual health checkup, I go to the on-site clinic at my company. It's convenient because I can get there without leaving work. That's where I go to get my general health checked and find out if there's anything I need to follow up on.\nFor a dental appointment, I'd go to a dental clinic. That's the place for things like getting my teeth checked or having a tooth treated. So when I need a general checkup, I think of the clinic at work. When it's something to do with my teeth, I make an appointment with a dentist.",
+    "questionKo": "사람들은 보통 다양한 목적으로 약속이나 예약을 합니다. 어떤 약속이냐에 따라 어떤 장소에 가시는지 말씀해 주세요.",
+    "sentenceKo": [
+      "제가 가는 장소는 약속 목적에 따라 달라져요.",
+      "매년 하는 건강검진을 받으러 저는 회사 사내 의원에 가요.",
+      "회사를 나가지 않고도 갈 수 있어서 편리해요.",
+      "전반적인 건강 상태를 검진받고 추후 관리가 필요한 부분이 있는지 알아보러 그곳에 가요.",
+      "치과 예약이 있을 때는 치과 병원에 가요.",
+      "치아 검진을 받거나 치아 치료를 받는 곳이죠.",
+      "그래서 일반 검진이 필요할 때는 회사 사내 의원이 떠올라요.",
+      "치아와 관련된 일일 때는 치과 예약을 잡아요."
+    ]
+  },
+  {
+    "title": "Appointment Routine - IH",
+    "type": "ROUTINE",
+    "question": "What kinds of things do you do when you make appointments? Tell me what you exactly do when you make these appointments.",
+    "original": "When I need to make an appointment, the first thing I do is check my calendar. I pick a couple of times that work for me so I have a backup if my first choice isn't available. Then I contact the clinic, explain what I need, and ask what times they have open.\nOnce we settle on a time, I confirm the date and time and ask if there's anything I need to bring or do beforehand. I put the appointment in my calendar right away and set a reminder. If something comes up and I can't make it, I contact the clinic early and ask for another time.",
+    "questionKo": "예약을 잡을 때는 보통 어떤 일을 하나요? 예약을 어떻게 잡는지 구체적으로 말해 주세요.",
+    "sentenceKo": [
+      "예약을 잡아야 할 때는 먼저 제 일정을 확인해요.",
+      "원하는 시간에 예약할 수 없을 때를 대비해서, 제가 갈 수 있는 시간을 두어 개 골라 둬요.",
+      "그런 다음 병원에 연락해서 어떤 진료가 필요한지 설명하고 예약 가능한 시간을 물어봐요.",
+      "시간을 정하면 날짜와 시간을 다시 확인하고, 챙겨 갈 것이나 미리 해야 할 일이 있는지 물어봐요.",
+      "바로 달력에 예약 일정을 적고 알림도 설정해요.",
+      "다른 일이 생겨서 갈 수 없으면 미리 병원에 연락해서 시간을 바꿀 수 있는지 물어봐요."
+    ]
+  }
+]

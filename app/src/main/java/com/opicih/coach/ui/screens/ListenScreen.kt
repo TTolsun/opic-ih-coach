@@ -93,7 +93,7 @@ fun ListenScreen(onOpenSettings: () -> Unit) {
         SectionCard(title = "지금 재생") {
             if (st.status == ListenStatus.IDLE) {
                 Text(
-                    "재생을 누르면 스크립트를 무작위로 골라 질문과 답변을 영어와 한국어로 이어서 들려줍니다. 화면을 꺼도 계속 재생됩니다.",
+                    "재생을 누르면 스크립트를 무작위로 골라 질문과 답변을 각각 한국어로 먼저 읽고 영어로 이어서 들려줍니다. 화면을 꺼도 계속 재생됩니다.",
                     style = MaterialTheme.typography.bodyMedium,
                 )
             } else {
@@ -145,8 +145,8 @@ fun ListenScreen(onOpenSettings: () -> Unit) {
             val ai = c.realAi(s)
             Text("한국어 번역 완료 $ready / $total 개 스크립트", style = MaterialTheme.typography.labelLarge)
             Text(
-                "번역이 있는 스크립트는 질문, 답변 전체, 문단 하나, 문장 하나를 영어 다음에 한국어로 이어서 들려줍니다. " +
-                    "영어를 먼저 문장으로 나눈 뒤 문장마다 번역하므로 한국어는 바로 앞 영어의 번역입니다. 스크립트를 고치면 그 스크립트는 다시 만들어야 합니다.",
+                "번역이 있는 스크립트는 질문, 답변 전체, 문단 하나, 문장 하나를 한국어 다음에 영어로 이어서 들려줍니다. " +
+                    "스크립트 본문을 고치면 해당 스크립트의 번역을 다시 만들어 주세요.",
                 style = MaterialTheme.typography.labelSmall,
             )
             if (gen.running) {
@@ -207,7 +207,7 @@ fun ListenScreen(onOpenSettings: () -> Unit) {
 
         SectionCard(title = "재생 순서", collapsible = true, initiallyExpanded = false) {
             Text(
-                "질문 → 답변 전체 → 문단 하나 → 문장 하나 순서로, 조각마다 영어 다음에 한국어를 들려준 뒤 다음 스크립트로 넘어갑니다. 문단과 문장은 매번 무작위로 고릅니다. " +
+                "질문 → 답변 전체 → 문단 하나 → 문장 하나 순서로, 조각마다 한국어 다음에 영어를 들려준 뒤 다음 스크립트로 넘어갑니다. 문단과 문장은 매번 무작위로 고릅니다. " +
                     "스크립트는 한 바퀴를 다 돌 때까지 겹치지 않게 섞어서 고릅니다. " +
                     "번역이 없는 스크립트는 질문과 답변 전체의 영어만 들려주고, 한국어 음성이 없는 기기에서는 한국어 단계를 건너뜁니다.",
                 style = MaterialTheme.typography.bodySmall,

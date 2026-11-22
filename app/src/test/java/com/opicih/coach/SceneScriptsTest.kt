@@ -41,7 +41,7 @@ class SceneScriptsTest {
             assertTrue(script.keywordList().isNotEmpty())
             assertNotNull(item.title, BundledSegments.rowsFor(item.question, script.studyText, scenes))
             val full = ListenCycleBuilder.forScript(script, null).steps.filter { it.part == ListenPart.FULL }
-            assertEquals(listOf(ListenLang.EN to script.studyText, ListenLang.KO to script.studyMeaning), full.map { it.lang to it.text })
+            assertEquals(listOf(ListenLang.KO to script.studyMeaning, ListenLang.EN to script.studyText), full.map { it.lang to it.text })
             with(BackupManager.Companion) { assertEquals(script, script.toBackup().toEntity()) }
         }
     }
