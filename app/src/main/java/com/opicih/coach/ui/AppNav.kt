@@ -45,7 +45,6 @@ import com.opicih.coach.ui.screens.CoachScreen
 import com.opicih.coach.ui.screens.ExamDebriefScreen
 import com.opicih.coach.ui.screens.ExamsScreen
 import com.opicih.coach.ui.screens.FramesScreen
-import com.opicih.coach.ui.screens.StoriesScreen
 import com.opicih.coach.ui.screens.HomeScreen
 import com.opicih.coach.ui.screens.SpeakingDiagnosticScreen
 import com.opicih.coach.ui.screens.HotelRoleplayScreen
@@ -74,11 +73,14 @@ private val tabs = listOf(
     Tab("progress", "기록", Icons.Filled.Insights),
 )
 
+private const val SCRIPT_REVIEW = "scriptReview/{ids}/{index}/{mode}"
+
 private val titles = mapOf(
+    SCRIPT_REVIEW to "내 대본 복습", "mockReport/{id}" to "모의시험 결과", "mockRestart/{count}" to "모의시험",
     "speakingHotel" to PracticeMode.HOTEL_ROLEPLAY.label, "frames" to "문장 틀",
     "script/{id}" to "스크립트", "scriptEdit/{id}" to "스크립트 편집", "import" to "스크립트 가져오기",
     "settings" to "설정", "nextExam" to "다음 OPIc 추천", "exams" to "시험 일정", "sail" to "SAIL 대화 연습", "morning" to "아침 표현 루틴", "coach" to "AI 코치",
-    "mock" to "모의시험", "recall?scriptId={scriptId}&question={question}" to "질문 듣고 답하기", "listen" to "스크립트 듣기", "review/{id}" to "다시 말하기", "stories" to "공통 답변 찾기", "diagnostic" to PracticeMode.DIAGNOSTIC.label,
+    "mock" to "모의시험", "recall?scriptId={scriptId}&question={question}" to "질문 듣고 답하기", "listen" to "스크립트 듣기", "review/{id}" to "다시 말하기", "diagnostic" to PracticeMode.DIAGNOSTIC.label,
     "pendingRevisions" to "승인 대기 개선안", "examDebrief/{day}/{registrationId}" to "시험 복기",
 )
 
@@ -157,12 +159,17 @@ fun AppNav(startRoute: String?, onRouteConsumed: () -> Unit) {
         NavHost(nav, startDestination = "home", modifier = Modifier.padding(pad)) {
             composable("home") {
                 HomeScreen(
-                    onStories = { nav.navigate("stories") },
                     onRecall = { nav.navigate("recall") },
                     onSpeak = { nav.goTab("speaking") },
                     onMorning = { nav.navigate("morning") { launchSingleTop = true } },
                     onScript = { nav.navigate("script/$it") },
                     onMock = { nav.navigate("mock") },
+                    onRecentMock = { mock ->
+                        nav.navigate(if (mock.reportJson != null) "mockReport/${mock.id}" else "mockRestart/${mock.questionCount}")
+                    },
+                    onScriptReview = { ids, mode ->
+                        if (ids.isNotEmpty()) nav.navigate("scriptReview/${ids.joinToString(",")}/0/${mode.name}") { launchSingleTop = true }
+                    },
                     onReviewRevisions = { nav.navigate("pendingRevisions") },
                     onCoach = { nav.navigate("coach") },
                     onSettings = { nav.navigate("settings") },
@@ -174,6 +181,8 @@ fun AppNav(startRoute: String?, onRouteConsumed: () -> Unit) {
                     onSpeakMode = { m ->
                         when (m) {
                             null -> nav.goTab("speaking")
+                            PracticeMode.HOTEL_ROLEPLAY.name -> nav.navigate("speakingHotel")
+                            PracticeMode.DIAGNOSTIC.name -> nav.navigate("diagnostic")
                             PracticeMode.SAIL_CONVERSATION.name -> nav.navigate("sail")
                             else -> nav.navigate("speaking?mode=$m")
                         }
@@ -188,7 +197,6 @@ fun AppNav(startRoute: String?, onRouteConsumed: () -> Unit) {
                         onImport = { nav.navigate("import") },
                         onFrames = { nav.navigate("frames") },
                         onListen = { nav.navigate("listen") },
-                        onStories = { nav.navigate("stories") },
                         pendingOnly = listRoute == "pendingRevisions",
                     )
                 }
@@ -207,6 +215,24 @@ fun AppNav(startRoute: String?, onRouteConsumed: () -> Unit) {
                     onOpenFrames = { nav.navigate("frames") },
                     onHotelRoleplay = { nav.navigate("speakingHotel") },
                     onDiagnostic = { nav.navigate("diagnostic") },
+                )
+            }
+            composable(SCRIPT_REVIEW, arguments = listOf(navArgument("index") { type = NavType.IntType })) { e ->
+                val args = requireNotNull(e.arguments)
+                val ids = requireNotNull(args.getString("ids")).split(",").map(String::toLong)
+                val index = args.getInt("index")
+                val mode = PracticeMode.of(args.getString("mode"))
+                SpeakingScreen(
+                    ids[index], mode, reviewPosition = "${index + 1} / ${ids.size}",
+                    nextLabel = if (index == ids.lastIndex) "복습 마치기" else "다음 복습 대본",
+                    onReviewNext = {
+                        if (nav.currentBackStackEntry == e) {
+                            if (index == ids.lastIndex) nav.popBackStack()
+                            else nav.navigate("scriptReview/${ids.joinToString(",")}/${index + 1}/${mode.name}") {
+                                popUpTo(e.destination.id) { inclusive = true }
+                            }
+                        }
+                    },
                 )
             }
             composable("review/{id}", arguments = listOf(navArgument("id") { type = NavType.LongType })) { e ->
@@ -230,8 +256,22 @@ fun AppNav(startRoute: String?, onRouteConsumed: () -> Unit) {
                     onScripts = { nav.goTab("scripts") })
             }
             composable("frames") { FramesScreen() }
-            composable("stories") { StoriesScreen(onOpenScript = { nav.navigate("script/$it") }, onQuestion = ::recall, onScripts = { nav.goTab("scripts") }) }
+            // An upgrade can restore a back stack that still points to the former catalogue.
+            composable("stories") {
+                LaunchedEffect(Unit) {
+                    nav.navigate("scripts") {
+                        popUpTo("stories") { inclusive = true }
+                        launchSingleTop = true
+                    }
+                }
+            }
             composable("mock") { MockScreen() }
+            composable("mockReport/{id}", arguments = listOf(navArgument("id") { type = NavType.LongType })) { e ->
+                MockScreen(reportId = e.arguments!!.getLong("id"))
+            }
+            composable("mockRestart/{count}", arguments = listOf(navArgument("count") { type = NavType.IntType })) { e ->
+                MockScreen(restartCount = e.arguments!!.getInt("count"))
+            }
             composable("speakingHotel") { HotelRoleplayScreen() }
             composable("diagnostic") { SpeakingDiagnosticScreen() }
             composable("progress") { ProgressScreen(onNextExam = { nav.navigate("nextExam") }, onExams = { nav.navigate("exams") }) }
@@ -242,7 +282,6 @@ fun AppNav(startRoute: String?, onRouteConsumed: () -> Unit) {
                     onPractice = { sid, m -> nav.navigate("speaking?scriptId=$sid&mode=${m.name}") },
                     onEdit = { nav.navigate("scriptEdit/$it") },
                     onDeleted = { nav.popBackStack() },
-                    onStories = { nav.navigate("stories") },
                 )
             }
             composable("scriptEdit/{id}", arguments = listOf(navArgument("id") { type = NavType.LongType })) { e ->
@@ -269,7 +308,7 @@ fun AppNav(startRoute: String?, onRouteConsumed: () -> Unit) {
             }
             composable("morning") {
                 MorningScreen(
-                    onReviewScript = { nav.navigate("speaking?scriptId=$it&mode=${PracticeMode.BLIND.name}") },
+                    onReviewScript = { nav.navigate("scriptReview/$it/0/${PracticeMode.READ_LISTEN.name}") },
                     onExit = { nav.popBackStack() },
                 )
             }
@@ -279,7 +318,7 @@ fun AppNav(startRoute: String?, onRouteConsumed: () -> Unit) {
 
 /** Routes whose open time counts as study (not home / progress / settings / exams / nextExam / import / scriptEdit). */
 internal fun isStudyRoute(route: String?): Boolean = route != null && (
-    route.startsWith("recall?") || route == "scripts" || route == "pendingRevisions" || route == "script/{id}" || route == "review/{id}" || route == "stories" || route == "diagnostic" ||
+    route == SCRIPT_REVIEW || route.startsWith("recall?") || route == "scripts" || route == "pendingRevisions" || route == "script/{id}" || route == "review/{id}" || route == "diagnostic" ||
         listOf("speaking", "mock", "sail", "coach", "morning").any { route.startsWith(it) }
     )
 

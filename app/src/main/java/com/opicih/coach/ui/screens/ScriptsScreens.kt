@@ -98,7 +98,6 @@ fun ScriptsScreen(
     onImport: () -> Unit,
     onFrames: () -> Unit,
     onListen: () -> Unit,
-    onStories: () -> Unit = {},
     pendingOnly: Boolean = false,
 ) {
     val c = LocalContainer.current
@@ -110,7 +109,9 @@ fun ScriptsScreen(
     if (pendingOnly && pending == null) return
     val pendingIds = pending.orEmpty().map { it.scriptId }.toSet()
     val listed = if (pendingOnly) scripts.filter { it.id in pendingIds } else scripts
-    val filtered = listed.filter { query.isBlank() || (it.title + it.topic + it.question + it.original).contains(query, true) }
+    val filtered = remember(listed, query) {
+        listed.filter { it.matchesSearch(query) }
+    }
 
     Box(Modifier.fillMaxSize()) {
         LazyColumn(Modifier.fillMaxSize().padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -119,7 +120,9 @@ fun ScriptsScreen(
                 OutlinedTextField(query, { query = it }, leadingIcon = { Icon(Icons.Filled.Search, null) }, placeholder = { Text("검색") }, singleLine = true, modifier = Modifier.fillMaxWidth())
                 if (!pendingOnly) {
                     Spacer(Modifier.height(8.dp))
-                    FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    var showTools by rememberSaveable { mutableStateOf(false) }
+                    TextButton(onClick = { showTools = !showTools }) { Text(if (showTools) "스크립트 관리 접기" else "스크립트 관리") }
+                    if (showTools) FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         FilledTonalButton(onClick = onImport, contentPadding = PaddingValues(horizontal = 12.dp)) { Icon(Icons.Filled.FileOpen, null); Spacer(Modifier.width(4.dp)); Text("가져오기") }
                         OutlinedButton(onClick = onNew, contentPadding = PaddingValues(horizontal = 12.dp)) { Icon(Icons.Filled.Edit, null); Spacer(Modifier.width(4.dp)); Text("직접 작성") }
                         OutlinedButton(onClick = onFrames, contentPadding = PaddingValues(horizontal = 12.dp)) { Text("문장 틀") }
@@ -127,8 +130,6 @@ fun ScriptsScreen(
                     if (scripts.isNotEmpty()) {
                         Spacer(Modifier.height(8.dp))
                         FilledTonalButton(onClick = onListen, modifier = Modifier.fillMaxWidth()) { Icon(Icons.Filled.Headphones, null); Spacer(Modifier.width(6.dp)); Text("소리로 듣기 (하루 종일 재생)") }
-                        Spacer(Modifier.height(8.dp))
-                        OutlinedButton(onClick = onStories, modifier = Modifier.fillMaxWidth()) { Text("공통 답변 찾기") }
                     }
                 }
                 if (filtered.isEmpty()) {
@@ -169,19 +170,22 @@ fun ScriptsScreen(
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun ScriptDetailScreen(id: Long, onPractice: (Long, PracticeMode) -> Unit, onQuestion: (Long, String) -> Unit, onEdit: (Long) -> Unit, onDeleted: () -> Unit, onStories: () -> Unit = {}) {
+fun ScriptDetailScreen(id: Long, onPractice: (Long, PracticeMode) -> Unit, onQuestion: (Long, String) -> Unit, onEdit: (Long) -> Unit, onDeleted: () -> Unit) {
     val c = LocalContainer.current
     val scope = rememberCoroutineScope()
     val script by c.dao.scriptFlow(id).collectAsState(initial = null)
     val revisions by c.dao.revisionsFlow(id).collectAsState(initial = emptyList())
     val settings by c.settings.flow.collectAsState(initial = Settings())
-    // 사용자가 직접 고른 탭만 저장한다. 고르지 않았으면 학습본을 보여 준다.
+    // 비교할 버전을 고른 상태는 화면 회전 후에도 유지한다.
     var pickedTab by rememberSaveable { mutableStateOf<ScriptVersion?>(null) }
     var busy by remember { mutableStateOf(false) }
     var message by rememberSaveable { mutableStateOf<String?>(null) }
     var confirmDelete by rememberSaveable { mutableStateOf(false) }
     val s = script ?: run { Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }; return }
-    val tab = pickedTab ?: s.active
+    val stories by remember { c.dao.storiesFlow() }.collectAsState(initial = null)
+    val library = stories ?: return
+    val alternatives = s.comparisonVersions()
+    val tab = pickedTab?.takeIf { it in alternatives } ?: alternatives.firstOrNull()
 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
         Column {
@@ -194,94 +198,62 @@ fun ScriptDetailScreen(id: Long, onPractice: (Long, PracticeMode) -> Unit, onQue
             Text("${s.topic} · ${s.title}", style = MaterialTheme.typography.titleLarge)
             // The question is a caption here, not reading material, so it uses a tighter line height than EnglishReading.
             Text(s.question, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            StoryReuseQuestions(s.copy(activeVersion = tab.name)) { onQuestion(s.id, it) }
+            SectionCard(title = "외울 대본") {
+                StudyPassage(s)
+                Row {
+                    TextButton(onClick = { c.tts.speak(s.studyText) }) { Text("대본 듣기") }
+                    FilledTonalButton(onClick = { onPractice(s.id, PracticeMode.READ_LISTEN) }) { Text("이 대본 외우기") }
+                }
+            }
+            StoryReuseQuestions(s) { onQuestion(s.id, it) }
             Spacer(Modifier.height(6.dp))
             val dueIn = s.dueEpochDay - LocalDate.now().toEpochDay()
             Text(if (dueIn <= 0) "오늘 복습" else "${dueIn}일 뒤 복습 · 예상 발화 ${s.estSeconds}초", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            // Which real story this answer tells, and where else that story is used (C: 이야기 묶음).
-            val allScripts by c.dao.scriptsFlow().collectAsState(initial = emptyList())
-            val personalScripts = remember(allScripts) { allScripts.filter { it.source != ContentSource.AI_SAMPLE.name } }
-            val stories by remember { c.dao.storiesFlow() }.collectAsState(initial = emptyList())
-            var draft by remember(s.id) { mutableStateOf<Pair<StoryEntity, Long>?>(null) }
-            SectionCard(title = "다른 대본과 원문 비교", collapsible = true, initiallyExpanded = false) {
-                if (personalScripts.none { it.id != s.id }) Text("비교할 대본이 한 편 더 필요합니다.")
-                else PassageComparison(s, personalScripts) { match ->
-                    val sharedIds = StoryMap.storyIdsOf(s).intersect(StoryMap.storyIdsOf(match.other).toSet())
-                    val existing = stories.firstOrNull { it.id in sharedIds }
-                    val story = existing ?: StoryEntity("U${java.util.UUID.randomUUID()}", s.title, "", "user", "")
-                    draft = story.copy(commonAnswer = match.here) to match.other.id
+            if (s.sceneText == null) {
+                // Which real story this answer tells, and where else that story is used (C: 이야기 묶음).
+                val allScripts by c.dao.scriptsFlow().collectAsState(initial = emptyList())
+                val personalScripts = remember(allScripts) { allScripts.filter { it.source != ContentSource.AI_SAMPLE.name } }
+                StoryMap.siblings(s, library, personalScripts).forEach { (story, others) ->
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        "이야기: ${story.titleKo}" + if (others.isEmpty()) "" else " · 다른 답변 ${others.size}개에서도 사용 (${others.map { it.topic }.distinct().joinToString()})",
+                        style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary,
+                    )
                 }
-            }
-            draft?.let { (story, otherId) ->
-                EditStoryDialog(story, onDismiss = { draft = null }) { edited ->
-                    draft = null
-                    scope.launch {
-                        val saved = c.scripts.saveSharedStory(edited, s.id, otherId)
-                        message = if (saved) "두 대본에 공통 답변을 저장했습니다." else "비교할 대본이 삭제되었습니다."
-                    }
+                // The learner links (or unlinks) stories here, including scripts they imported themselves.
+                var pickStory by remember { mutableStateOf(false) }
+                TextButton(onClick = { pickStory = true }) {
+                    Text(if (StoryMap.storyIdsOf(s).isEmpty()) "이야기 연결하기" else "이야기 바꾸기")
                 }
-            }
-            StoryMap.siblings(s, stories, personalScripts).forEach { (story, others) ->
-                Spacer(Modifier.height(6.dp))
-                Text(
-                    "이야기: ${story.titleKo}" + if (others.isEmpty()) "" else " · 다른 답변 ${others.size}개에서도 사용 (${others.map { it.topic }.distinct().joinToString()})",
-                    style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.clickable(onClick = onStories),
-                )
-            }
-            // The learner links (or unlinks) stories here, including scripts they imported themselves.
-            var pickStory by remember { mutableStateOf(false) }
-            TextButton(onClick = { pickStory = true }) {
-                Text(if (StoryMap.storyIdsOf(s).isEmpty()) "이야기 연결하기" else "이야기 바꾸기")
-            }
-            if (pickStory) StoryPickerDialog(
-                stories, StoryMap.storyIdsOf(s), onDismiss = { pickStory = false },
-                onCreate = { story -> c.dao.insertStories(listOf(story)) },
-            ) { ids ->
-                pickStory = false
-                // "" (not null) marks "no story" chosen on purpose, so bundled links are not filled in again.
-                scope.launch { c.dao.updateScript(s.copy(storyIds = ids.joinToString(","), updatedAt = System.currentTimeMillis())) }
+                if (pickStory) StoryPickerDialog(
+                    library, StoryMap.storyIdsOf(s), onDismiss = { pickStory = false },
+                    onCreate = { story -> c.dao.insertStories(listOf(story)) },
+                ) { ids ->
+                    pickStory = false
+                    // "" (not null) marks "no story" chosen on purpose, so bundled links are not filled in again.
+                    scope.launch { c.dao.updateScript(s.copy(storyIds = ids.joinToString(","), updatedAt = System.currentTimeMillis())) }
+                }
             }
         }
 
-        Button(onClick = { onPractice(s.id, PracticeMode.READ_LISTEN) }, modifier = Modifier.fillMaxWidth()) {
-            Text("이 대본 외우기")
-        }
-
-        // Versions
-        SectionCard(title = "버전") {
+        if (tab != null) SectionCard(title = "다른 버전 보기", collapsible = true, initiallyExpanded = false) {
             FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                ScriptVersion.entries.forEach { v -> Pill(v.label + if (s.active == v) " ✓" else "", tab == v) { pickedTab = v } }
+                alternatives.forEach { v -> Pill(v.label, tab == v) { pickedTab = v } }
             }
             Spacer(Modifier.height(10.dp))
-            val text = when (tab) {
-                ScriptVersion.ORIGINAL -> s.original
-                ScriptVersion.NATURAL -> s.natural
-                ScriptVersion.IH_TARGET -> s.ihTarget
-                ScriptVersion.SHORT -> s.shortVersion
-                ScriptVersion.KEYWORDS -> s.keywords
+            val text = s.textForVersion(tab).orEmpty()
+            if (tab == ScriptVersion.KEYWORDS) Text(text, style = EnglishReading)
+            else StudyPassage(s.copy(activeVersion = tab.name))
+            if (tab == ScriptVersion.IH_TARGET) {
+                val words = text.trim().split(Regex("\\s+")).count { it.isNotEmpty() }
+                Text(GradeTargets.fitLabel(words, settings.targetGrade), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            if (text.isNullOrBlank()) {
-                val waiting = revisions.any { it.status == RevisionStatus.PENDING.name && it.version == tab.name }
-                Text(
-                    if (waiting) "승인 대기 중인 ${tab.label} 개선안이 아래에 있습니다." else "${tab.label} 버전이 아직 없습니다.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = if (waiting) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            } else {
-                if (tab == ScriptVersion.KEYWORDS) Text(text, style = EnglishReading) else GlossaryText(text, s.id)
-                if (tab == ScriptVersion.IH_TARGET) {
-                    val words = text.trim().split(Regex("\\s+")).count { it.isNotEmpty() }
-                    Text(GradeTargets.fitLabel(words, settings.targetGrade), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(onClick = { c.tts.speak(text, 0.95f) }) { Icon(Icons.AutoMirrored.Filled.VolumeUp, "듣기") }
-                    TextButton(onClick = { c.tts.speak(text, 0.75f) }) { Text("0.75x") }
-                    Spacer(Modifier.weight(1f))
-                    if (tab != ScriptVersion.KEYWORDS && s.active != tab) TextButton(onClick = { scope.launch { c.scripts.setActive(s, tab) } }) { Text("이 버전으로 학습") }
-                }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                IconButton(onClick = { c.tts.speak(text, 0.95f) }) { Icon(Icons.AutoMirrored.Filled.VolumeUp, "듣기") }
+                TextButton(onClick = { c.tts.speak(text, 0.75f) }) { Text("0.75x") }
+                Spacer(Modifier.weight(1f))
+                if (tab != ScriptVersion.KEYWORDS && s.active != tab) TextButton(onClick = { scope.launch { c.scripts.setActive(s, tab) } }) { Text("이 버전으로 학습") }
             }
-            s.koreanMeaning?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
         }
 
         LookedUpList(s.id)
@@ -291,7 +263,7 @@ fun ScriptDetailScreen(id: Long, onPractice: (Long, PracticeMode) -> Unit, onQue
         if (pending.isNotEmpty()) {
             Text("승인 대기 개선안", style = MaterialTheme.typography.titleMedium)
             // The original used to be printed in full inside every proposal card; it is one tab away in 버전.
-            Text("원본과 비교하려면 위 '버전'에서 원본을 고르세요.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("제안 내용을 확인하고 학습에 사용할 버전을 선택하세요.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             pending.forEach { r ->
                 SectionCard(title = ScriptVersion.of(r.version).label, trailing = { SourceTag(RevisionOrigin.entries.firstOrNull { it.name == r.origin }?.label ?: r.origin) }) {
                     if (r.version == ScriptVersion.KEYWORDS.name) Text(r.text, style = MaterialTheme.typography.bodyMedium)
@@ -386,7 +358,7 @@ fun ScriptEditScreen(id: Long, onDone: (Long) -> Unit) {
     LaunchedEffect(id) {
         if (id > 0) c.dao.script(id)?.let { s ->
             loaded = s
-            if (!filled) { topic = s.topic; title = s.title; question = s.question; original = s.studyText; korean = s.koreanMeaning.orEmpty(); type = s.type }
+            if (!filled) { topic = s.topic; title = s.title; question = s.question; original = s.studyText; korean = s.studyMeaning.orEmpty(); type = s.type }
         }
         filled = true
     }
@@ -416,11 +388,14 @@ fun ScriptEditScreen(id: Long, onDone: (Long) -> Unit) {
                 } else {
                     val edited = when (base.active) {
                         ScriptVersion.ORIGINAL, ScriptVersion.KEYWORDS -> base.copy(original = original)
+                        ScriptVersion.SCENE -> base.copy(sceneText = original, sceneMeaning = korean.ifBlank { null },
+                            sceneKeywords = base.sceneKeywords.takeIf { original == base.sceneText })
                         ScriptVersion.NATURAL -> base.copy(natural = original)
                         ScriptVersion.IH_TARGET -> base.copy(ihTarget = original)
                         ScriptVersion.SHORT -> base.copy(shortVersion = original)
                     }
-                    c.scripts.save(edited.copy(topic = topic, title = title, question = question, questionType = type.name, koreanMeaning = korean.ifBlank { null }))
+                    c.scripts.save(edited.copy(topic = topic, title = title, question = question, questionType = type.name,
+                        koreanMeaning = if (base.active == ScriptVersion.SCENE) base.koreanMeaning else korean.ifBlank { null }))
                 }
                 c.scripts.relink()
                 onDone(saved)

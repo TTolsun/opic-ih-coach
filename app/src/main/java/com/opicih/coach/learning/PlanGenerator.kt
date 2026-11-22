@@ -133,28 +133,29 @@ object PlanGenerator {
         else -> if (daysLeft % 2 == 0) Focus.CORE else Focus.FREE
     }
     fun tasksFor(focus: Focus, minutes: Int, dueScripts: Int): List<PlanTask> {
-        sailTasks(focus, minutes)?.let { return it }
+        sailTasks(focus, minutes)?.let { tasks -> return tasks.filterNot { it.type == TaskType.REVIEW && dueScripts == 0 } }
         val morning = PlanTask(TaskType.MORNING, "아침 표현 루틴", if (minutes <= 10) 4 else 8)
         val reviewCount = when {
             minutes <= 10 -> 1
-            minutes <= 30 -> minOf(3, maxOf(1, dueScripts))
-            else -> minOf(5, maxOf(2, dueScripts))
+            minutes <= 30 -> 3
+            else -> 5
         }
-        val review = PlanTask(TaskType.REVIEW, "복습 스크립트 말하기 ${reviewCount}개", reviewCount * 3, reviewCount)
+        val available = minOf(reviewCount, dueScripts)
+        val review = PlanTask(TaskType.REVIEW, "복습 스크립트 말하기 ${available}개", available * 3, available)
         val rest = (minutes - morning.minutes - review.minutes).coerceAtLeast(3)
         val main = when (focus) {
             Focus.DIAGNOSE -> listOf(PlanTask(TaskType.FREE, "자유 발화 진단 2문항", rest * 2 / 3, 2), PlanTask(TaskType.IMPROVE, "개선안 검토·승인", rest / 3))
-            Focus.CORE -> listOf(PlanTask(TaskType.IMPROVE, "Survey 주제 개선안 승인", rest / 3), PlanTask(TaskType.SPEAK, "Keyword → Blind 말하기", rest * 2 / 3, 3))
+            Focus.CORE -> listOf(PlanTask(TaskType.IMPROVE, "Survey 주제 개선안 승인", rest / 3), PlanTask(TaskType.SPEAK, "Keyword → Blind 말하기", rest * 2 / 3, 3, MODE_KEYWORD))
             Focus.PAST_COMPARE -> listOf(PlanTask(TaskType.SPEAK, "과거 경험·비교 질문 Blind", rest, 3))
             Focus.ROLEPLAY -> listOf(PlanTask(TaskType.ROLEPLAY, "Role-play 3단 세트", rest * 2 / 3, 3), PlanTask(TaskType.FREE, "돌발 질문 1개", rest / 3, 1))
             Focus.FREE, Focus.LONG_FREE, Focus.LONG_UNEXPECTED, Focus.LONG_STRUCTURE -> listOf(PlanTask(TaskType.FREE, "자유 발화 (4/3/2)", rest, 3))
             Focus.MOCK -> if (minutes >= 45) listOf(PlanTask(TaskType.MOCK, "모의시험 15문항", 40)) else listOf(PlanTask(TaskType.MOCK, "미니 모의시험 7문항", rest))
             Focus.LIGHT -> listOf(PlanTask(TaskType.SPEAK, "자신 있는 답변 2개만 Blind", rest.coerceAtMost(15), 2))
             Focus.LONG_ERRORS -> listOf(PlanTask(TaskType.SPEAK, "오류 노트 교정 말하기", rest, 3))
-            Focus.LONG_FLUENCY -> listOf(PlanTask(TaskType.SPEAK, "Shadowing + 녹음 비교", rest, 3))
+            Focus.LONG_FLUENCY -> listOf(PlanTask(TaskType.SPEAK, "Shadowing + 녹음 비교", rest, 3, "SHADOWING"))
             else -> emptyList() // SAIL focuses are handled by sailTasks()
         }
-        return listOf(morning, review) + main
+        return listOfNotNull(morning, review.takeIf { available > 0 }) + main
     }
 
     /**

@@ -53,10 +53,58 @@ class HomeStateTest {
         assertEquals(2L, travel.scriptId)
     }
 
+    @Test fun reviewQueueContainsOnlyDuePersonalScriptsAndResumesWithDistinctRemainingScripts() {
+        val day = today.toEpochDay()
+        val reviewedAt = today.atStartOfDay(com.opicih.coach.data.repo.ExamRepository.KST).toInstant().toEpochMilli()
+        val scripts = listOf(
+            script(1, "Osaka", 25),
+            script(2, "Osaka", 4).copy(lastReviewedAt = reviewedAt),
+            script(3, "Home", 2).copy(source = com.opicih.coach.data.db.ContentSource.AI_SAMPLE.name),
+            script(4, "Home", 5).copy(dueEpochDay = day + 1),
+            script(5, "Travel", 10),
+        )
+        val log = DailyLogEntity(day, scriptsReviewed = 4)
+        val state = buildHomeState(today, Settings(), scripts, emptyList(), listOf(log), emptyList(), 0)
+        val review = state.tasks.single { it.task.type == TaskType.REVIEW }
+        assertEquals(3, review.task.targetCount)
+        assertTrue(!review.done)
+        assertEquals(listOf(5L, 1L), state.reviewIds)
+    }
+
+    @Test fun completedMorningMovesHighlightWhenDeviceAndExamDatesDiffer() {
+        val midnightInKorea = today.atStartOfDay(com.opicih.coach.data.repo.ExamRepository.KST)
+        val deviceDay = today.minusDays(1).toEpochDay()
+        val state = buildHomeState(
+            today, Settings(), listOf(script(1, "여행", 0).copy(dueEpochDay = deviceDay)),
+            emptyList(), listOf(DailyLogEntity(deviceDay, morningDone = true)), emptyList(), 0,
+            now = midnightInKorea, studyZone = java.time.ZoneOffset.UTC,
+        )
+        assertTrue(state.tasks.single { it.task.type == TaskType.MORNING }.done)
+        assertEquals(TaskType.REVIEW, state.next?.type)
+    }
+
+    @Test fun emptyReviewQueueOffersNoReviewTask() {
+        val state = buildHomeState(today, Settings(), emptyList(), emptyList(), emptyList(), emptyList(), 0)
+        assertTrue(state.reviewIds.isEmpty())
+        assertTrue(state.tasks.none { it.task.type == TaskType.REVIEW })
+    }
+
+    @Test fun sceneSearchAndComparisonUseTheCurrentPersonalScript() {
+        val script = script(8, "Travel", 15).copy(
+            sceneText = "We stayed in Osaka.", sceneMeaning = "오사카에 머물렀어요.",
+            activeVersion = "SCENE", shortVersion = "We stayed in Osaka.",
+        )
+        assertTrue(script.matchesSearch("오사카"))
+        assertEquals(listOf(com.opicih.coach.data.db.ScriptVersion.ORIGINAL), script.comparisonVersions())
+        val question = com.opicih.coach.learning.scriptQuestion(script, com.opicih.coach.data.db.PracticeMode.READ_LISTEN, emptyList())
+        assertEquals(script, question.script)
+        assertEquals("오사카에 머물렀어요.", question.script?.studyMeaning)
+    }
+
     @Test fun dueScriptsSortedWeakestFirst() {
         val scripts = listOf(script(1, "a", 70), script(2, "b", 10))
         val st = buildHomeState(today, Settings(), scripts, emptyList(), emptyList(), emptyList(), 0)
-        assertEquals(listOf(2L, 1L), st.due.map { it.id })
+        assertEquals(listOf(2L, 1L), st.reviewIds)
         assertEquals(TaskType.MORNING, st.next?.type)
     }
 }

@@ -104,18 +104,6 @@ class ScriptRepository(private val db: AppDatabase) {
     suspend fun save(s: ScriptEntity): Long =
         if (s.id == 0L) dao.insertScript(s) else { dao.updateScript(s.copy(updatedAt = System.currentTimeMillis())); s.id }
 
-    /** Attach both original scripts only if both still exist when the learner saves the comparison. */
-    suspend fun saveSharedStory(story: StoryEntity, firstId: Long, secondId: Long): Boolean = db.withTransaction {
-        val first = dao.script(firstId) ?: return@withTransaction false
-        val second = dao.script(secondId) ?: return@withTransaction false
-        dao.insertStories(listOf(story))
-        for (script in listOf(first, second)) {
-            val ids = StoryMap.storyIdsOf(script)
-            if (story.id !in ids) dao.updateScript(script.copy(storyIds = (ids + story.id).joinToString(","), updatedAt = System.currentTimeMillis()))
-        }
-        true
-    }
-
     suspend fun delete(s: ScriptEntity) { dao.deleteRevisionsFor(s.id); dao.deleteSegmentsFor(s.id); dao.deleteScript(s) }
 
     /** Approving copies the revision into its version field and makes it the active study text. The original stays. */
@@ -128,7 +116,7 @@ class ScriptRepository(private val db: AppDatabase) {
             ScriptVersion.IH_TARGET -> s.copy(ihTarget = rev.text)
             ScriptVersion.SHORT -> s.copy(shortVersion = rev.text)
             ScriptVersion.KEYWORDS -> s.copy(keywords = rev.text)
-            ScriptVersion.ORIGINAL -> s
+            ScriptVersion.SCENE, ScriptVersion.ORIGINAL -> s
         }.let { if (makeActive && v.becomesStudyTextOnApprove) it.copy(activeVersion = v.name) else it }
         dao.updateScript(updated.copy(updatedAt = System.currentTimeMillis()))
         dao.updateRevision(rev.copy(status = RevisionStatus.APPROVED.name))

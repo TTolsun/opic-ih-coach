@@ -128,6 +128,22 @@ class MockViewModel(app: Application) : AndroidViewModel(app) {
     private var timer: Job? = null
     private var captureNote: String? = null
 
+    private var entryOpened = false
+
+    fun openEntry(reportId: Long?, restartCount: Int?) {
+        if (entryOpened) return
+        entryOpened = true
+        if (reportId != null) {
+            ui.value = MockUi(phase = MockPhase.STARTING)
+            viewModelScope.launch {
+                val mock = c.dao.mock(reportId)
+                val report = mock?.reportJson?.let { runCatching { appJson.decodeFromString(MockReport.serializer(), it) }.getOrNull() }
+                ui.value = MockUi(phase = MockPhase.REPORT, mockId = reportId, count = mock?.questionCount ?: 15,
+                    report = report, error = if (report == null) "저장된 리포트를 불러올 수 없습니다." else null)
+            }
+        } else if (restartCount != null) start(restartCount)
+    }
+
     fun setCount(n: Int) = ui.update { it.copy(count = n) }
 
     fun start(count: Int = ui.value.count) {
@@ -303,8 +319,9 @@ class MockViewModel(app: Application) : AndroidViewModel(app) {
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun MockScreen() {
+fun MockScreen(reportId: Long? = null, restartCount: Int? = null) {
     val vm: MockViewModel = viewModel()
+    LaunchedEffect(vm) { vm.openEntry(reportId, restartCount) }
     val ui by vm.ui.collectAsStateWithLifecycle()
     val c = LocalContainer.current
     val context = LocalContext.current

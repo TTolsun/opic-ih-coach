@@ -31,7 +31,7 @@ enum class QuestionType(val label: String) {
 }
 
 enum class ScriptVersion(val label: String) {
-    ORIGINAL("Original"), NATURAL("Natural"), IH_TARGET("Target"), SHORT("Short"), KEYWORDS("Keywords");
+    ORIGINAL("Original"), NATURAL("Natural"), IH_TARGET("Target"), SHORT("Short"), KEYWORDS("Keywords"), SCENE("완성 대본");
 
     /**
      * Whether approving a proposal of this version also makes it the study text. Only full answers do: Short is a
@@ -90,7 +90,11 @@ data class ScriptEntity(
     val importId: Long? = null,
     val createdAt: Long = System.currentTimeMillis(),
     val updatedAt: Long = System.currentTimeMillis(),
+    val sceneText: String? = null,
+    val sceneKeywords: String? = null,
+    val sceneMeaning: String? = null,
 ) {
+    val studyMeaning: String? get() = if (active == ScriptVersion.SCENE) sceneMeaning else koreanMeaning
     val type: QuestionType get() = QuestionType.of(questionType)
     val mastery: MasteryState get() = MasteryState.entries.firstOrNull { it.name == masteryState } ?: MasteryState.NEW
     val active: ScriptVersion get() = ScriptVersion.of(activeVersion)
@@ -98,6 +102,7 @@ data class ScriptEntity(
     /** Text used for practice: the approved version, falling back to the original. */
     val studyText: String
         get() = when (active) {
+            ScriptVersion.SCENE -> sceneText ?: original
             ScriptVersion.ORIGINAL -> original
             ScriptVersion.NATURAL -> natural ?: original
             ScriptVersion.IH_TARGET -> ihTarget ?: original
@@ -105,7 +110,24 @@ data class ScriptEntity(
             ScriptVersion.KEYWORDS -> original
         }
 
-    fun keywordList(): List<String> = keywords?.lines()?.map { it.trim() }?.filter { it.isNotEmpty() }.orEmpty()
+    fun textForVersion(version: ScriptVersion): String? = when (version) {
+        ScriptVersion.SCENE -> sceneText
+        ScriptVersion.ORIGINAL -> original
+        ScriptVersion.NATURAL -> natural
+        ScriptVersion.IH_TARGET -> ihTarget
+        ScriptVersion.SHORT -> shortVersion
+        ScriptVersion.KEYWORDS -> if (active == ScriptVersion.SCENE) sceneKeywords else keywords
+    }
+
+    fun comparisonVersions() = ScriptVersion.entries.filter { version ->
+        val text = textForVersion(version)
+        version != active && !text.isNullOrBlank() && text.trim() != studyText.trim()
+    }
+
+    fun matchesSearch(query: String): Boolean = query.isBlank() ||
+        listOfNotNull(title, topic, question, original, studyText, koreanMeaning, sceneMeaning).any { it.contains(query.trim(), ignoreCase = true) }
+
+    fun keywordList(): List<String> = (if (active == ScriptVersion.SCENE) sceneKeywords else keywords)?.lines()?.map { it.trim() }?.filter { it.isNotEmpty() }.orEmpty()
 }
 
 enum class RevisionStatus { PENDING, APPROVED, REJECTED }
@@ -364,6 +386,8 @@ data class StoryEntity(
     val tags: String,
     val reusableFor: String,
     val commonAnswer: String? = null,
+    /** Original sentences selected for replacement, one per line. */
+    val sourcePassages: String? = null,
 )
 
 @Entity(tableName = "questions", indices = [Index("topic")])

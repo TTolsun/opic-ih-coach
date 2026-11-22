@@ -53,8 +53,12 @@ data class EvalInput(
 /** One question/answer pair of a SAIL practice conversation. */
 data class ConvExchange(val question: String, val answer: String)
 
+fun interface KoreanTranslator {
+    suspend fun translateToKorean(items: List<String>): Result<List<String>>
+}
+
 /** AI features behind one interface. GeminiAiCoach is the real AI; LocalCoach is the offline rule-based fallback. */
-interface AiCoach {
+interface AiCoach : KoreanTranslator {
     val isRealAi: Boolean
     /** Shown in the UI next to AI results (e.g. "Gemini"). */
     val engineName: String get() = if (isRealAi) "AI" else "로컬"
@@ -72,7 +76,7 @@ interface AiCoach {
      * Translates each English item into Korean. The result has exactly one string per item, in the same order, or fails.
      * Only a real AI can do this; the offline coach reports that AI is needed.
      */
-    suspend fun translateToKorean(items: List<String>): Result<List<String>> =
+    override suspend fun translateToKorean(items: List<String>): Result<List<String>> =
         Result.failure(AiException("한국어 번역은 설정에서 AI를 켜야 만들 수 있습니다.", false))
 }
 

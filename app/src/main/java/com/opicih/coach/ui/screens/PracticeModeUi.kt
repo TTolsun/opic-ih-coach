@@ -49,7 +49,7 @@ object PracticeModes {
         ModeUi(PracticeMode.DIAGNOSTIC, PracticeStage.APPLY, PracticeMode.DIAGNOSTIC.label, "새 질문 5개에 힌트 없이 답하세요."),
     )
 
-    fun of(mode: PracticeMode): ModeUi = all.firstOrNull { it.mode == mode } ?: all.first { it.mode == PracticeMode.FREE }
+    fun of(mode: PracticeMode): ModeUi = all.first { it.mode == mode }
 }
 
 @OptIn(ExperimentalLayoutApi::class)

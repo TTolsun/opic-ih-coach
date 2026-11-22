@@ -15,6 +15,8 @@ import com.opicih.coach.data.db.ScriptRevisionEntity
 import com.opicih.coach.data.db.ScriptVersion
 import com.opicih.coach.data.db.StoryEntity
 import com.opicih.coach.data.prefs.SettingsRepository
+import com.opicih.coach.learning.BundledItem
+import com.opicih.coach.learning.BundledSegments
 import com.opicih.coach.learning.HotelRoleplay
 import com.opicih.coach.learning.QuestionSource
 import com.opicih.coach.learning.StoryMap
@@ -56,14 +58,25 @@ internal fun planStoryLinks(seed: List<SeedScript>, scripts: List<ScriptEntity>)
         seed.firstOrNull { it.topic == s.topic && it.title == s.title }?.stories?.takeIf { it.isNotBlank() }?.let { s.copy(storyIds = it) }
     }
 
-internal fun curatedReuseQuestions(script: ScriptEntity, seed: List<SeedScript>, stories: List<StoryEntity>): List<String> {
+internal fun curatedReuseQuestions(script: ScriptEntity, seed: List<SeedScript>, stories: List<StoryEntity>, sceneAnswer: String? = null): List<String> {
     if (script.source != ContentSource.SEED_USER.name) return emptyList()
     val bundled = seed.firstOrNull { it.topic == script.topic && it.title == script.title } ?: return emptyList()
     if (bundled.stories !in StoryMap.storyIdsOf(script) || stories.none { it.id == bundled.stories }) return emptyList()
     val studyText = TextNormalizer.normalize(script.studyText)
-    val bundledVersions = listOf(bundled.original, bundled.ihTarget, bundled.short)
+    val bundledVersions = listOfNotNull(bundled.original, bundled.ihTarget, bundled.short, sceneAnswer)
     if (studyText.isEmpty() || bundledVersions.none { TextNormalizer.normalize(it) == studyText }) return emptyList()
     return bundled.reuseQuestions
+}
+
+/** Install only on the matching shipped question. The presence of the scene also survives backup/restore
+ * and prevents subsequent launches from resetting the learner's version choice or edits. */
+internal fun ScriptEntity.installScene(item: BundledItem): ScriptEntity {
+    if (sceneText != null || title != item.title || question != item.question ||
+        source !in setOf(ContentSource.SEED_USER.name, ContentSource.AI_SAMPLE.name)) return this
+    val text = item.answerText()
+    return copy(sceneText = text, sceneMeaning = item.sentences.joinToString(" ") { it.ko },
+        sceneKeywords = item.keywords.joinToString("\n"), activeVersion = ScriptVersion.SCENE.name,
+        estSeconds = (TextNormalizer.words(text).size / 2.2).toInt().coerceAtLeast(10))
 }
 
 internal data class BundledRevisionRefresh(
@@ -97,7 +110,7 @@ internal fun planBundledRevisionRefresh(
 /**
  * Seeds original content once and refreshes selected bundled proposals after upgrades or restores.
  * The original and approved study versions stay in ScriptEntity, separate from pending revisions.
- * To publish the repo without personal scripts, delete assets/seed/user_scripts_2026.json (the app still works).
+ * The original scripts, scene scripts, and roleplay templates are optional seed assets.
  */
 class SeedLoader(private val context: Context, private val db: AppDatabase, private val settings: SettingsRepository) {
     private val dao = db.dao()
@@ -107,9 +120,28 @@ class SeedLoader(private val context: Context, private val db: AppDatabase, priv
         readAsset("seed/user_scripts_2026.json")?.let { json.decodeFromString(SeedScripts.serializer(), it).scripts }.orEmpty()
     }
 
+    private val scenes by lazy {
+        readAsset("seed/scene_scripts.json")?.let { text ->
+            BundledSegments.parse(text).items.associateBy { it.question }
+        }.orEmpty()
+    }
+
     suspend fun seedIfNeeded() = seedLock.withLock {
         seedOriginal()
         addLaterContent()
+        db.withTransaction {
+            val installed = dao.scripts().mapNotNull { script ->
+                val scene = scenes[script.question] ?: return@mapNotNull null
+                script.installScene(scene).takeUnless { it === script }
+            }
+            if (installed.isNotEmpty()) {
+                dao.updateScripts(installed)
+                val ids = installed.map { it.id }.toSet()
+                val old = dao.revisions().filter { it.scriptId in ids && it.status == RevisionStatus.PENDING.name &&
+                    it.origin == RevisionOrigin.PREBUILT.name }
+                if (old.isNotEmpty()) dao.deleteRevisions(old)
+            }
+        }
     }
 
     suspend fun hotelQuestions() = withContext(Dispatchers.IO) {
@@ -125,7 +157,7 @@ class SeedLoader(private val context: Context, private val db: AppDatabase, priv
 
     suspend fun reuseQuestions(script: ScriptEntity): List<String> = withContext(Dispatchers.IO) {
         val stories = dao.stories()
-        val curated = curatedReuseQuestions(script, bundledScripts, stories)
+        val curated = curatedReuseQuestions(script, bundledScripts, stories, scenes[script.question]?.answerText())
         StoryMap.reuseQuestions(script, stories, dao.scripts(), curated)
     }
 
@@ -145,7 +177,7 @@ class SeedLoader(private val context: Context, private val db: AppDatabase, priv
             if (initialSeed && dao.scriptCount() == 0) {
                 insertScripts(seed, today)
             } else if (seed.any { it.refreshRevisions }) {
-                val refresh = planBundledRevisionRefresh(seed, dao.scripts(), dao.revisions())
+                val refresh = planBundledRevisionRefresh(seed.filterNot { it.question in scenes }, dao.scripts(), dao.revisions())
                 if (refresh.obsolete.isNotEmpty()) dao.deleteRevisions(refresh.obsolete)
                 if (refresh.additions.isNotEmpty()) dao.insertRevisions(refresh.additions)
             }
@@ -170,7 +202,7 @@ class SeedLoader(private val context: Context, private val db: AppDatabase, priv
                     dueEpochDay = today,
                 )
             )
-            dao.insertRevisions(sc.revisionsFor(id))
+            if (sc.question !in scenes) dao.insertRevisions(sc.revisionsFor(id))
         }
     }
 

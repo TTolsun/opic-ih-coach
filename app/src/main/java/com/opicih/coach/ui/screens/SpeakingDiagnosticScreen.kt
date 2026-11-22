@@ -89,18 +89,18 @@ internal fun SpeakingDiagnosticScreen() {
         when {
             snapshot == null -> CircularProgressIndicator()
             selected == null -> {
-                SectionCard(title = "진단 시작", trailing = { InfoButton(InfoTopics.DIAGNOSTIC) }) {
+                val inProgress = snapshot.sessions.firstOrNull { !it.complete }
+                SectionCard(title = "말하기 진단", trailing = { InfoButton(InfoTopics.DIAGNOSTIC) }) {
                     Text(PracticeModes.of(PracticeMode.DIAGNOSTIC).hint)
-                    val inProgress = snapshot.sessions.firstOrNull { !it.complete }
                     val hasNew = snapshot.nextQuestions() != null
                     Button(
                         onClick = { if (inProgress == null) vm.start() else vm.open(inProgress.id) },
                         enabled = inProgress != null || hasNew,
                         modifier = Modifier.fillMaxWidth(),
-                    ) { Text(if (inProgress == null) "새 진단 시작" else "진단 이어서 하기") }
+                    ) { Text(if (inProgress == null) "새 진단 시작" else "${inProgress.answers.size + 1}번째 문항부터 이어서 하기") }
                     if (!hasNew && inProgress == null) Text("남은 진단 문항이 없습니다.")
                 }
-                snapshot.sessions.forEach { saved ->
+                snapshot.sessions.filterNot { it.id == inProgress?.id }.forEach { saved ->
                     SectionCard(title = diagnosticDate(saved.startedAt)) {
                         Text("${saved.answers.size} / ${SpeakingDiagnostic.types.size}문항 저장")
                         TextButton(onClick = { vm.open(saved.id) }) { Text(if (saved.complete) "결과 보기" else "이어서 답하기") }

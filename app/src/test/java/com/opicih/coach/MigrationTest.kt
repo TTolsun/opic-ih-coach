@@ -20,7 +20,7 @@ import java.sql.SQLException
 
 /**
  * Runs the production migration SQL (MigrationSql) against a real SQLite database built from Room's exported
- * v1 schema, then checks the result against Room's exported v11 schema and that no user data was lost.
+ * v1 schema, then checks the result against Room's exported v13 schema and that no user data was lost.
  * This replaces an instrumented MigrationTestHelper run, which needs a device.
  */
 class MigrationTest {
@@ -88,12 +88,17 @@ class MigrationTest {
         MigrationSql.V9_TO_V10.forEach(::exec)
     }
 
-    @Test fun v1ToV11MatchesRoomSchema() {
+    @Test fun v1ToV13MatchesRoomSchema() {
         migrateToV10()
         exec("INSERT INTO stories (id,titleKo,summary,tags,reusableFor) VALUES ('S1','Osaka','hot spring','travel','hotel')")
         MigrationSql.V10_TO_V11.forEach(::exec)
         assertEquals(1, count("stories", "id='S1' AND summary='hot spring' AND commonAnswer IS NULL"))
-        for (e in entities(11)) {
+        exec("UPDATE stories SET commonAnswer = 'Shared sentence.' WHERE id = 'S1'")
+        MigrationSql.V11_TO_V12.forEach(::exec)
+        assertEquals(1, count("stories", "id='S1' AND commonAnswer='Shared sentence.' AND sourcePassages IS NULL"))
+        MigrationSql.V12_TO_V13.forEach(::exec)
+        assertEquals(23, count("scripts", "sceneText IS NULL AND activeVersion='ORIGINAL' AND srsStep = (id - 1) % 5"))
+        for (e in entities(13)) {
             val table = e["tableName"]!!.jsonPrimitive.content
             val expected = e["fields"]!!.jsonArray.associate { f ->
                 val o = f.jsonObject

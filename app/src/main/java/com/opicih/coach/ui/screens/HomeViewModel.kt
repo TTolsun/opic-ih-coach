@@ -10,6 +10,8 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.opicih.coach.App
+import com.opicih.coach.data.db.ContentSource
+import java.time.Instant
 import com.opicih.coach.data.db.DailyLogEntity
 import com.opicih.coach.data.db.ExamEntity
 import com.opicih.coach.data.db.ExamRegistrationEntity
@@ -51,10 +53,7 @@ data class HomeState(
     val tasks: List<TaskStatus> = emptyList(),
     val next: PlanTask? = null,
     val completion: Float = 0f,
-    val streak: Int = 0,
-    val readiness: Int = 0,
-    val totalSpeakingMin: Long = 0,
-    val due: List<ScriptEntity> = emptyList(),
+    val reviewIds: List<Long> = emptyList(),
     val weak: List<WeakTopic> = emptyList(),
     val pendingRevisions: Int = 0,
     val lastMock: MockTestEntity? = null,
@@ -92,17 +91,26 @@ fun buildHomeState(
     now: ZonedDateTime = today.atTime(12, 0).atZone(ExamRepository.KST),
     errors: List<com.opicih.coach.data.db.ErrorPatternEntity> = emptyList(),
     conversations: List<com.opicih.coach.learning.ConversationReport> = emptyList(),
+    studyZone: ZoneId = now.zone,
 ): HomeState {
     val weaknesses = com.opicih.coach.learning.WeaknessAnalyzer.analyze(attempts, errors, conversations, now.toInstant().toEpochMilli())
-    val day = today.toEpochDay()
-    val due = scripts.filter { it.dueEpochDay <= day }.sortedBy { it.masteryScore }
+    // Daily logs and SRS dates use the device's calendar. Exam schedules use Korea's calendar.
+    val studyDate = now.withZoneSameInstant(studyZone).toLocalDate()
+    val day = studyDate.toEpochDay()
+    val personal = scripts.filter { it.source != ContentSource.AI_SAMPLE.name && it.studyText.isNotBlank() }
+    val reviewedToday = personal.filter { script ->
+        script.lastReviewedAt?.let { Instant.ofEpochMilli(it).atZone(studyZone).toLocalDate() } == studyDate
+    }.map { it.id }.toSet()
+    val due = personal.filter { it.dueEpochDay <= day && it.id !in reviewedToday }
+        .sortedWith(compareBy<ScriptEntity> { it.masteryScore }.thenBy { it.dueEpochDay }.thenBy { it.id })
+    val reviewPoolSize = due.size + reviewedToday.size
     val mockDone = logs.any { it.mockDone && it.epochDay >= day - 7 }
     val reg = regs.orEmpty()
     val focusExam = ExamSchedule.focus(reg, now)
-    val plan = if (regs == null) PlanGenerator.today(today, s.examDate, s.studyLevel.minutes, due.size, mockDone)
-    else PlanGenerator.forExam(today, focusExam?.type, focusExam?.date, s.studyLevel.minutes, due.size, mockDone, weaknesses)
+    val plan = if (regs == null) PlanGenerator.today(today, s.examDate, s.studyLevel.minutes, reviewPoolSize, mockDone)
+    else PlanGenerator.forExam(today, focusExam?.type, focusExam?.date, s.studyLevel.minutes, reviewPoolSize, mockDone, weaknesses)
     val log = logs.firstOrNull { it.epochDay == day }
-    val tasks = TodayProgress.statuses(plan, log)
+    val tasks = TodayProgress.statuses(plan, log, reviewedToday.size)
     val weak = ProgressCalculator.weakTopics(attempts, s.surveyTopics).map { t ->
         // Weakest script of that topic, so a tap opens something concrete to practice.
         WeakTopic(t, scripts.filter { it.topic.equals(t, true) }.minByOrNull { it.masteryScore }?.id)
@@ -113,7 +121,7 @@ fun buildHomeState(
     val debriefReg = debriefRegistration(reg, sat)
     val satRow = debriefExamRow(exams, sat, debriefReg)
     val debriefDue = sat.takeIf {
-        !today.isBefore(it) && satRow?.debriefAt == null && day - it.toEpochDay() <= 7 && (it != today || focusExam?.date != today)
+        !today.isBefore(it) && satRow?.debriefAt == null && today.toEpochDay() - it.toEpochDay() <= 7 && (it != today || focusExam?.date != today)
     }
     val sinceMs = last.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
     val retake = com.opicih.coach.learning.RetakeSummaries.of(s, reg, today)
@@ -124,11 +132,8 @@ fun buildHomeState(
         plan = plan,
         tasks = tasks,
         next = TodayProgress.next(tasks),
-        completion = ProgressCalculator.todayCompletion(log, s.studyLevel.minutes, TodayProgress.reviewGoal(plan)),
-        streak = ProgressCalculator.streak(logs, day),
-        readiness = ProgressCalculator.ihReadiness(scripts, attempts),
-        totalSpeakingMin = attempts.sumOf { it.effectiveSpeechMs } / 60_000,
-        due = due,
+        completion = ProgressCalculator.todayCompletion(log?.copy(scriptsReviewed = reviewedToday.size), s.studyLevel.minutes, TodayProgress.reviewGoal(plan)),
+        reviewIds = due.take((TodayProgress.reviewGoal(plan) - reviewedToday.size).coerceAtLeast(0)).map { it.id },
         weak = weak,
         pendingRevisions = pendingRevisions,
         lastMock = mocks.firstOrNull(),
@@ -157,7 +162,7 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
 
     val state: StateFlow<HomeState> = combine(c.settings.flow, stored, extra, c.exams.flow, evidence) { s, (scripts, attempts, logs), (mocks, pending, exams), regs, (errors, convs) ->
         val now = ExamRepository.nowKst()
-        buildHomeState(now.toLocalDate(), s, scripts, attempts, logs, mocks, pending, exams, regs, now, errors, convs)
+        buildHomeState(now.toLocalDate(), s, scripts, attempts, logs, mocks, pending, exams, regs, now, errors, convs, studyZone = ZoneId.systemDefault())
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HomeState())
 }
 

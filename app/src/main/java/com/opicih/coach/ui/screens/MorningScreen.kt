@@ -80,7 +80,11 @@ fun MorningScreen(
     val index = state?.index ?: 0
     val saving = state?.pending != null
     val previous = { vm.previous(index) }
-    BackHandler { previous() }
+    BackHandler {
+        if (!saving) {
+            if (index == 0) onExit() else previous()
+        }
+    }
 
     Column(Modifier.fillMaxSize()) {
         CenterAlignedTopAppBar(
