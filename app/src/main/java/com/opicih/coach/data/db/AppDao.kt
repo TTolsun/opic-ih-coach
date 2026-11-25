@@ -108,7 +108,7 @@ interface AppDao {
     // ---- Chunks
     @Query("SELECT * FROM chunks ORDER BY id") suspend fun chunks(): List<ChunkEntity>
     @Query("SELECT * FROM chunks WHERE id = :id") suspend fun chunk(id: Long): ChunkEntity?
-    @Insert suspend fun insertChunks(c: List<ChunkEntity>)
+    @Insert suspend fun insertChunks(c: List<ChunkEntity>): List<Long>
     @Update suspend fun updateChunk(c: ChunkEntity)
     @Query("SELECT * FROM morning_reviews WHERE chunkId = :chunkId ORDER BY id")
     suspend fun morningReviews(chunkId: Long): List<MorningReviewEntity>
@@ -174,7 +174,18 @@ interface AppDao {
     @Query("SELECT * FROM word_lookups WHERE scriptId = :scriptId ORDER BY count DESC, lastAt DESC") fun lookupsFlow(scriptId: Long): Flow<List<WordLookupEntity>>
     @Query("SELECT * FROM word_lookups ORDER BY id") suspend fun lookups(): List<WordLookupEntity>
     @Insert suspend fun insertLookups(l: List<WordLookupEntity>)
-    @Query("SELECT COUNT(*) FROM chunks WHERE lower(phrase) IN (:phrases)") suspend fun chunkCount(phrases: List<String>): Int
+    @Query("SELECT COUNT(*) FROM chunks WHERE lower(phrase) IN (:phrases) AND source != 'ACTIVE_SCRIPT'") suspend fun chunkCount(phrases: List<String>): Int
+    @Query("SELECT * FROM chunks WHERE lower(phrase) IN (:phrases) AND source = 'ACTIVE_SCRIPT' ORDER BY id LIMIT 1")
+    suspend fun activeScriptChunk(phrases: List<String>): ChunkEntity?
+
+    @Transaction
+    suspend fun keepLookupCard(keys: List<String>, card: ChunkEntity) {
+        if (chunkCount(keys) > 0) return
+        val active = activeScriptChunk(keys)
+        if (active == null) insertChunks(listOf(card))
+        else updateChunk(active.copy(phrase = card.phrase, meaningKo = card.meaningKo, example = card.example,
+            category = card.category, source = card.source))
+    }
 
     // ---- AI-made glossary entries (v10)
     @Query("SELECT * FROM glossary_entries ORDER BY id") fun glossaryEntriesFlow(): Flow<List<GlossaryEntryEntity>>

@@ -98,6 +98,7 @@ fun ScriptsScreen(
     onImport: () -> Unit,
     onFrames: () -> Unit,
     onListen: () -> Unit,
+    onSceneDrill: (String) -> Unit,
     pendingOnly: Boolean = false,
 ) {
     val c = LocalContainer.current
@@ -109,8 +110,23 @@ fun ScriptsScreen(
     if (pendingOnly && pending == null) return
     val pendingIds = pending.orEmpty().map { it.scriptId }.toSet()
     val listed = if (pendingOnly) scripts.filter { it.id in pendingIds } else scripts
-    val filtered = remember(listed, query) {
-        listed.filter { it.matchesSearch(query) }
+    var byScene by rememberSaveable { mutableStateOf(true) }
+    val sceneNames = remember(listed) {
+        listed.associate { script -> script.id to c.seed.studyParts(script).mapNotNull { it.scene }.distinct() }
+    }
+    val hasScenes = !pendingOnly && sceneNames.values.any { it.isNotEmpty() }
+    val showScenes = byScene && hasScenes && query.isBlank()
+    val filtered = remember(listed, query, sceneNames) {
+        listed.filter { it.matchesSearch(query) || sceneNames.getValue(it.id).any { name -> name.contains(query.trim(), ignoreCase = true) } }
+    }
+    val groups = remember(filtered, showScenes, sceneNames) {
+        if (showScenes) buildMap<String, MutableList<ScriptEntity>> {
+            for (script in filtered) {
+                for (name in sceneNames.getValue(script.id)) getOrPut(name) { mutableListOf() }.add(script)
+            }
+            val independent = filtered.filter { sceneNames.getValue(it.id).isEmpty() }
+            if (independent.isNotEmpty()) put("개별 대본", independent.toMutableList())
+        } else filtered.groupBy { it.topic }
     }
 
     Box(Modifier.fillMaxSize()) {
@@ -141,12 +157,40 @@ fun ScriptsScreen(
                     }
                     Text(emptyMessage, style = MaterialTheme.typography.bodyMedium)
                 }
+                if (hasScenes) Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Pill("장면별", byScene) { byScene = true }
+                    Pill("주제별", !byScene) { byScene = false }
+                }
             }
-            filtered.groupBy { it.topic }.forEach { (topic, list) ->
+            groups.forEach { (topic, list) ->
+                if (showScenes) {
+                    item(key = "scene_$topic") {
+                        SectionCard(title = "$topic · 질문 ${list.size}개", collapsible = true, initiallyExpanded = false,
+                            trailing = {
+                                if (c.seed.sceneDrill(topic) != null) TextButton(onClick = { onSceneDrill(topic) }) {
+                                    Text("질문 연습")
+                                }
+                            }) {
+                            val shared = remember(list.first(), topic) { c.seed.studyParts(list.first()).find { it.scene == topic } }
+                            shared?.let { part ->
+                                Text(part.sentences.joinToString(" ") { it.en }, style = EnglishReading)
+                                Text(part.sentences.joinToString(" ") { it.ko }, style = MaterialTheme.typography.bodyMedium)
+                            }
+                            list.forEach { script ->
+                                HorizontalDivider(Modifier.padding(vertical = 4.dp))
+                                Column(Modifier.fillMaxWidth().clickable { onOpen(script.id) }.padding(vertical = 8.dp)) {
+                                    Text("${script.topic} · ${script.title}", style = MaterialTheme.typography.labelMedium)
+                                    Text(script.question, style = MaterialTheme.typography.bodyMedium)
+                                }
+                            }
+                        }
+                    }
+                    return@forEach
+                }
                 item(key = "h_$topic") {
                     Text(topic, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(top = 12.dp, bottom = 4.dp))
                 }
-                items(list, key = { it.id }) { s ->
+                items(list, key = { "script_${topic}_${it.id}" }) { s ->
                     SectionCard(Modifier.clickable { onOpen(s.id) }) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(s.title, style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
@@ -307,7 +351,8 @@ fun ScriptDetailScreen(id: Long, onPractice: (Long, PracticeMode) -> Unit, onQue
                 busy = true; message = null
                 scope.launch {
                     val stories = c.dao.stories().joinToString("; ") { "${it.id} ${it.titleKo}: ${it.summary}" }
-                    c.scripts.requestImprovement(s, c.coach(settings), stories, c.glossary)
+                    val shared = c.seed.studyParts(s).filter { it.scene != null }.flatMap { part -> part.sentences.map { it.en } }
+                    c.scripts.requestImprovement(s, c.coach(settings), stories, c.glossary, shared)
                         .onSuccess { r ->
                             message = "개선안 ${r.revisions}개를 승인 대기로 저장했습니다." +
                                 if (r.glossary > 0) " 새 표현 뜻 ${r.glossary}개를 추가했습니다." else ""

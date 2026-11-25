@@ -26,6 +26,8 @@ import com.opicih.coach.learning.LadderResult
 import com.opicih.coach.learning.ParagraphLadder
 import com.opicih.coach.learning.transferCandidates
 import com.opicih.coach.speech.SpeakingCapture
+import com.opicih.coach.speech.CaptureResult
+import com.opicih.coach.learning.SpeakingDiagnostic
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -76,6 +78,22 @@ class SpeakingViewModel(private val c: AppContainer, private val capture: Speaki
     private var openingReview = false
     private var reviewRoute = false
     private var recallRoute = false
+    private var sceneTurn: SceneStep? = null
+    private var untranscribed: CaptureResult? = null
+
+    internal fun openSceneTurn(turn: SceneStep, question: QuestionItem) {
+        if (sceneTurn == turn) return
+        stopAudio()
+        sceneTurn = turn
+        _ui.update { it.copy(mode = PracticeMode.FREE, liveText = "") }
+        showQuestion(question)
+    }
+
+    fun playPendingRecording() {
+        untranscribed?.audioPath?.let { path -> c.player.play(File(path), 1f) { msg -> _ui.update { it.copy(error = msg) } } }
+    }
+
+    val hasPendingRecording get() = untranscribed?.audioPath != null
 
     init {
         viewModelScope.launch {
@@ -325,6 +343,7 @@ class SpeakingViewModel(private val c: AppContainer, private val capture: Speaki
         activeChoice = choice
         val err = capture.start(viewModelScope, choice.mode)
         if (err != null) { _ui.update { it.copy(error = err, showTypedFallback = true) }; return }
+        discardPendingRecording()
         _ui.update { it.copy(phase = Phase.RECORDING, error = null, liveText = "", elapsedMs = 0, result = null, showTypedFallback = false) }
         tick?.cancel()
         tick = viewModelScope.launch {
@@ -346,6 +365,12 @@ class SpeakingViewModel(private val c: AppContainer, private val capture: Speaki
         viewModelScope.launch {
             val st = c.settings.current()
             val r = capture.stop(c.transcriber(st))
+            if (sceneTurn != null && !SpeakingDiagnostic.hasUsableTranscript(r.transcript)) {
+                untranscribed = r
+                _ui.update { it.copy(phase = Phase.IDLE, showTypedFallback = true,
+                    error = "영어 답변을 확인할 수 없어요. 말한 내용을 입력하거나 다시 녹음해 주세요.") }
+                return@launch
+            }
             // A verbatim transcription that failed (network, quota) leaves a recording but no text. Offer the typed
             // fallback instead of saving a score-less answer, as for a failed live recognizer.
             if (r.transcript.isBlank() && (r.audioPath == null || activeChoice?.verbatim == true)) {
@@ -361,7 +386,10 @@ class SpeakingViewModel(private val c: AppContainer, private val capture: Speaki
         if (text.isBlank() || _ui.value.phase in setOf(Phase.RECORDING, Phase.PROCESSING)) return
         questionLoad?.cancel()
         _ui.update { it.copy(phase = Phase.PROCESSING, showTypedFallback = false, error = null) }
-        viewModelScope.launch { analyze(text.trim(), "TYPED", null, 0, null, false, null, null) }
+        val recording = untranscribed
+        viewModelScope.launch {
+            analyze(text.trim(), "TYPED", recording?.audioPath, recording?.durationMs ?: 0, recording?.pauses, false, null, null)
+        }
     }
 
     private suspend fun analyze(transcript: String, captureMode: String, audio: String?, duration: Long, pauses: com.opicih.coach.analysis.PauseMetrics?, fromStt: Boolean, warning: String?, captureNote: String?, completeReview: Boolean = true) {
@@ -377,11 +405,14 @@ class SpeakingViewModel(private val c: AppContainer, private val capture: Speaki
                     pauses = pauses, transcriptFromDeviceStt = fromStt, requiredTense = q.requiredTense, mission = q.mission, target = target, captureNote = captureNote,
                     speakingReviewId = q.reviewId.takeIf { completeReview },
                     missionQuestion = q.missionQuestion,
+                    guidedRetry = sceneTurn == SceneStep.RETRY,
                 ),
                 ai = c.realAi(st), examEpochDay = c.exams.focusEpochDay(),
             )
         }
         res.onSuccess { a ->
+            // The saved attempt now owns the recording, including while the review date is being loaded.
+            untranscribed = null
             val check = checkFor(u, q, transcript, a)
             val reviewDate = if (u.mode == PracticeMode.FREE) c.dao.speakingReviewDate(q.text) else null
             _ui.update {
@@ -421,8 +452,14 @@ class SpeakingViewModel(private val c: AppContainer, private val capture: Speaki
     fun onBackground() { if (_ui.value.phase == Phase.RECORDING) stop(completeReview = false) }
 
     override fun onCleared() {
+        discardPendingRecording()
         capture.release()
         c.tts.stop(); c.player.stop()
+    }
+
+    private fun discardPendingRecording() {
+        untranscribed?.audioPath?.let { File(it).delete() }
+        untranscribed = null
     }
 
     companion object {

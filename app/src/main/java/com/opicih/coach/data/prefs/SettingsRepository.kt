@@ -55,7 +55,7 @@ data class Settings(
     /** 최근 공식 결과 등급. AI 프롬프트와 개선안 난이도의 출발점입니다. */
     val currentGrade: LearnerGrade = LearnerGrade.IM1,
     /** 다음 시험의 목표 등급. 최종 목표(IH)와 별개로 개선안 길이와 준비도 기준을 정합니다. */
-    val targetGrade: LearnerGrade = LearnerGrade.IM2,
+    val targetGrade: LearnerGrade = LearnerProfile.DEFAULT.target,
     val captureMode: CaptureMode = CaptureMode.LIVE_STT,
     val ttsRate: Float = 0.9f,
     /** Installed TTS voice name; empty = engine default. */
@@ -165,7 +165,7 @@ internal val SETTINGS_FIELDS: List<PrefField<*, *>> = listOf(
     plain("surveyTopics", stringSetPreferencesKey("survey"), { it.surveyTopics }) { s, v -> s.copy(surveyTopics = v) },
     plain("selfLevel", intPreferencesKey("self_level"), { it.selfLevel }) { s, v -> s.copy(selfLevel = v) },
     PrefField("currentGrade", stringPreferencesKey("current_grade"), { it.currentGrade }, { s, v -> s.copy(currentGrade = v) }, { it.name }, { LearnerGrade.of(it, LearnerGrade.IM1) }),
-    PrefField("targetGrade", stringPreferencesKey("target_grade"), { it.targetGrade }, { s, v -> s.copy(targetGrade = v) }, { it.name }, { LearnerGrade.of(it, LearnerGrade.IM2) }),
+    PrefField("targetGrade", stringPreferencesKey("target_grade"), { it.targetGrade }, { s, v -> s.copy(targetGrade = v) }, { it.name }, { LearnerGrade.of(it, LearnerProfile.DEFAULT.target) }),
     PrefField("captureMode", stringPreferencesKey("capture_mode"), { it.captureMode }, { s, v -> s.copy(captureMode = v) }, { it.name }, { CaptureMode.of(it) }),
     plain("ttsRate", floatPreferencesKey("tts_rate"), { it.ttsRate }) { s, v -> s.copy(ttsRate = v) },
     plain("ttsVoice", stringPreferencesKey("tts_voice"), { it.ttsVoice }) { s, v -> s.copy(ttsVoice = v) },

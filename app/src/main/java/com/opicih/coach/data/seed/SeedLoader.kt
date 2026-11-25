@@ -19,6 +19,8 @@ import com.opicih.coach.learning.BundledItem
 import com.opicih.coach.learning.BundledSegments
 import com.opicih.coach.learning.HotelRoleplay
 import com.opicih.coach.learning.QuestionSource
+import com.opicih.coach.learning.ScenePart
+import com.opicih.coach.learning.ScriptSegmenter
 import com.opicih.coach.learning.StoryMap
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -68,15 +70,22 @@ internal fun curatedReuseQuestions(script: ScriptEntity, seed: List<SeedScript>,
     return bundled.reuseQuestions
 }
 
-/** Install only on the matching shipped question. The presence of the scene also survives backup/restore
- * and prevents subsequent launches from resetting the learner's version choice or edits. */
+/** Refresh only a known shipped combination of English, translation and cues, including after restore. */
 internal fun ScriptEntity.installScene(item: BundledItem): ScriptEntity {
-    if (sceneText != null || title != item.title || question != item.question ||
+    if (title != item.title || question != item.question ||
         source !in setOf(ContentSource.SEED_USER.name, ContentSource.AI_SAMPLE.name)) return this
     val text = item.answerText()
+    if (sceneText == text) return this
+    if (sceneText != null) {
+        if (item.previousSignatures.isEmpty() || sceneMeaning == null || sceneKeywords == null) return this
+        val previous = listOf(sceneText, sceneMeaning, sceneKeywords).joinToString("\u0000")
+        if (ScriptSegmenter.sourceHash(question, previous) !in item.previousSignatures) return this
+    } else if (item.originalHash != null && (active != ScriptVersion.ORIGINAL || koreanMeaning != null ||
+            ScriptSegmenter.sourceHash(question, original) != item.originalHash)) return this
+    val selected = if (sceneText == null) ScriptVersion.SCENE.name else activeVersion
     return copy(sceneText = text, sceneMeaning = item.sentences.joinToString(" ") { it.ko },
-        sceneKeywords = item.keywords.joinToString("\n"), activeVersion = ScriptVersion.SCENE.name,
-        estSeconds = (TextNormalizer.words(text).size / 2.2).toInt().coerceAtLeast(10))
+        sceneKeywords = item.keywords.joinToString("\n"), activeVersion = selected,
+        estSeconds = if (selected == ScriptVersion.SCENE.name) (TextNormalizer.words(text).size / 2.2).toInt().coerceAtLeast(10) else estSeconds)
 }
 
 internal data class BundledRevisionRefresh(
@@ -120,28 +129,35 @@ class SeedLoader(private val context: Context, private val db: AppDatabase, priv
         readAsset("seed/user_scripts_2026.json")?.let { json.decodeFromString(SeedScripts.serializer(), it).scripts }.orEmpty()
     }
 
-    private val scenes by lazy {
-        readAsset("seed/scene_scripts.json")?.let { text ->
-            BundledSegments.parse(text).items.associateBy { it.question }
-        }.orEmpty()
-    }
+    private val sceneFile by lazy { readAsset("seed/scene_scripts.json")?.let(BundledSegments::parse) }
+    private val scenes by lazy { sceneFile?.items.orEmpty().associateBy { it.question } }
+    fun sceneDrill(name: String) = sceneFile?.drills?.get(name)
 
     suspend fun seedIfNeeded() = seedLock.withLock {
         seedOriginal()
         addLaterContent()
         db.withTransaction {
+            val firstInstall = mutableSetOf<Long>()
             val installed = dao.scripts().mapNotNull { script ->
                 val scene = scenes[script.question] ?: return@mapNotNull null
-                script.installScene(scene).takeUnless { it === script }
+                val updated = script.installScene(scene)
+                if (updated === script) return@mapNotNull null
+                if (script.sceneText == null) firstInstall += script.id
+                updated
             }
             if (installed.isNotEmpty()) {
                 dao.updateScripts(installed)
-                val ids = installed.map { it.id }.toSet()
-                val old = dao.revisions().filter { it.scriptId in ids && it.status == RevisionStatus.PENDING.name &&
+                val old = dao.revisions().filter { it.scriptId in firstInstall && it.status == RevisionStatus.PENDING.name &&
                     it.origin == RevisionOrigin.PREBUILT.name }
                 if (old.isNotEmpty()) dao.deleteRevisions(old)
             }
         }
+    }
+
+    fun studyParts(script: ScriptEntity): List<ScenePart> {
+        if (script.active != ScriptVersion.SCENE) return emptyList()
+        val item = scenes[script.question] ?: return emptyList()
+        return if (item.title == script.title && item.answerText() == script.studyText) item.parts else emptyList()
     }
 
     suspend fun hotelQuestions() = withContext(Dispatchers.IO) {

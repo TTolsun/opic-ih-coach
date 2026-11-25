@@ -19,7 +19,8 @@ data class ScriptVersions(
     val glossary: List<GlossaryEntry> = emptyList(),
 )
 
-data class ScriptInput(val topic: String, val question: String, val original: String, val storyHints: String = "")
+data class ScriptInput(val topic: String, val question: String, val original: String, val storyHints: String = "",
+    val sharedSentences: List<String> = emptyList())
 
 data class ChatTurn(val fromUser: Boolean, val text: String)
 

@@ -2,6 +2,7 @@ package com.opicih.coach
 
 import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.mutablePreferencesOf
+import androidx.datastore.preferences.core.stringPreferencesKey
 import com.opicih.coach.data.prefs.CaptureMode
 import com.opicih.coach.data.prefs.LearnerGrade
 import com.opicih.coach.data.prefs.SETTINGS_FIELDS
@@ -35,6 +36,10 @@ class SettingsFieldsTest {
     @Test
     fun emptyPreferencesYieldDefaults() {
         assertEquals(Settings(), emptyPreferences().toSettings())
+        assertEquals(LearnerGrade.IH, emptyPreferences().toSettings().profile.target)
+        val targetKey = stringPreferencesKey("target_grade")
+        assertEquals(LearnerGrade.IM2, mutablePreferencesOf(targetKey to "IM2").toSettings().profile.target)
+        assertEquals(LearnerGrade.IH, mutablePreferencesOf(targetKey to "unknown").toSettings().profile.target)
     }
 
     @Test
