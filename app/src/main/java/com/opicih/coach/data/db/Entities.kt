@@ -51,7 +51,8 @@ enum class ContentSource(val label: String) {
     USER_IMPORT("가져오기/직접 작성"),
     AI_SAMPLE("AI 생성 예제"),
     /** A phrase the learner looked up in a script and kept as a review card (v4). */
-    SCRIPT_LOOKUP("스크립트에서 찾은 표현");
+    SCRIPT_LOOKUP("스크립트에서 찾은 표현"),
+    ACTIVE_SCRIPT("현재 학습 대본");
 
     companion object {
         fun of(name: String?): ContentSource = entries.firstOrNull { it.name == name } ?: USER_IMPORT

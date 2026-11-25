@@ -60,6 +60,7 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.opicih.coach.analysis.TextNormalizer
 import com.opicih.coach.data.db.ScriptEntity
+import com.opicih.coach.data.db.ContentSource
 import com.opicih.coach.learning.MorningItem
 import com.opicih.coach.learning.MorningRating
 import com.opicih.coach.learning.MorningStep
@@ -106,7 +107,7 @@ fun MorningScreen(
                     }
                     state == null -> Text("표현을 불러오는 중입니다.")
                     else -> {
-                        Text("연습할 표현이 없어요.")
+                        Text("오늘 새로 볼 표현이나 복습할 표현이 없어요.")
                         TextButton(onClick = vm::load) { Text("다시 불러오기") }
                     }
                 }
@@ -220,6 +221,9 @@ private fun MorningPrompt(item: MorningItem, enabled: Boolean) {
 
     SectionCard {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            if (ch.source == ContentSource.ACTIVE_SCRIPT.name) {
+                Text("내 대본 · ${ch.category}", style = MaterialTheme.typography.labelMedium)
+            }
             when (item.step) {
                 MorningStep.COMPLETE -> {
                     Text(item.cloze ?: ch.example, style = EnglishReading)

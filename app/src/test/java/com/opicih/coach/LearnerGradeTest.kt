@@ -1,6 +1,7 @@
 package com.opicih.coach
 
 import com.opicih.coach.ai.Prompts
+import com.opicih.coach.ai.ScriptInput
 import com.opicih.coach.analysis.AnalysisInput
 import com.opicih.coach.analysis.CompareResult
 import com.opicih.coach.analysis.DiscourseAnalyzer
@@ -61,10 +62,17 @@ class LearnerGradeTest {
         assertTrue(eval.contains("currently at IM1"))
     }
 
-    @Test fun defaultProfileIsIm1WithIm2Target() {
+    @Test fun defaultProfileIsIm1WithIhTarget() {
         assertEquals(LearnerGrade.IM1, LearnerProfile.DEFAULT.current)
-        assertEquals(LearnerGrade.IM2, LearnerProfile.DEFAULT.target)
+        assertEquals(LearnerGrade.IH, LearnerProfile.DEFAULT.target)
         assertEquals(LearnerGrade.IH, LearnerProfile.DEFAULT.finalGoal)
+    }
+
+    @Test fun improvementPromptPreservesTheSharedSceneInSpeakingOrder() {
+        val lines = listOf("I go jogging in Central Park near my house.", "One song I love to run to is Butter by BTS.")
+        val input = ScriptInput("Park", "What do you do there?", "I like music.", sharedSentences = lines)
+        assertTrue(Prompts.improveUser(input).contains(lines.joinToString("\n")))
+        assertTrue(Prompts.improveSystem(LearnerProfile.DEFAULT).contains("next exam target is IH"))
     }
 
     @Test fun latestResultGradeUsesNewestCompletedOpicOnly() {
@@ -94,7 +102,7 @@ class LearnerGradeTest {
         assertFalse(im3.contains("110-160"))
         val ih = Prompts.improveSystem(LearnerProfile(LearnerGrade.IM3, LearnerGrade.IH))
         assertTrue(ih.contains("110-160 words"))
-        val im2 = Prompts.improveSystem(LearnerProfile.DEFAULT)
+        val im2 = Prompts.improveSystem(LearnerProfile(target = LearnerGrade.IM2))
         assertTrue(im2.contains("50-80 words"))
         assertTrue(im2.contains("past tense"))
     }

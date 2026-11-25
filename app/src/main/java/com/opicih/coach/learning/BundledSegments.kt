@@ -5,6 +5,8 @@ import kotlinx.serialization.json.Json
 
 @Serializable data class BundledSentence(val en: String, val ko: String)
 
+@Serializable data class ScenePart(val scene: String? = null, val sentences: List<BundledSentence> = emptyList())
+
 /** 앱에 내장한 번역 한 건. [hash]는 질문과 학습본 텍스트의 해시([ScriptSegmenter.sourceHash])다. */
 @Serializable
 data class BundledItem(
@@ -12,7 +14,10 @@ data class BundledItem(
     val title: String = "",
     val question: String = "",
     val questionKo: String,
-    val sentences: List<BundledSentence>,
+    val sentences: List<BundledSentence> = emptyList(),
+    val parts: List<ScenePart> = emptyList(),
+    val previousSignatures: List<String> = emptyList(),
+    val originalHash: String? = null,
     val keywords: List<String> = emptyList(),
     val paragraphBreak: Int? = null,
 ) {
@@ -24,7 +29,12 @@ data class BundledItem(
     }
 }
 
-@Serializable data class BundledFile(val version: Int = 1, val items: List<BundledItem> = emptyList())
+@Serializable data class BundledFile(
+    val version: Int = 1,
+    val items: List<BundledItem> = emptyList(),
+    val sharedScenes: Map<String, List<BundledSentence>> = emptyMap(),
+    val drills: Map<String, SceneDrill> = emptyMap(),
+)
 
 /**
  * assets/seed/segments_ko.json: 미리 만들어 둔 영한 번역. API 키나 네트워크 없이 바로 쓸 수 있다.
@@ -33,7 +43,17 @@ data class BundledItem(
 object BundledSegments {
     private val json = Json { ignoreUnknownKeys = true }
 
-    fun parse(text: String): BundledFile = json.decodeFromString(BundledFile.serializer(), text)
+    fun parse(text: String): BundledFile {
+        val file = json.decodeFromString(BundledFile.serializer(), text)
+        return file.copy(items = file.items.map { item ->
+            if (item.parts.isEmpty()) return@map item
+            require(item.sentences.isEmpty())
+            val parts = item.parts.map { part ->
+                if (part.scene == null) part else part.copy(sentences = file.sharedScenes.getValue(part.scene))
+            }
+            item.copy(parts = parts, sentences = parts.flatMap { it.sentences })
+        })
+    }
 
     /**
      * 이 스크립트의 현재 질문·학습본에 맞는 내장 번역이 있으면 저장할 행을, 없으면 null을 돌려준다.

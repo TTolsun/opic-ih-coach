@@ -25,8 +25,8 @@ object GradeTargets {
     )
     private val IH_TARGET = ImproveTarget(
         110, 160,
-        "Flow: opener, specific description, a short experience or example, feeling, wrap-up. " +
-            "Use past + present + at least one future sentence when it fits, with varied connectors.",
+        "Develop one connected answer to the actual question. For an experience, link the situation, what changed, and the outcome. " +
+            "For a comparison, explain what changed and why it matters. Choose time frames to fit the task and keep shared scene sentences intact.",
     )
 
     /** 다음 시험 목표 등급에 맞는 개선안 규칙. IM2 이하는 IM2 규칙, IH 이상은 IH 규칙을 씁니다. */

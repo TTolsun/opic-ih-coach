@@ -63,10 +63,9 @@ class GlossaryRepository(context: Context, private val dao: AppDao) {
 
     /** The card keeps the surface form so the morning cloze can blank it out of the script sentence. */
     suspend fun addToReview(entry: GlossaryEntry, surface: String, sentence: String) {
-        if (isInReview(entry, surface)) return
-        dao.insertChunks(listOf(ChunkEntity(phrase = LookupCounter.normalize(surface), meaningKo = entry.meaningKo,
+        dao.keepLookupCard(reviewKeys(entry, surface), ChunkEntity(phrase = LookupCounter.normalize(surface), meaningKo = entry.meaningKo,
             example = LookupCounter.normalize(sentence), category = CATEGORY, dueEpochDay = LocalDate.now().toEpochDay(),
-            source = ContentSource.SCRIPT_LOOKUP.name)))
+            source = ContentSource.SCRIPT_LOOKUP.name))
     }
 
     companion object {

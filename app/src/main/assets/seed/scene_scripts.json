@@ -1,119 +1,242 @@
 {
-  "version": 1,
+  "version": 2,
+  "sharedScenes": {
+    "오사카 가족여행": [
+      {
+        "en": "Last summer, my family and I spent four days in Osaka.",
+        "ko": "지난여름에 가족과 오사카에서 나흘을 보냈어요."
+      }
+    ],
+    "호텔 온천": [
+      {
+        "en": "Our hotel had a hot spring, and the beer was unlimited.",
+        "ko": "호텔에는 온천이 있었고 맥주도 마음껏 마실 수 있었어요."
+      },
+      {
+        "en": "After a long day of walking, the hot water helped me relax.",
+        "ko": "하루 종일 걷고 나서 뜨거운 물에 몸을 담그니 피로가 풀렸어요."
+      }
+    ],
+    "도톤보리에서 먹은 다코야키": [
+      {
+        "en": "My family and I went to Dotonbori for takoyaki.",
+        "ko": "가족과 다코야키를 먹으러 도톤보리에 갔어요."
+      },
+      {
+        "en": "I liked the sweet ones so much that I ate too many.",
+        "ko": "달콤한 다코야키가 맛있어서 너무 많이 먹었어요."
+      }
+    ],
+    "갑자기 찾아온 배탈": [
+      {
+        "en": "Then I got a terrible stomachache.",
+        "ko": "그러다 배가 심하게 아팠어요."
+      }
+    ],
+    "여행 중 들른 약국": [
+      {
+        "en": "I went to a nearby drugstore and bought some medicine.",
+        "ko": "근처 약국에 가서 약을 샀어요."
+      }
+    ],
+    "오사카 호텔에서 쉰 밤": [
+      {
+        "en": "I went back to the hotel and got some sleep.",
+        "ko": "호텔에 돌아와 한숨 잤어요."
+      }
+    ],
+    "강원도 사과 농장": [
+      {
+        "en": "Last fall, I went apple picking in Gangwon-do.",
+        "ko": "지난가을에 강원도로 사과를 따러 갔어요."
+      },
+      {
+        "en": "I climbed a ladder to pick the apples.",
+        "ko": "사과를 따려고 사다리에 올라갔어요."
+      }
+    ],
+    "거실의 회색 소파": [
+      {
+        "en": "My favorite spot is the big gray sofa in my living room.",
+        "ko": "제가 제일 좋아하는 자리는 거실의 커다란 회색 소파예요."
+      },
+      {
+        "en": "That's where I play games on the TV or stretch out for a nap.",
+        "ko": "거기서 TV로 게임을 하기도 하고 쭉 뻗어서 낮잠을 자기도 해요."
+      }
+    ],
+    "소파에서 하는 게임": [
+      {
+        "en": "The games look so realistic that I lose track of time.",
+        "ko": "게임 화면이 워낙 실감 나서 시간 가는 줄 몰라요."
+      },
+      {
+        "en": "By the time I stop playing, I feel much more relaxed.",
+        "ko": "게임을 마칠 때쯤이면 긴장이 많이 풀려 있어요."
+      }
+    ],
+    "어릴 때 망가뜨린 소파": [
+      {
+        "en": "When I was a kid, our sofa was small, but I treated it like a trampoline.",
+        "ko": "어릴 때 우리 집 소파는 작았지만 저는 트램펄린처럼 쓰곤 했어요."
+      },
+      {
+        "en": "I used to jump on it so much that I actually broke it.",
+        "ko": "하도 뛰어서 진짜로 소파를 망가뜨렸어요."
+      }
+    ],
+    "센트럴파크 조깅": [
+      {
+        "en": "I go jogging in Central Park near my house.",
+        "ko": "집 근처 센트럴파크에 가서 조깅을 해요."
+      }
+    ],
+    "달릴 때 듣는 Butter": [
+      {
+        "en": "One song I love to run to is Butter by BTS.",
+        "ko": "특히 방탄소년단의 버터를 들으며 뛰는 걸 좋아해요."
+      },
+      {
+        "en": "It has such an upbeat rhythm that running feels easier when it's on.",
+        "ko": "박자가 워낙 경쾌해서 그 노래를 들으면 달리기가 한결 가볍게 느껴져요."
+      }
+    ],
+    "사내 의원 건강검진": [
+      {
+        "en": "I go to the clinic at work for my annual checkup.",
+        "ko": "저는 매년 건강검진을 받으러 사내 의원에 가요."
+      }
+    ],
+    "영화관에서 먹는 간식": [
+      {
+        "en": "I usually get popcorn and a drink before the movie starts.",
+        "ko": "영화가 시작하기 전에 보통 팝콘과 음료를 사요."
+      }
+    ]
+  },
   "items": [
     {
       "title": "Recent Trip",
       "question": "Tell me about a trip you took to another country recently. Where did you go, and what did you do there?",
       "questionKo": "최근에 다른 나라로 다녀온 여행에 대해 말해 주세요. 어디에 갔고, 거기서 무엇을 했나요?",
-      "hash": "c56769505bb58e5a",
       "keywords": [
         "last summer",
-        "Jeju Air",
         "Osaka Castle",
         "hotel hot spring"
       ],
-      "sentences": [
+      "parts": [
         {
-          "en": "Last summer, my family and I spent four days in Osaka.",
-          "ko": "지난여름에 가족과 오사카에서 나흘을 보냈어요."
+          "scene": "오사카 가족여행"
         },
         {
-          "en": "We flew there on Jeju Air and stayed for three nights.",
-          "ko": "제주항공을 타고 가서 3박을 했어요."
+          "sentences": [
+            {
+              "en": "We flew there on Jeju Air and stayed for three nights.",
+              "ko": "제주항공을 타고 가서 3박을 했어요."
+            },
+            {
+              "en": "We visited Osaka Castle, and even in the crowd, the castle was what caught my eye.",
+              "ko": "오사카성에 갔는데, 그렇게 사람이 많아도 제 눈에는 성이 먼저 들어왔어요."
+            }
+          ]
         },
         {
-          "en": "One place I remember clearly is Osaka Castle.",
-          "ko": "오사카성은 특히 또렷하게 기억나요."
-        },
-        {
-          "en": "There were people everywhere, but even in that crowd, the castle itself was what caught my eye.",
-          "ko": "어딜 봐도 사람이 많았지만, 그 와중에도 제 눈에 들어온 건 성이었어요."
-        },
-        {
-          "en": "Our hotel had a hot spring, and the beer was unlimited.",
-          "ko": "호텔에는 온천이 있었고 맥주도 마음껏 마실 수 있었어요."
-        },
-        {
-          "en": "After walking around Osaka Castle, it felt so good to soak in the hot water.",
-          "ko": "오사카성을 돌아본 뒤 뜨거운 물에 몸을 담그니 정말 좋았어요."
+          "scene": "호텔 온천"
         }
       ],
-      "paragraphBreak": 4
+      "hash": "1349f488113ebcb1",
+      "originalHash": "24f913b74a2abadf",
+      "previousSignatures": [
+        "1cd1f1232be08870"
+      ]
     },
     {
       "title": "Memorable Experience",
       "question": "Did anything memorable or unexpected happen during your trip abroad?",
       "questionKo": "해외여행 중에 기억에 남거나 예상 밖의 일이 있었나요?",
-      "hash": "3f38d53df5f9cc4b",
       "keywords": [
-        "Dotonbori",
+        "Osaka",
         "sweet takoyaki",
         "stomachache",
-        "medicine",
-        "back to the hotel"
+        "drugstore",
+        "hotel"
       ],
-      "sentences": [
+      "parts": [
         {
-          "en": "The surprise on my trip to Osaka was how quickly a great meal went wrong.",
-          "ko": "오사카 여행에서는 맛있게 먹던 중에 그렇게 갑자기 탈이 날 줄 몰랐어요."
+          "scene": "오사카 가족여행"
         },
         {
-          "en": "My family and I went to Dotonbori for takoyaki.",
-          "ko": "가족과 다코야키를 먹으러 도톤보리에 갔어요."
+          "scene": "도톤보리에서 먹은 다코야키"
         },
         {
-          "en": "There were several kinds, and the sweet ones were my favorite.",
-          "ko": "종류가 여러 가지였는데 저는 달달한 게 제일 좋았어요."
+          "scene": "갑자기 찾아온 배탈"
         },
         {
-          "en": "I was really enjoying them when my stomach started to hurt.",
-          "ko": "한창 맛있게 먹고 있었는데 배가 아프기 시작했어요."
+          "scene": "여행 중 들른 약국"
         },
         {
-          "en": "It got bad enough that I had to find a drugstore.",
-          "ko": "약국을 찾아야 할 정도로 아파졌어요."
+          "scene": "오사카 호텔에서 쉰 밤"
         },
         {
-          "en": "I bought some medicine, went back to the hotel, and got some sleep.",
-          "ko": "약을 사서 호텔에 돌아가 푹 잤어요."
+          "sentences": [
+            {
+              "en": "I thought I'd remember Dotonbori for the food, but what I remember best is looking for medicine.",
+              "ko": "도톤보리 하면 음식이 떠오를 줄 알았는데, 가장 기억에 남는 건 약을 찾아다닌 일이에요."
+            }
+          ]
         }
       ],
-      "paragraphBreak": 3
+      "hash": "7bb2040eb37bbca2",
+      "originalHash": "84a11a3f6a9a84bc",
+      "previousSignatures": [
+        "c9590840c3dc0d7e",
+        "3347bef7c6a36408"
+      ]
     },
     {
       "title": "Favorite Destination",
       "question": "Where do you like to go for domestic trips? Describe your favorite travel destination in your country.",
       "questionKo": "국내 여행은 어디로 가는 걸 좋아하세요? 우리나라에서 가장 좋아하는 여행지를 설명해 주세요.",
-      "hash": "ab936d03c66eb8ab",
       "keywords": [
         "Gangwon-do",
         "mountains",
-        "apple orchard",
+        "apple picking",
         "view from the ladder"
       ],
-      "sentences": [
+      "parts": [
         {
-          "en": "My favorite place for a trip in Korea is Gangwon-do.",
-          "ko": "국내 여행지 중에서는 강원도를 가장 좋아해요."
+          "sentences": [
+            {
+              "en": "My favorite place for a trip in Korea is Gangwon-do.",
+              "ko": "국내 여행지 중에서는 강원도를 가장 좋아해요."
+            },
+            {
+              "en": "What I like most about Gangwon-do is the mountains.",
+              "ko": "강원도에서 제가 가장 좋아하는 건 산이에요."
+            }
+          ]
         },
         {
-          "en": "We have beautiful stretches of coast in Korea, but what draws me to Gangwon-do is the mountains.",
-          "ko": "우리나라에는 아름다운 해안도 많지만, 제가 강원도에 끌리는 건 산 때문이에요."
+          "scene": "강원도 사과 농장"
         },
         {
-          "en": "Last fall, I went apple picking in Gangwon-do.",
-          "ko": "지난가을에 강원도로 사과를 따러 갔어요."
-        },
-        {
-          "en": "I climbed a ladder to reach the apples, and from up there I could see the mountains beyond the orchard.",
-          "ko": "사과를 따려고 사다리에 올라갔더니 과수원 너머로 산이 보였어요."
-        },
-        {
-          "en": "I went there to pick fruit, but that view from the ladder is what stayed with me.",
-          "ko": "과일을 따러 갔는데, 지금도 기억에 남는 건 사다리 위에서 본 풍경이에요."
+          "sentences": [
+            {
+              "en": "From up there, I could see the mountains beyond the orchard.",
+              "ko": "사다리 위에서는 과수원 너머로 산이 보였어요."
+            },
+            {
+              "en": "I went there to pick fruit, but that view from the ladder is what stayed with me.",
+              "ko": "과일을 따러 갔는데, 지금도 기억에 남는 건 사다리 위에서 본 풍경이에요."
+            }
+          ]
         }
       ],
-      "paragraphBreak": 2
+      "hash": "0b12be3b53f7a191",
+      "originalHash": "ad7f2c4d030cef45",
+      "previousSignatures": [
+        "6790c680c13c1229"
+      ]
     },
     {
       "title": "Travel Routine",
@@ -152,46 +275,52 @@
           "ko": "집에 있는 걸 좋아해서 짧게 조용히 다녀오는 여행이 저한테 잘 맞아요."
         }
       ],
-      "paragraphBreak": 3
+      "paragraphBreak": 3,
+      "originalHash": "093a86ee91e5a487"
     },
     {
       "title": "Travel Experience",
       "question": "Tell me about a memorable domestic trip you went on recently. Where did you go, and what did you do?",
       "questionKo": "최근에 다녀온 기억에 남는 국내 여행에 대해 말해 주세요. 어디에 갔고, 무엇을 했나요?",
-      "hash": "c78f1d1aea130027",
       "keywords": [
-        "apple picking",
-        "eating as I picked",
+        "Gangwon-do",
+        "ladder",
+        "ate too many apples",
         "drugstore",
         "friend's house"
       ],
-      "sentences": [
+      "parts": [
         {
-          "en": "Last fall, I went apple picking in Gangwon-do.",
-          "ko": "지난가을에 강원도로 사과를 따러 갔어요."
+          "scene": "강원도 사과 농장"
         },
         {
-          "en": "The apples looked so good that I kept eating them as I picked.",
-          "ko": "사과가 너무 맛있어 보여서 따면서 계속 먹었어요."
+          "sentences": [
+            {
+              "en": "The apples looked so good that I kept eating them as I picked.",
+              "ko": "사과가 너무 맛있어 보여서 따면서 계속 먹었어요."
+            }
+          ]
         },
         {
-          "en": "I didn't realize how many I'd eaten until my stomach started to hurt.",
-          "ko": "배가 아프기 시작하고 나서야 제가 얼마나 많이 먹었는지 깨달았어요."
+          "scene": "갑자기 찾아온 배탈"
         },
         {
-          "en": "I had to rush to a nearby drugstore for some medicine.",
-          "ko": "급히 근처 약국에 가서 약을 사야 했어요."
+          "scene": "여행 중 들른 약국"
         },
         {
-          "en": "Later, I took a long nap at my friend's house, and when I woke up, I felt much better.",
-          "ko": "나중에 친구 집에서 한숨 푹 자고 일어나니 훨씬 나아졌어요."
-        },
-        {
-          "en": "Those apples were delicious, but I remember the nap just as clearly.",
-          "ko": "사과도 맛있었지만, 그때 잔 낮잠도 그만큼 또렷하게 기억나요."
+          "sentences": [
+            {
+              "en": "Later, I took a long nap at my friend's house, and when I woke up, I felt much better.",
+              "ko": "나중에 친구 집에서 한숨 푹 자고 일어나니 훨씬 나아졌어요."
+            }
+          ]
         }
       ],
-      "paragraphBreak": 3
+      "hash": "01c47514e3849806",
+      "originalHash": "d998af1a4202719c",
+      "previousSignatures": [
+        "0921e52222b232be"
+      ]
     },
     {
       "title": "Favorite Movies",
@@ -231,573 +360,623 @@
           "ko": "두 사람의 선택은 이해되면서도, 둘이 계속 함께했으면 하는 마음이 들어요."
         }
       ],
-      "paragraphBreak": 3
+      "paragraphBreak": 3,
+      "originalHash": "be7b3bda0223d857"
     },
     {
       "title": "Movie Routine",
       "question": "What is your routine when you go to the movies? What do you do before and after the movie?",
       "questionKo": "영화를 보러 갈 때 어떤 루틴이 있나요? 영화 전후에 무엇을 하나요?",
-      "hash": "0500ea233a4dbe35",
       "keywords": [
-        "movie app",
-        "showtime",
-        "popcorn",
-        "seat",
-        "review"
+        "showtimes",
+        "popcorn and a drink",
+        "rating or review"
       ],
-      "sentences": [
+      "parts": [
         {
-          "en": "My movie routine starts on my phone.",
-          "ko": "제 영화관 나들이는 휴대폰에서 시작해요."
+          "sentences": [
+            {
+              "en": "I check the showtimes on the app before I go, so I know which showing I want.",
+              "ko": "가기 전에 앱으로 시간을 보고 어느 회차를 볼지 정해요."
+            }
+          ]
         },
         {
-          "en": "I check the showtimes on the app before I go, so I know which showing I want.",
-          "ko": "가기 전에 앱으로 시간을 보고 어느 회차를 볼지 정해요."
+          "scene": "영화관에서 먹는 간식"
         },
         {
-          "en": "At the theater, I grab some popcorn and a drink before I find my seat.",
-          "ko": "영화관에서는 자리를 찾기 전에 팝콘하고 음료를 사요."
-        },
-        {
-          "en": "After the movie, I like to leave a rating or write a short review.",
-          "ko": "영화가 끝나면 평점을 남기거나 짧게 후기를 쓰는 걸 좋아해요."
-        },
-        {
-          "en": "That's my favorite part of the routine because I get to put my reaction into words while the movie is still fresh in my mind.",
-          "ko": "영화의 여운이 남아 있을 때 제 감상을 말로 정리할 수 있어서 그 시간이 가장 좋아요."
+          "sentences": [
+            {
+              "en": "After the movie, I like to leave a rating or write a short review.",
+              "ko": "영화가 끝나면 평점을 남기거나 짧게 후기를 쓰는 걸 좋아해요."
+            },
+            {
+              "en": "I like doing that while the story is still fresh in my mind.",
+              "ko": "영화 내용이 아직 생생할 때 감상을 남기는 게 좋아요."
+            }
+          ]
         }
       ],
-      "paragraphBreak": 3
+      "hash": "2e0d6abf97064bea",
+      "originalHash": "ff10f962877b1a93",
+      "previousSignatures": [
+        "70a5830ec288b8fc"
+      ]
     },
     {
       "title": "Memorable Experience",
       "question": "Have you ever had a memorable or unexpected experience at a movie theater? What happened?",
       "questionKo": "영화관에서 기억에 남거나 예상치 못한 경험을 한 적이 있나요? 무슨 일이 있었나요?",
-      "hash": "7459bde143d69518",
       "keywords": [
         "Basketball",
-        "snacks",
+        "extra snacks",
         "final shot",
-        "restroom",
+        "stomachache",
         "missed the ending"
       ],
-      "sentences": [
+      "parts": [
         {
-          "en": "I once missed the ending of a movie even though I was right there at the theater.",
-          "ko": "영화관까지 가서 결말을 놓친 적이 있어요."
+          "sentences": [
+            {
+              "en": "Last year, I went to see a movie called Basketball.",
+              "ko": "작년에 바스켓볼이라는 영화를 보러 갔어요."
+            }
+          ]
         },
         {
-          "en": "Last year, I went to see a movie called Basketball.",
-          "ko": "작년에 바스켓볼이라는 영화를 보러 갔어요."
+          "scene": "영화관에서 먹는 간식"
         },
         {
-          "en": "I was starving, so I bought a lot of snacks and drinks before it started.",
-          "ko": "너무 배가 고파서 시작하기 전에 간식하고 음료를 잔뜩 샀어요."
+          "sentences": [
+            {
+              "en": "That day I was so hungry that I bought extra snacks.",
+              "ko": "그날은 배가 너무 고파서 간식을 더 샀어요."
+            },
+            {
+              "en": "Near the end, the main character was about to take the final shot.",
+              "ko": "영화가 끝날 무렵 주인공이 마지막 슛을 던지려던 참이었어요."
+            }
+          ]
         },
         {
-          "en": "Just as the main character was about to take the final shot, I got a terrible stomachache.",
-          "ko": "주인공이 마지막 슛을 던지려는 바로 그때 배가 너무 아팠어요."
+          "scene": "갑자기 찾아온 배탈"
         },
         {
-          "en": "I had to run to the restroom.",
-          "ko": "화장실로 뛰어갈 수밖에 없었어요."
-        },
-        {
-          "en": "By the time I got back to my seat, the movie was over.",
-          "ko": "자리로 돌아왔을 때는 이미 영화가 끝나 있었어요."
-        },
-        {
-          "en": "Of all the scenes to miss, it had to be that one!",
-          "ko": "하필 놓쳐도 그 장면을 놓친 거예요!"
+          "sentences": [
+            {
+              "en": "I had to run to the restroom.",
+              "ko": "화장실로 뛰어갈 수밖에 없었어요."
+            },
+            {
+              "en": "By the time I got back to my seat, the movie was over.",
+              "ko": "자리로 돌아왔을 때는 이미 영화가 끝나 있었어요."
+            },
+            {
+              "en": "Of all the scenes to miss, it had to be that one!",
+              "ko": "하필 놓쳐도 그 장면을 놓친 거예요!"
+            }
+          ]
         }
       ],
-      "paragraphBreak": 4
+      "hash": "9345f9b589e10997",
+      "originalHash": "2201b86aae06cea8",
+      "previousSignatures": [
+        "5847f00214a88607"
+      ]
     },
     {
       "title": "Vacation at Home",
       "question": "How do you usually spend your vacation? Do you prefer staying at home or going out? Tell me about your vacation routine.",
       "questionKo": "보통 휴가를 어떻게 보내나요? 집에 있는 것과 밖에 나가는 것 중 어느 쪽을 더 좋아하나요? 휴가 루틴을 이야기해 주세요.",
-      "hash": "4b5be53c1bf9ece5",
       "keywords": [
-        "vacation at home",
+        "stay home",
         "gray sofa",
-        "big TV",
+        "video games",
         "lose track of time",
-        "recharge"
+        "relaxed"
       ],
-      "sentences": [
+      "parts": [
         {
-          "en": "On vacation, I'm happy to stay home.",
-          "ko": "휴가 때는 집에 있어도 좋아요."
+          "sentences": [
+            {
+              "en": "On vacation, I'm happy to stay home.",
+              "ko": "휴가 때는 집에 있어도 좋아요."
+            }
+          ]
         },
         {
-          "en": "My favorite spot is the big gray sofa in my living room.",
-          "ko": "제가 제일 좋아하는 자리는 거실의 커다란 회색 소파예요."
+          "scene": "거실의 회색 소파"
         },
         {
-          "en": "I settle in there and play video games on the big TV.",
-          "ko": "거기에 편하게 앉아서 큰 TV로 게임을 해요."
-        },
-        {
-          "en": "The games look so realistic that I lose track of time.",
-          "ko": "게임 화면이 워낙 실감 나서 시간 가는 줄 몰라요."
-        },
-        {
-          "en": "When I get caught up in a game like that, the stress of the week seems to disappear.",
-          "ko": "집에서 휴가를 보내는 게 좋은 이유예요. 게임에 푹 빠져 있다 보면 한 주 동안 쌓인 스트레스가 풀리거든요."
+          "scene": "소파에서 하는 게임"
         }
       ],
-      "paragraphBreak": 2
+      "hash": "3ded60e1ecd10285",
+      "originalHash": "d90645ce39f18425",
+      "previousSignatures": [
+        "a55f8ed554a64897"
+      ]
     },
     {
       "title": "Going Outside",
       "question": "You mentioned you like active vacations. What do you do when you go outside?",
       "questionKo": "활동적인 휴가를 좋아한다고 하셨죠. 밖에 나가면 무엇을 하나요?",
-      "hash": "895ced7367a63d4f",
       "keywords": [
-        "after gaming",
+        "fresh air",
         "Central Park",
-        "jogging",
         "Butter",
-        "fresh air"
+        "get moving"
       ],
-      "sentences": [
+      "parts": [
         {
-          "en": "When I've been playing games at home for a while, I like to get outside for some fresh air.",
-          "ko": "집에서 한동안 게임을 하다 보면 바람을 쐬러 나가고 싶어져요."
+          "sentences": [
+            {
+              "en": "When I've been playing games at home for a while, I like to get outside for some fresh air.",
+              "ko": "집에서 한동안 게임을 하다 보면 바람을 쐬러 나가고 싶어져요."
+            }
+          ]
         },
         {
-          "en": "I go jogging in Central Park near my house.",
-          "ko": "집 근처 센트럴파크에 가서 조깅을 해요."
+          "scene": "센트럴파크 조깅"
         },
         {
-          "en": "I put on some music, and one song I love to run to is Butter by BTS.",
-          "ko": "음악을 틀고 뛰는데, 특히 방탄소년단의 버터를 들으며 뛰는 걸 좋아해요."
+          "scene": "달릴 때 듣는 Butter"
         },
         {
-          "en": "The beat gives me energy, and it feels good to be moving after sitting on the sofa.",
-          "ko": "박자를 들으면 힘이 나고, 소파에 앉아 있다가 몸을 움직이니 기분도 좋아요."
-        },
-        {
-          "en": "That's usually the outdoor part of my vacation day.",
-          "ko": "휴가 때 밖에서는 보통 그렇게 시간을 보내요."
+          "sentences": [
+            {
+              "en": "After sitting on the sofa, it feels good to get moving again.",
+              "ko": "소파에 앉아 있다가 다시 몸을 움직이면 기분이 좋아요."
+            }
+          ]
         }
       ],
-      "paragraphBreak": 2
+      "hash": "4aba53e56cfc7fed",
+      "originalHash": "5a9c5a6c96e7eaf9",
+      "previousSignatures": [
+        "7910f4eae4f9353a"
+      ]
     },
     {
       "title": "Memorable Vacation",
       "question": "Tell me about a memorable vacation you took recently.",
       "questionKo": "최근에 다녀온 기억에 남는 휴가에 대해 말해 주세요.",
-      "hash": "236edfde4b536663",
       "keywords": [
-        "four days in Osaka",
+        "Osaka",
         "hot spring",
-        "Dotonbori",
         "takoyaki",
-        "looking back"
+        "stomachache",
+        "drugstore"
       ],
-      "sentences": [
+      "parts": [
         {
-          "en": "Last summer, my family and I spent four days in Osaka.",
-          "ko": "지난여름에 가족과 오사카에서 나흘을 보냈어요."
+          "scene": "오사카 가족여행"
         },
         {
-          "en": "What I remember is how relaxing the trip was, apart from one evening.",
-          "ko": "딱 하루 저녁만 빼면 참 편안했던 여행으로 기억해요."
+          "scene": "호텔 온천"
         },
         {
-          "en": "Our hotel had a hot spring, and the beer was unlimited.",
-          "ko": "호텔에는 온천이 있었고 맥주도 마음껏 마실 수 있었어요."
+          "sentences": [
+            {
+              "en": "One evening didn't quite go to plan, though.",
+              "ko": "그런데 어느 날 저녁에는 일이 뜻대로 풀리지 않았어요."
+            }
+          ]
         },
         {
-          "en": "It was a great place to unwind at the end of the day.",
-          "ko": "하루 일정을 마치고 쉬기 참 좋은 곳이었어요."
+          "scene": "도톤보리에서 먹은 다코야키"
         },
         {
-          "en": "Then one evening, my family and I went to Dotonbori for takoyaki.",
-          "ko": "그러다 어느 날 저녁에는 가족과 도톤보리에 다코야키를 먹으러 갔어요."
+          "scene": "갑자기 찾아온 배탈"
         },
         {
-          "en": "I ate too much and ended up at a drugstore with a stomachache.",
-          "ko": "너무 많이 먹는 바람에 배탈이 나서 결국 약국에 갔어요."
+          "scene": "여행 중 들른 약국"
         },
         {
-          "en": "When I think of that vacation, I remember both the hot spring and that unexpected stop.",
-          "ko": "그 휴가를 생각하면 온천도, 뜻밖에 들렀던 약국도 함께 떠올라요."
+          "sentences": [
+            {
+              "en": "When I think of that vacation, I remember both the hot spring and that unexpected stop.",
+              "ko": "그 휴가를 생각하면 온천도, 뜻밖에 들렀던 약국도 함께 떠올라요."
+            }
+          ]
         }
       ],
-      "paragraphBreak": 4
+      "hash": "408abd76ddd7ee1f",
+      "originalHash": "74b5e88df90cc878",
+      "previousSignatures": [
+        "eab110ae40f82541",
+        "4865b0708b13c413"
+      ]
     },
     {
       "title": "Description of Your House",
       "question": "Could you describe your home in detail? What does it look like, and how many rooms are there?",
       "questionKo": "집을 자세히 묘사해 주실 수 있나요? 어떻게 생겼고 방은 몇 개인가요?",
-      "hash": "f0a4f9c92a01d2ec",
       "keywords": [
         "sixth floor",
         "three rooms",
-        "dressing room",
-        "books",
-        "living room"
+        "study",
+        "gray sofa"
       ],
-      "sentences": [
+      "parts": [
         {
-          "en": "I live in an apartment on the sixth floor.",
-          "ko": "저는 아파트 6층에 살아요."
+          "sentences": [
+            {
+              "en": "I live in an apartment on the sixth floor.",
+              "ko": "저는 아파트 6층에 살아요."
+            },
+            {
+              "en": "It has three rooms, including a dressing room and a study.",
+              "ko": "방은 세 개이고, 그중 하나는 옷방이고 하나는 서재예요."
+            },
+            {
+              "en": "The study is full of books, so it has a very different feel from the living room.",
+              "ko": "서재는 책이 가득해서 거실과는 분위기가 많이 달라요."
+            }
+          ]
         },
         {
-          "en": "It has three rooms, including a dressing room and a study.",
-          "ko": "방은 세 개이고, 그중 하나는 옷방이고 하나는 서재예요."
-        },
-        {
-          "en": "The study is full of books, so it has a very different feel from the living room.",
-          "ko": "서재는 책이 가득해서 거실과는 분위기가 많이 달라요."
-        },
-        {
-          "en": "My favorite spot is the big gray sofa in my living room.",
-          "ko": "제가 제일 좋아하는 자리는 거실의 커다란 회색 소파예요."
-        },
-        {
-          "en": "That's where I play games on the TV or stretch out for a nap.",
-          "ko": "거기서 TV로 게임을 하기도 하고 쭉 뻗어서 낮잠을 자기도 해요."
+          "scene": "거실의 회색 소파"
         }
       ],
-      "paragraphBreak": 3
+      "hash": "93e9016d59ecaa2e",
+      "originalHash": "3ceb0a3d565f8869",
+      "previousSignatures": [
+        "97976ee51e27d446"
+      ]
     },
     {
       "title": "Favorite Furniture",
       "question": "Tell me about your favorite piece of furniture in your house. What is it, and why do you like it?",
       "questionKo": "집에서 가장 좋아하는 가구에 대해 말해 주세요. 무엇이고, 왜 좋아하나요?",
-      "hash": "9edabf32c05140ad",
       "keywords": [
         "gray sofa",
-        "space to stretch out",
-        "games",
-        "nap"
+        "games or a nap",
+        "room to stretch out"
       ],
-      "sentences": [
+      "parts": [
         {
-          "en": "I'd pick the sofa in my living room.",
-          "ko": "저는 거실에 있는 소파를 고를래요."
+          "scene": "거실의 회색 소파"
         },
         {
-          "en": "It's big and gray, and what I love about it is that I have room to stretch out.",
-          "ko": "크고 회색인데, 몸을 쭉 펼 수 있을 만큼 넓은 게 가장 좋아요."
-        },
-        {
-          "en": "When I'm playing video games, I can sit there comfortably with the TV in front of me.",
-          "ko": "게임을 할 때는 TV를 앞에 두고 편하게 앉아 있을 수 있어요."
-        },
-        {
-          "en": "And when I feel sleepy, I can just lie down right where I am.",
-          "ko": "그러다 졸리면 그 자리에서 바로 누우면 돼요."
-        },
-        {
-          "en": "For me, a piece of furniture that works just as well for a game as it does for a nap is hard to beat.",
-          "ko": "게임하기에도, 낮잠 자기에도 좋은 가구라서 저는 이보다 좋은 게 없는 것 같아요."
+          "sentences": [
+            {
+              "en": "It's wide enough for me to lie down without bending my knees.",
+              "ko": "무릎을 굽히지 않고 누울 수 있을 만큼 넓어요."
+            },
+            {
+              "en": "That's why it's the most comfortable piece of furniture I own.",
+              "ko": "그래서 제가 가진 가구 중에 소파가 제일 편해요."
+            }
+          ]
         }
       ],
-      "paragraphBreak": 2
+      "hash": "056db5dd3266e59e",
+      "originalHash": "e99da328f7b30880",
+      "previousSignatures": [
+        "5cd17300fe1f4f1f"
+      ]
     },
     {
       "title": "Comparison (Past vs. Present)",
       "question": "Compare the furniture you have now to the furniture you had when you were a child. How is it different?",
       "questionKo": "지금 가진 가구와 어릴 때 가졌던 가구를 비교해 보세요. 어떻게 다른가요?",
-      "hash": "cb6a304410a3a888",
       "keywords": [
-        "small childhood sofa",
-        "jumping",
-        "broke",
-        "larger sofa",
-        "resting"
+        "small sofa",
+        "jumped on it",
+        "bigger sofa",
+        "games or a nap"
       ],
-      "sentences": [
+      "parts": [
         {
-          "en": "The biggest difference is the sofa.",
-          "ko": "가장 큰 차이는 소파예요."
+          "scene": "어릴 때 망가뜨린 소파"
         },
         {
-          "en": "When I was a kid, our sofa was small, but I treated it like a trampoline.",
-          "ko": "어릴 때 우리 집 소파는 작았지만 저는 트램펄린처럼 쓰곤 했어요."
+          "sentences": [
+            {
+              "en": "Now I have a much bigger sofa.",
+              "ko": "지금은 훨씬 큰 소파를 써요."
+            }
+          ]
         },
         {
-          "en": "I used to jump on it so much that I actually broke it.",
-          "ko": "하도 뛰어서 진짜로 소파를 망가뜨렸어요."
+          "scene": "거실의 회색 소파"
         },
         {
-          "en": "The one I have now is much bigger, with plenty of room to lie down.",
-          "ko": "지금 쓰는 건 훨씬 커서 누울 공간도 넉넉해요."
-        },
-        {
-          "en": "These days, I use it to play games or take a nap.",
-          "ko": "요즘은 그 위에서 게임을 하거나 낮잠을 자요."
-        },
-        {
-          "en": "So the size has changed, but I think the way I use it has changed even more.",
-          "ko": "크기도 달라졌지만, 제가 소파를 쓰는 방식이 더 많이 바뀐 것 같아요."
+          "sentences": [
+            {
+              "en": "So the size has changed, but I think the way I use it has changed even more.",
+              "ko": "크기도 달라졌지만, 제가 소파를 쓰는 방식이 더 많이 바뀐 것 같아요."
+            }
+          ]
         }
       ],
-      "paragraphBreak": 3
+      "hash": "ed8dfdabf4c19141",
+      "originalHash": "1eb958eba1de8577",
+      "previousSignatures": [
+        "f3bb85b9909ac551"
+      ]
     },
     {
       "title": "Past Experience",
       "question": "Tell me about a memorable experience regarding furniture you had in your childhood.",
       "questionKo": "어린 시절 가구와 관련해 기억에 남는 경험에 대해 말해 주세요.",
-      "hash": "b0924b08db60e433",
       "keywords": [
-        "trampoline",
-        "broken sofa",
-        "mother's reaction",
-        "replacement",
-        "making it up to her"
+        "small sofa",
+        "broke it",
+        "my mom",
+        "new sofa"
       ],
-      "sentences": [
+      "parts": [
         {
-          "en": "When I was a kid, our sofa was small, but I treated it like a trampoline.",
-          "ko": "어릴 때 우리 집 소파는 작았지만 저는 트램펄린처럼 쓰곤 했어요."
+          "scene": "어릴 때 망가뜨린 소파"
         },
         {
-          "en": "I could spend ages jumping on it, and my mom would get so upset with me.",
-          "ko": "한참을 그 위에서 뛰놀아서 엄마가 정말 화를 내시곤 했어요."
-        },
-        {
-          "en": "At the time, I was just having fun.",
-          "ko": "그때는 마냥 재미있었어요."
-        },
-        {
-          "en": "Later, I felt bad about breaking something my mom had to use every day.",
-          "ko": "나중에는 엄마가 매일 쓰시는 걸 제가 망가뜨렸다는 게 마음에 걸렸어요."
-        },
-        {
-          "en": "Recently, I bought her a new sofa to make it up to her.",
-          "ko": "얼마 전에 그때 일을 만회하고 싶어서 엄마께 새 소파를 사 드렸어요."
-        },
-        {
-          "en": "She was really touched, and seeing how happy she was made me feel better about that old sofa.",
-          "ko": "엄마가 정말 감동하셨고, 기뻐하시는 모습을 보니 옛날 소파 일이 한결 마음 편해졌어요."
+          "sentences": [
+            {
+              "en": "My mom was upset, and later I felt bad about breaking it.",
+              "ko": "엄마는 속상해하셨고 나중에는 저도 소파를 망가뜨린 게 죄송했어요."
+            },
+            {
+              "en": "Recently, I bought her a new sofa to make it up to her.",
+              "ko": "얼마 전에 그때 일을 만회하고 싶어서 엄마께 새 소파를 사 드렸어요."
+            },
+            {
+              "en": "She was really touched, and seeing how happy she was made me feel better about that old sofa.",
+              "ko": "엄마가 정말 감동하셨고, 기뻐하시는 모습을 보니 옛날 소파 일이 한결 마음 편해졌어요."
+            }
+          ]
         }
       ],
-      "paragraphBreak": 3
+      "hash": "19c5663fefd980d5",
+      "originalHash": "5707be6c2bc6d841",
+      "previousSignatures": [
+        "8f5f766dcf375dd9"
+      ]
     },
     {
       "title": "Routine at Home",
       "question": "What do you usually do when you are at home? Tell me about your typical routine on your days off.",
       "questionKo": "집에 있을 때 보통 무엇을 하나요? 쉬는 날의 전형적인 루틴을 이야기해 주세요.",
-      "hash": "a5383b047eaab0a5",
       "keywords": [
         "day off",
-        "sofa",
-        "big TV",
-        "realistic games",
-        "stress"
+        "gray sofa",
+        "video games",
+        "lose track of time",
+        "relaxed"
       ],
-      "sentences": [
+      "parts": [
         {
-          "en": "On a day off, I usually head straight for the sofa in the living room.",
-          "ko": "쉬는 날이면 보통 거실 소파로 바로 가요."
+          "sentences": [
+            {
+              "en": "On a day off, I usually spend the afternoon at home.",
+              "ko": "쉬는 날에는 보통 집에서 오후를 보내요."
+            }
+          ]
         },
         {
-          "en": "I settle in there and play video games on the big TV.",
-          "ko": "거기에 편하게 앉아서 큰 TV로 게임을 해요."
+          "scene": "거실의 회색 소파"
         },
         {
-          "en": "The games look so realistic that I lose track of time.",
-          "ko": "게임 화면이 워낙 실감 나서 시간 가는 줄 몰라요."
-        },
-        {
-          "en": "I can be sitting in the same spot for ages and barely notice it.",
-          "ko": "같은 자리에 한참 앉아 있어도 거의 의식하지 못해요."
-        },
-        {
-          "en": "By the time I stop playing, I feel much more relaxed.",
-          "ko": "게임을 마칠 때쯤이면 긴장이 많이 풀려 있어요."
+          "scene": "소파에서 하는 게임"
         }
       ],
-      "paragraphBreak": 3
+      "hash": "8e222f8645a012c8",
+      "originalHash": "92f4f054404105ed",
+      "previousSignatures": [
+        "b659f084c5752967"
+      ]
     },
     {
       "title": "Park Description",
       "question": "Describe a park you often visit. What does it look like, and what do people usually do there?",
       "questionKo": "자주 가는 공원을 묘사해 주세요. 어떻게 생겼고, 사람들은 보통 거기서 무엇을 하나요?",
-      "hash": "a49d9af7c155fa6a",
       "keywords": [
         "Central Park",
-        "near home",
-        "joggers",
-        "running together"
+        "path",
+        "walkers and joggers",
+        "exercising together"
       ],
-      "sentences": [
+      "parts": [
         {
-          "en": "The park I go to most often is Central Park near my house.",
-          "ko": "제가 가장 자주 가는 곳은 집 근처 센트럴파크예요."
+          "scene": "센트럴파크 조깅"
         },
         {
-          "en": "What stands out to me is how many people I see jogging there.",
-          "ko": "갈 때마다 눈에 띄는 건 조깅하는 사람이 많다는 점이에요."
-        },
-        {
-          "en": "Some people are out for a walk, and others, like me, are there for a run.",
-          "ko": "어떤 사람은 산책하고, 저처럼 달리러 온 사람도 있어요."
-        },
-        {
-          "en": "I like that feeling of exercising together, even though we're all doing our own thing.",
-          "ko": "각자 운동을 하는데도 함께 뛰는 듯한 느낌이 들어서 좋아요."
-        },
-        {
-          "en": "When I picture the park, that's the scene that comes to mind.",
-          "ko": "그 공원을 떠올리면 제일 먼저 생각나는 풍경이 바로 그거예요."
+          "sentences": [
+            {
+              "en": "The first thing I notice is the path that runs through the park.",
+              "ko": "가장 먼저 눈에 들어오는 건 공원을 가로지르는 길이에요."
+            },
+            {
+              "en": "When I look down the path, I see joggers passing people who are out for a walk.",
+              "ko": "길을 따라 바라보면 조깅하는 사람들이 산책하는 사람들을 지나가는 모습이 보여요."
+            },
+            {
+              "en": "Even when I go there alone, seeing all those people makes me feel like I have company.",
+              "ko": "혼자 가도 그렇게 사람들과 함께 걷고 뛰다 보면 누군가와 같이 운동하는 기분이 들어요."
+            }
+          ]
         }
       ],
-      "paragraphBreak": 2
+      "hash": "cfba7f1a3ed93de6",
+      "originalHash": "3cb0476064f6885a",
+      "previousSignatures": [
+        "9434e160aeccee24",
+        "2c333e5a15edf820"
+      ]
     },
     {
       "title": "Park/Music Routine",
       "question": "What do you usually do at the park? Do you listen to music while exercising?",
       "questionKo": "공원에서는 보통 무엇을 하나요? 운동하면서 음악을 듣나요?",
-      "hash": "20659f25e744074d",
       "keywords": [
+        "Central Park",
         "knee pads",
-        "Bluetooth earphones",
-        "jogging",
+        "earphones",
         "Butter",
-        "beat"
+        "upbeat rhythm"
       ],
-      "sentences": [
+      "parts": [
         {
-          "en": "I go jogging in Central Park near my house.",
-          "ko": "집 근처 센트럴파크에 가서 조깅을 해요."
+          "scene": "센트럴파크 조깅"
         },
         {
-          "en": "Before I start, I put on my knee pads and my Bluetooth earphones.",
-          "ko": "뛰기 전에 무릎 보호대를 차고 블루투스 이어폰을 껴요."
+          "sentences": [
+            {
+              "en": "Before I start, I put on my knee pads and my Bluetooth earphones.",
+              "ko": "뛰기 전에 무릎 보호대를 차고 블루투스 이어폰을 껴요."
+            }
+          ]
         },
         {
-          "en": "One song I love to run to is Butter by BTS.",
-          "ko": "특히 방탄소년단의 버터를 들으며 뛰는 걸 좋아해요."
+          "scene": "달릴 때 듣는 Butter"
         },
         {
-          "en": "It has such an upbeat rhythm that running feels easier when it's on.",
-          "ko": "박자가 워낙 경쾌해서 그 노래를 들으면 달리기가 한결 가볍게 느껴져요."
-        },
-        {
-          "en": "For me, the fresh air and the music are both part of the workout.",
-          "ko": "저한테는 바깥 공기도 음악도 운동의 일부예요."
+          "sentences": [
+            {
+              "en": "For me, the fresh air and the music are both part of the workout.",
+              "ko": "저한테는 바깥 공기도 음악도 운동의 일부예요."
+            }
+          ]
         }
       ],
-      "paragraphBreak": 2
+      "hash": "ea56284ff97f53c5",
+      "originalHash": "c62f8f29f0f37550",
+      "previousSignatures": [
+        "37704228b36a6830"
+      ]
     },
     {
       "title": "Favorite Musician",
       "question": "Who is your favorite musician or composer? Why do you like their music?",
       "questionKo": "가장 좋아하는 음악가나 작곡가는 누구인가요? 그 음악이 왜 좋은가요?",
-      "hash": "eff76ea1104c14ef",
       "keywords": [
         "BTS",
         "seven members",
         "performance videos",
-        "Butter",
-        "jogging"
+        "Butter"
       ],
-      "sentences": [
+      "parts": [
         {
-          "en": "My favorite group is BTS.",
-          "ko": "제가 가장 좋아하는 그룹은 방탄소년단이에요."
+          "sentences": [
+            {
+              "en": "My favorite group is BTS.",
+              "ko": "제가 가장 좋아하는 그룹은 방탄소년단이에요."
+            },
+            {
+              "en": "There are seven members, and I especially enjoy watching them perform together.",
+              "ko": "멤버가 일곱 명인데, 저는 이들이 함께 무대를 하는 모습이 특히 좋아요."
+            },
+            {
+              "en": "Their performance videos are what I'd show someone who wanted to know why I like them.",
+              "ko": "제가 왜 그들을 좋아하는지 궁금해하는 사람이 있다면 공연 영상을 보여 주고 싶어요."
+            }
+          ]
         },
         {
-          "en": "There are seven members, and I especially enjoy watching them perform together.",
-          "ko": "멤버가 일곱 명인데, 저는 이들이 함께 무대를 하는 모습이 특히 좋아요."
-        },
-        {
-          "en": "Their performance videos are what I'd show someone who wanted to know why I like them.",
-          "ko": "제가 왜 그들을 좋아하는지 궁금해하는 사람이 있다면 공연 영상을 보여 주고 싶어요."
-        },
-        {
-          "en": "One song I love to run to is Butter by BTS.",
-          "ko": "특히 방탄소년단의 버터를 들으며 뛰는 걸 좋아해요."
-        },
-        {
-          "en": "Even without the video, that beat gives me the same lift I get from watching them on stage.",
-          "ko": "영상을 보지 않아도 그 박자를 들으면 무대를 볼 때처럼 기운이 나요."
+          "scene": "달릴 때 듣는 Butter"
         }
       ],
-      "paragraphBreak": 3
+      "hash": "60df23a069d7f44c",
+      "originalHash": "d55a6222deeaf69b",
+      "previousSignatures": [
+        "9d18c047a6b5ee92"
+      ]
     },
     {
       "title": "Music Taste Change",
       "question": "How has your music taste changed from when you were younger to now? Tell me about the music you used to like and what you listen to these days.",
       "questionKo": "어릴 때와 지금을 비교하면 음악 취향이 어떻게 바뀌었나요? 예전에 좋아하던 음악과 요즘 듣는 음악을 이야기해 주세요.",
-      "hash": "f8c824ba92b6ba64",
       "keywords": [
         "army",
-        "Rain",
         "Rainism",
         "BTS",
-        "still like dance music"
+        "Butter",
+        "dance beat"
       ],
-      "sentences": [
+      "parts": [
         {
-          "en": "When I was in the army, I listened to a lot of dance music.",
-          "ko": "군 복무를 할 때 댄스 음악을 많이 들었어요."
+          "sentences": [
+            {
+              "en": "When I was in the army, I listened to a lot of dance music.",
+              "ko": "군 복무를 할 때 댄스 음악을 많이 들었어요."
+            },
+            {
+              "en": "Back then, my favorite was Rain, especially his song Rainism.",
+              "ko": "그때 가장 좋아한 가수는 비였고, 특히 레이니즘을 좋아했어요."
+            },
+            {
+              "en": "Something about that beat made me feel like a dancer myself.",
+              "ko": "그 박자를 듣고 있으면 저도 댄서가 된 기분이 들었어요."
+            },
+            {
+              "en": "These days, I listen to BTS more often.",
+              "ko": "요즘은 BTS 노래를 더 자주 들어요."
+            }
+          ]
         },
         {
-          "en": "Back then, my favorite was Rain, especially his song Rainism.",
-          "ko": "그때 가장 좋아한 가수는 비였고, 특히 레이니즘을 좋아했어요."
+          "scene": "달릴 때 듣는 Butter"
         },
         {
-          "en": "Something about that beat made me feel like a dancer myself.",
-          "ko": "그 박자를 듣고 있으면 저도 댄서가 된 기분이 들었어요."
-        },
-        {
-          "en": "These days, Rainism takes me right back to that time, but I'm more likely to put on BTS.",
-          "ko": "요즘 레이니즘을 들으면 그때가 바로 떠오르지만, 평소엔 방탄소년단 노래를 더 자주 틀어요."
-        },
-        {
-          "en": "Butter is one of my favorites, especially when I go jogging.",
-          "ko": "특히 조깅할 때는 버터를 즐겨 들어요."
-        },
-        {
-          "en": "The artist has changed, but I still go for music that makes me want to move.",
-          "ko": "좋아하는 가수는 바뀌었어도, 여전히 몸을 움직이고 싶게 하는 음악이 좋아요."
+          "sentences": [
+            {
+              "en": "The artist has changed, but I still go for music that makes me want to move.",
+              "ko": "좋아하는 가수는 바뀌었어도, 여전히 몸을 움직이고 싶게 하는 음악이 좋아요."
+            }
+          ]
         }
       ],
-      "paragraphBreak": 3
+      "hash": "4edf39cb431d362c",
+      "originalHash": "dc0c5ab6ea42fded",
+      "previousSignatures": [
+        "49679b19947236d3"
+      ]
     },
     {
       "title": "Memorable Experience at the Park",
       "question": "Tell me about something interesting or unexpected that happened while you were at the park.",
       "questionKo": "공원에 있을 때 일어난 재미있거나 예상치 못한 일에 대해 말해 주세요.",
-      "hash": "476512b7cc225944",
       "keywords": [
-        "jogging",
-        "distracted by music",
-        "collision",
-        "apology",
-        "pay attention"
+        "Central Park",
+        "music",
+        "ran into someone",
+        "apology"
       ],
-      "sentences": [
+      "parts": [
         {
-          "en": "One time at the park, I got so caught up in my music that I didn't see a woman walking toward me.",
-          "ko": "한번은 공원에서 음악에 너무 빠져서 마주 오는 분을 못 봤어요."
+          "scene": "센트럴파크 조깅"
         },
         {
-          "en": "I was jogging, and I ran right into her.",
-          "ko": "조깅을 하다가 그분과 정면으로 부딪혔어요."
-        },
-        {
-          "en": "She looked shocked, and I felt awful because it was my fault.",
-          "ko": "그분은 깜짝 놀라셨고, 제 잘못이라 정말 죄송했어요."
-        },
-        {
-          "en": "I kept apologizing until she told me she was okay.",
-          "ko": "괜찮다고 말씀하실 때까지 계속 사과했어요."
-        },
-        {
-          "en": "I still enjoy running with music, but that moment comes back to me whenever I need a reminder to look up.",
-          "ko": "지금도 음악을 들으며 뛰는 걸 좋아하지만, 앞을 잘 봐야겠다고 생각할 때면 그때 일이 떠올라요."
+          "sentences": [
+            {
+              "en": "One time at the park, I got so caught up in my music that I didn't see a woman walking toward me.",
+              "ko": "한번은 공원에서 음악에 너무 빠져서 마주 오는 분을 못 봤어요."
+            },
+            {
+              "en": "I ran right into her.",
+              "ko": "그분과 그대로 부딪혔어요."
+            },
+            {
+              "en": "She looked shocked, and I felt awful because it was my fault.",
+              "ko": "그분은 깜짝 놀라셨고, 제 잘못이라 정말 죄송했어요."
+            },
+            {
+              "en": "I kept apologizing until she told me she was okay.",
+              "ko": "괜찮다고 말씀하실 때까지 계속 사과했어요."
+            },
+            {
+              "en": "I still enjoy running with music, but that moment comes back to me whenever I need a reminder to look up.",
+              "ko": "지금도 음악을 들으며 뛰는 걸 좋아하지만, 앞을 잘 봐야겠다고 생각할 때면 그때 일이 떠올라요."
+            }
+          ]
         }
       ],
-      "paragraphBreak": 3
+      "hash": "e4a8a48def79e160",
+      "originalHash": "4b611d6a6d99b175",
+      "previousSignatures": [
+        "0dfe6156414ce8fb"
+      ]
     },
     {
       "title": "Geography Description",
@@ -833,47 +1012,62 @@
           "ko": "제가 떠올리는 한국의 모습은 긴 해안선과 한 해 동안 표정이 바뀌는 산들이에요."
         }
       ],
-      "paragraphBreak": 2
+      "paragraphBreak": 2,
+      "originalHash": "3b5f524c97057425"
     },
     {
       "title": "Neighboring Countries",
       "question": "Tell me about the neighboring countries of your country. What are they like?",
       "questionKo": "우리나라의 이웃 나라들에 대해 말해 주세요. 어떤 나라들인가요?",
-      "hash": "9c6a268e8b18ee59",
       "keywords": [
         "China",
         "business trip",
-        "tall buildings",
         "Japan",
-        "complicated history"
+        "Osaka",
+        "history"
       ],
-      "sentences": [
+      "parts": [
         {
-          "en": "Two countries close to Korea are China and Japan, and I think of them in different ways.",
-          "ko": "한국과 가까운 나라로 중국과 일본이 있는데, 두 나라를 생각할 때 떠오르는 게 달라요."
+          "sentences": [
+            {
+              "en": "Two countries close to Korea are China and Japan, and I think of them in different ways.",
+              "ko": "한국과 가까운 나라로 중국과 일본이 있는데, 두 나라를 생각할 때 떠오르는 게 달라요."
+            },
+            {
+              "en": "I went to China on a business trip, and what I remember seeing was tall buildings and expensive cars.",
+              "ko": "중국에는 출장을 갔는데, 높은 건물과 비싼 차를 본 게 기억나요."
+            },
+            {
+              "en": "It gave me a sense of how fast parts of the country had developed, and it also made me think about the gap between rich and poor.",
+              "ko": "일부 지역이 얼마나 빠르게 발전했는지 느꼈고, 빈부 격차도 생각하게 됐어요."
+            },
+            {
+              "en": "Japan brings back some happy memories for me.",
+              "ko": "일본을 생각하면 즐거웠던 기억이 떠올라요."
+            }
+          ]
         },
         {
-          "en": "I went to China on a business trip, and what I remember seeing was tall buildings and expensive cars.",
-          "ko": "중국에는 출장을 갔는데, 높은 건물과 비싼 차를 본 게 기억나요."
+          "scene": "오사카 가족여행"
         },
         {
-          "en": "It gave me a sense of how fast parts of the country had developed, and it also made me think about the gap between rich and poor.",
-          "ko": "일부 지역이 얼마나 빠르게 발전했는지 느꼈고, 빈부 격차도 생각하게 됐어요."
-        },
-        {
-          "en": "With Japan, I have good memories of visiting Osaka with my family.",
-          "ko": "일본에는 가족과 오사카를 다녀온 좋은 추억이 있어요."
-        },
-        {
-          "en": "At the same time, Korea's history with Japan is painful, and I feel sad when I think about it.",
-          "ko": "한편으로는 일본과의 역사에 아픈 일들이 있어서 그걸 떠올리면 슬퍼요."
-        },
-        {
-          "en": "Both feelings are part of how I see our neighbor.",
-          "ko": "저는 이웃 나라인 일본을 생각하면 그 두 가지 감정을 함께 느껴요."
+          "sentences": [
+            {
+              "en": "At the same time, Korea's history with Japan is painful, and I feel sad when I think about it.",
+              "ko": "한편으로는 일본과의 역사에 아픈 일들이 있어서 그걸 떠올리면 슬퍼요."
+            },
+            {
+              "en": "Both feelings are part of how I see our neighbor.",
+              "ko": "저는 이웃 나라인 일본을 생각하면 그 두 가지 감정을 함께 느껴요."
+            }
+          ]
         }
       ],
-      "paragraphBreak": 3
+      "hash": "f6423d6fcb3b91b0",
+      "originalHash": "113a97bab8f86a94",
+      "previousSignatures": [
+        "56a5a4c090916529"
+      ]
     },
     {
       "title": "1. Asking Questions",
@@ -917,7 +1111,8 @@
           "ko": "가족과 상의하고 다시 전화드릴게요."
         }
       ],
-      "paragraphBreak": 3
+      "paragraphBreak": 3,
+      "originalHash": "2745b1bc41d30d0b"
     },
     {
       "title": "2. Solving a Problem",
@@ -957,52 +1152,369 @@
           "ko": "둘 다 어렵다면 다른 곳을 예약할 수 있도록 전액 환불해 주실 수 있나요?"
         }
       ],
-      "paragraphBreak": 3
+      "paragraphBreak": 3,
+      "originalHash": "0f048a118054a694"
     },
     {
       "title": "3. Related Experience",
       "question": "Have you ever had a problem while you were traveling? Tell me what happened and how you solved it.",
       "questionKo": "여행 중 어떤 문제가 있었나요? 무슨 일이 있었고 어떻게 해결했는지 말해 주세요.",
-      "hash": "cd4b921a13a66fa7",
       "keywords": [
-        "Dotonbori",
+        "Osaka",
+        "takoyaki",
         "stomachache",
-        "Japanese labels",
         "front desk",
         "drugstore",
-        "carry medicine"
+        "hotel"
+      ],
+      "parts": [
+        {
+          "scene": "오사카 가족여행"
+        },
+        {
+          "scene": "도톤보리에서 먹은 다코야키"
+        },
+        {
+          "scene": "갑자기 찾아온 배탈"
+        },
+        {
+          "sentences": [
+            {
+              "en": "I couldn't read Japanese, so I wasn't sure where to go or what medicine to buy.",
+              "ko": "일본어를 읽지 못해서 어디로 가야 할지, 무슨 약을 사야 할지 몰랐어요."
+            },
+            {
+              "en": "I asked for help at the hotel front desk, and they gave me directions.",
+              "ko": "호텔 프런트에 도움을 청했더니 길을 알려 줬어요."
+            }
+          ]
+        },
+        {
+          "scene": "여행 중 들른 약국"
+        },
+        {
+          "scene": "오사카 호텔에서 쉰 밤"
+        },
+        {
+          "sentences": [
+            {
+              "en": "Ever since then, I've carried some basic medicine when I travel abroad.",
+              "ko": "그 뒤로는 해외에 갈 때 상비약을 챙겨요."
+            }
+          ]
+        }
+      ],
+      "hash": "16380796a917d3ff",
+      "originalHash": "4733326b9a8e05af",
+      "previousSignatures": [
+        "cbb63ffd6e416e9c"
+      ]
+    },
+    {
+      "title": "Routine Health Checkup - IH",
+      "question": "Tell me about a time you went to a hospital or clinic. Why did you go, what did you do there, and what happened in the end?",
+      "questionKo": "병원이나 의원에 갔던 경험에 대해 말해 주세요. 왜 갔고, 거기서 무엇을 했으며, 결국 어떻게 되었나요?",
+      "originalHash": "40ca0b286004301c",
+      "keywords": [
+        "clinic at work",
+        "usual tests",
+        "normal results",
+        "186 centimeters"
+      ],
+      "parts": [
+        {
+          "scene": "사내 의원 건강검진"
+        },
+        {
+          "sentences": [
+            {
+              "en": "At my last checkup, they ran the usual tests and measured my height.",
+              "ko": "지난 검진에서는 평소처럼 검사를 받고 키도 쟀어요."
+            },
+            {
+              "en": "Everything came back normal, which was a relief.",
+              "ko": "검사 결과가 모두 정상이라 안심했어요."
+            },
+            {
+              "en": "What surprised me was my height.",
+              "ko": "놀라웠던 건 제 키였어요."
+            },
+            {
+              "en": "I was 186 centimeters tall.",
+              "ko": "186센티미터가 나왔거든요."
+            },
+            {
+              "en": "Now I'm curious what the number will be next year.",
+              "ko": "내년엔 몇 센티미터가 나올지 궁금해요."
+            }
+          ]
+        }
+      ],
+      "hash": "a43507e0626fa639"
+    },
+    {
+      "title": "Childhood Visit to the Dentist - IH",
+      "question": "Tell me about a time you went to a hospital or clinic as a child. Why did you go, and what happened?",
+      "questionKo": "어릴 적 병원이나 의원에 갔던 경험에 대해 이야기해 주세요. 왜 갔었고 무슨 일이 있었나요?",
+      "originalHash": "2a450079fb7c7144",
+      "keywords": [
+        "dentist",
+        "drill",
+        "waiting",
+        "LEGO"
       ],
       "sentences": [
         {
-          "en": "I had to find medicine late at night on a family trip to Osaka.",
-          "ko": "가족과 오사카를 여행할 때 늦은 밤에 약을 찾아야 했어요."
+          "en": "When I was a kid, my mom used to take me to the dentist to have my teeth treated.",
+          "ko": "어릴 때는 엄마가 치아 치료를 받으러 저를 치과에 데려가셨어요."
         },
         {
-          "en": "My family and I went to Dotonbori for takoyaki.",
-          "ko": "가족과 다코야키를 먹으러 도톤보리에 갔어요."
+          "en": "The sound of the drill scared me the most.",
+          "ko": "드릴 소리가 제일 무서웠어요."
         },
         {
-          "en": "A few hours later, I had a terrible stomachache.",
-          "ko": "몇 시간 뒤에 배가 심하게 아팠어요."
+          "en": "As soon as I heard it, I'd tense up and wish I could go home.",
+          "ko": "그 소리만 들리면 몸이 굳고 집에 가고 싶었어요."
         },
         {
-          "en": "I couldn't read Japanese, so I wasn't sure where to go or what medicine to buy.",
-          "ko": "일본어를 읽지 못해서 어디로 가야 할지, 무슨 약을 사야 할지 몰랐어요."
+          "en": "After the appointment, my mom would buy me a LEGO set.",
+          "ko": "진료가 끝나면 엄마가 레고를 사 주셨어요."
         },
         {
-          "en": "I asked at the hotel front desk, and they pointed me to a nearby drugstore.",
-          "ko": "호텔 프런트에 물어봤더니 근처 약국을 알려 줬어요."
-        },
-        {
-          "en": "I got the medicine, went back to the hotel to rest, and felt much better the next morning.",
-          "ko": "약을 구해서 호텔에 돌아가 쉬었더니 다음 날 아침에는 훨씬 나아졌어요."
-        },
-        {
-          "en": "Ever since then, I've carried some basic medicine when I travel abroad.",
-          "ko": "그 뒤로는 해외에 갈 때 상비약을 챙겨요."
+          "en": "By the time we got home, I'd be thinking about what to build instead of how scared I'd been.",
+          "ko": "집에 도착할 때쯤이면 치과에서 얼마나 무서웠는지는 잊고 레고로 뭘 만들지 생각하곤 했어요."
         }
       ],
-      "paragraphBreak": 4
+      "hash": "242c2141d7e52bb4",
+      "previousSignatures": [
+        "0ba28ca42a14f423"
+      ]
+    },
+    {
+      "title": "Appointment Locations - IH",
+      "question": "People often have appointments for different things. Tell me about the kinds of places you go for different appointments.",
+      "questionKo": "사람들은 보통 다양한 목적으로 약속이나 예약을 합니다. 어떤 약속이냐에 따라 어떤 장소에 가시는지 말씀해 주세요.",
+      "originalHash": "2d5888306042a422",
+      "keywords": [
+        "clinic at work",
+        "annual checkup",
+        "dentist",
+        "dental treatment"
+      ],
+      "parts": [
+        {
+          "scene": "사내 의원 건강검진"
+        },
+        {
+          "sentences": [
+            {
+              "en": "It's convenient because I can get there without leaving work.",
+              "ko": "회사를 나가지 않고도 갈 수 있어서 편해요."
+            },
+            {
+              "en": "For anything to do with my teeth, I make an appointment with a dentist.",
+              "ko": "치아에 문제가 있으면 치과에 예약해요."
+            },
+            {
+              "en": "I go there for dental checkups and treatment.",
+              "ko": "거기서 치아 검진이나 치료를 받아요."
+            }
+          ]
+        }
+      ],
+      "hash": "3b826056930516dc"
+    },
+    {
+      "title": "Appointment Routine - IH",
+      "question": "What kinds of things do you do when you make appointments? Tell me what you exactly do when you make these appointments.",
+      "questionKo": "예약을 잡을 때는 보통 어떤 일을 하나요? 예약을 어떻게 잡는지 구체적으로 말해 주세요.",
+      "originalHash": "52cc150894f15f52",
+      "keywords": [
+        "calendar",
+        "two times",
+        "call the clinic",
+        "what to bring",
+        "reminder"
+      ],
+      "sentences": [
+        {
+          "en": "When I need to make an appointment, I check my calendar first.",
+          "ko": "예약을 잡을 때는 먼저 일정을 확인해요."
+        },
+        {
+          "en": "I pick two times that work for me and call the clinic.",
+          "ko": "갈 수 있는 시간 두 개를 고르고 병원에 전화해요."
+        },
+        {
+          "en": "If the first time is taken, I ask about the other one.",
+          "ko": "첫 번째 시간이 이미 찼으면 다른 시간도 가능한지 물어봐요."
+        },
+        {
+          "en": "Once we agree on a time, I ask if I need to bring anything.",
+          "ko": "시간을 정하고 나면 챙겨 갈 게 있는지 물어봐요."
+        },
+        {
+          "en": "Then I put it in my calendar and set a reminder.",
+          "ko": "그다음 달력에 적고 알림을 설정해요."
+        }
+      ],
+      "hash": "77647e36ed1cdfec"
     }
-  ]
+  ],
+  "drills": {
+    "오사카 가족여행": {
+      "first": {
+        "type": "PAST_EXPERIENCE",
+        "text": "Where did you go with your family in Osaka, and what did you do there?"
+      },
+      "second": {
+        "type": "DESCRIPTION",
+        "text": "Which part of that trip would you recommend to a friend, and why?"
+      },
+      "retryHint": "친구에게 권하고 싶은 곳 하나를 고르고, 직접 겪은 일을 이유로 붙여 보세요."
+    },
+    "호텔 온천": {
+      "first": {
+        "type": "DESCRIPTION",
+        "text": "What was the hot spring at your hotel like?"
+      },
+      "second": {
+        "type": "PAST_EXPERIENCE",
+        "text": "Think about one evening on that trip. How did you feel before and after using the hot spring?"
+      },
+      "retryHint": "온천에 들어가기 전과 나온 뒤에 몸이 어떻게 달라졌는지 이어 보세요."
+    },
+    "도톤보리에서 먹은 다코야키": {
+      "first": {
+        "type": "DESCRIPTION",
+        "text": "What was the takoyaki you tried in Dotonbori like?"
+      },
+      "second": {
+        "type": "PAST_EXPERIENCE",
+        "text": "What happened after you ate the takoyaki, and how did the evening end?"
+      },
+      "retryHint": "다코야키를 먹은 뒤 처음 한 행동과 그날 저녁의 결말을 연결해 보세요."
+    },
+    "갑자기 찾아온 배탈": {
+      "first": {
+        "type": "PAST_EXPERIENCE",
+        "text": "Tell me about one time you got a stomachache. Where were you and what were you doing?"
+      },
+      "second": {
+        "type": "PAST_EXPERIENCE",
+        "text": "Stay with that same day. What did the stomachache interrupt, and what did you do instead?"
+      },
+      "retryHint": "그날 하려던 일과 배가 아파서 대신 한 일을 이어 보세요."
+    },
+    "여행 중 들른 약국": {
+      "first": {
+        "type": "PAST_EXPERIENCE",
+        "text": "Tell me why you needed a drugstore on a trip."
+      },
+      "second": {
+        "type": "PAST_EXPERIENCE",
+        "text": "On that same trip, how did you get the medicine you needed, and what happened next?"
+      },
+      "retryHint": "약을 어떻게 구했는지 말하고 나서 몸 상태가 어떻게 됐는지 덧붙여 보세요."
+    },
+    "오사카 호텔에서 쉰 밤": {
+      "first": {
+        "type": "PAST_EXPERIENCE",
+        "text": "Why did you go back to your hotel that night in Osaka?"
+      },
+      "second": {
+        "type": "PAST_EXPERIENCE",
+        "text": "How were you feeling when you got back, and how did you feel after resting?"
+      },
+      "retryHint": "호텔에 도착했을 때와 쉰 뒤의 몸 상태를 한 가지 기준으로 비교해 보세요."
+    },
+    "강원도 사과 농장": {
+      "first": {
+        "type": "DESCRIPTION",
+        "text": "What could you see from the ladder at the apple farm in Gangwon-do?"
+      },
+      "second": {
+        "type": "PAST_EXPERIENCE",
+        "text": "Think about that same visit. What happened while you were picking apples, and how did your day end?"
+      },
+      "retryHint": "사과를 따던 중 생긴 일 하나에서 그날의 결말까지 이어 보세요."
+    },
+    "거실의 회색 소파": {
+      "first": {
+        "type": "DESCRIPTION",
+        "text": "Tell me about the sofa in your living room. Why do you like it?"
+      },
+      "second": {
+        "type": "COMPARISON",
+        "text": "Think about the sofa you had when you were a kid. How did you use it back then, and how do you use your sofa now?"
+      },
+      "retryHint": "어릴 때 소파에서 하던 일 하나와 지금 하는 일 하나를 차례로 말해 보세요."
+    },
+    "소파에서 하는 게임": {
+      "first": {
+        "type": "ROUTINE",
+        "text": "What do you usually do when you settle down on your sofa to play games?"
+      },
+      "second": {
+        "type": "DESCRIPTION",
+        "text": "Why is playing games on that sofa a good way for you to relax?"
+      },
+      "retryHint": "게임할 때 긴장이 풀리는 이유를 소파에서 보낸 한 장면으로 설명해 보세요."
+    },
+    "어릴 때 망가뜨린 소파": {
+      "first": {
+        "type": "PAST_EXPERIENCE",
+        "text": "Tell me what happened to the sofa you used to jump on as a child."
+      },
+      "second": {
+        "type": "PAST_EXPERIENCE",
+        "text": "How did you feel about breaking it later on, and what did you do about it?"
+      },
+      "retryHint": "소파를 망가뜨린 뒤의 마음과 그 마음 때문에 한 행동을 이어 보세요."
+    },
+    "센트럴파크 조깅": {
+      "first": {
+        "type": "DESCRIPTION",
+        "text": "What does Central Park look like when you go there for a run?"
+      },
+      "second": {
+        "type": "ROUTINE",
+        "text": "At that same park, how do you get ready for a run, and what keeps you going?"
+      },
+      "retryHint": "달리기 전에 준비하는 것 하나가 달리는 동안 어떻게 도움이 되는지 말해 보세요."
+    },
+    "달릴 때 듣는 Butter": {
+      "first": {
+        "type": "DESCRIPTION",
+        "text": "What do you like about Butter by BTS?"
+      },
+      "second": {
+        "type": "ROUTINE",
+        "text": "When you listen to that song on a run, how does it change the way you feel?"
+      },
+      "retryHint": "노래의 리듬과 그 리듬을 들으며 뛸 때의 느낌을 연결해 보세요."
+    },
+    "사내 의원 건강검진": {
+      "first": {
+        "type": "ROUTINE",
+        "text": "Where do you usually go for your annual checkup, and why do you go there?"
+      },
+      "second": {
+        "type": "PAST_EXPERIENCE",
+        "text": "At your last checkup there, what result surprised you, and how did you react?"
+      },
+      "retryHint": "검진 결과 하나를 말한 뒤 그 결과를 보고 어떤 생각이 들었는지 덧붙여 보세요."
+    },
+    "영화관에서 먹는 간식": {
+      "first": {
+        "type": "ROUTINE",
+        "text": "What do you usually get to eat or drink before a movie?"
+      },
+      "second": {
+        "type": "PAST_EXPERIENCE",
+        "text": "Tell me about a time those snacks affected your movie night. What did you miss?"
+      },
+      "retryHint": "간식을 먹고 자리를 뜬 일과 놓친 장면을 이어 보세요."
+    }
+  }
 }

@@ -12,7 +12,6 @@ import com.opicih.coach.data.db.MorningReviewEntity
 import com.opicih.coach.data.db.ScriptEntity
 import com.opicih.coach.learning.MorningItem
 import com.opicih.coach.learning.MorningRating
-import com.opicih.coach.learning.MorningRoutineBuilder
 import com.opicih.coach.learning.MorningRoutineState
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
@@ -40,7 +39,7 @@ class MorningViewModel(app: Application) : AndroidViewModel(app) {
         loadFailed = false
         viewModelScope.launch {
             try {
-                items = MorningRoutineBuilder.build(c.dao.chunks(), startedDay)
+                items = c.practice.morningItems(startedDay, c.glossary.current())
                 dueScripts = c.dao.scripts().filter { it.dueEpochDay <= startedDay }.sortedBy { it.masteryScore }.take(3)
                 state = MorningRoutineState(items.size)
             } catch (e: CancellationException) {

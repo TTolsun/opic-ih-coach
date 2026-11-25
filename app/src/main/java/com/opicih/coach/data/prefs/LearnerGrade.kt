@@ -27,7 +27,7 @@ enum class LearnerGrade(val code: String) {
  */
 data class LearnerProfile(
     val current: LearnerGrade = LearnerGrade.IM1,
-    val target: LearnerGrade = LearnerGrade.IM2,
+    val target: LearnerGrade = LearnerGrade.IH,
     val finalGoal: LearnerGrade = LearnerGrade.IH,
 ) {
     companion object {

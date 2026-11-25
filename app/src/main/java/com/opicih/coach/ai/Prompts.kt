@@ -23,7 +23,7 @@ $ACTFL_IH
 Rewrite the learner's script for spoken use. Rules:
 - Keep the learner's own experiences and facts. Do not invent new life events, except small concrete details that are clearly plausible.
 - "natural": what a native speaker would naturally say with the same content (spoken, not written style).
-- "ihTarget": ${t.minWords}-${t.maxWords} words the learner can actually say, sized for the ${p.target.code} exam target.
+- "ihTarget": ${t.minWords}-${t.maxWords} words is a practice guideline. A shorter complete answer is fine. Write spoken English suited to the ${p.target.code} exam target.
   (The key name "ihTarget" is historical: it holds the version for the learner's next exam target, not necessarily IH.)
   ${t.structure}
   Prefer easy words. Reuse the learner's good phrases. Avoid rare vocabulary. Sentence structures should be reusable for other questions.
@@ -88,6 +88,10 @@ label them "AI 생성 연습 문제". Never predict an official grade with certa
         if (i.storyHints.isNotBlank()) appendLine("Learner's personal story bank: ${i.storyHints}")
         appendLine("Original script:")
         appendLine(i.original)
+        if (i.sharedSentences.isNotEmpty()) {
+            appendLine("Use these shared sentences verbatim in the target answer, in this order:")
+            i.sharedSentences.forEach { appendLine(it) }
+        }
     }
 
     fun evalUser(i: EvalInput) = buildString {

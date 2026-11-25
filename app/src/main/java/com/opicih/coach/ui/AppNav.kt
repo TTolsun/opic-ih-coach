@@ -56,6 +56,7 @@ import com.opicih.coach.ui.screens.NextExamScreen
 import com.opicih.coach.ui.screens.ProgressScreen
 import com.opicih.coach.ui.screens.SailConversationScreen
 import com.opicih.coach.ui.screens.ScriptDetailScreen
+import com.opicih.coach.ui.screens.SceneDrillScreen
 import com.opicih.coach.ui.screens.ScriptEditScreen
 import com.opicih.coach.ui.screens.ScriptsScreen
 import com.opicih.coach.ui.screens.SettingsScreen
@@ -76,6 +77,7 @@ private val tabs = listOf(
 private const val SCRIPT_REVIEW = "scriptReview/{ids}/{index}/{mode}"
 
 private val titles = mapOf(
+    "sceneDrill/{scene}" to "질문 바꿔 말하기",
     SCRIPT_REVIEW to "내 대본 복습", "mockReport/{id}" to "모의시험 결과", "mockRestart/{count}" to "모의시험",
     "speakingHotel" to PracticeMode.HOTEL_ROLEPLAY.label, "frames" to "문장 틀",
     "script/{id}" to "스크립트", "scriptEdit/{id}" to "스크립트 편집", "import" to "스크립트 가져오기",
@@ -197,6 +199,7 @@ fun AppNav(startRoute: String?, onRouteConsumed: () -> Unit) {
                         onImport = { nav.navigate("import") },
                         onFrames = { nav.navigate("frames") },
                         onListen = { nav.navigate("listen") },
+                        onSceneDrill = { nav.navigate("sceneDrill/${android.net.Uri.encode(it)}") },
                         pendingOnly = listRoute == "pendingRevisions",
                     )
                 }
@@ -254,6 +257,9 @@ fun AppNav(startRoute: String?, onRouteConsumed: () -> Unit) {
                     recall = true, prompt = entry.arguments?.getString("question"),
                     onMemorize = { nav.navigate("speaking?scriptId=$it&mode=${PracticeMode.READ_LISTEN.name}") },
                     onScripts = { nav.goTab("scripts") })
+            }
+            composable("sceneDrill/{scene}") { e ->
+                SceneDrillScreen(requireNotNull(e.arguments?.getString("scene"))) { nav.popBackStack() }
             }
             composable("frames") { FramesScreen() }
             // An upgrade can restore a back stack that still points to the former catalogue.
@@ -318,7 +324,7 @@ fun AppNav(startRoute: String?, onRouteConsumed: () -> Unit) {
 
 /** Routes whose open time counts as study (not home / progress / settings / exams / nextExam / import / scriptEdit). */
 internal fun isStudyRoute(route: String?): Boolean = route != null && (
-    route == SCRIPT_REVIEW || route.startsWith("recall?") || route == "scripts" || route == "pendingRevisions" || route == "script/{id}" || route == "review/{id}" || route == "diagnostic" ||
+    route == SCRIPT_REVIEW || route == "sceneDrill/{scene}" || route.startsWith("recall?") || route == "scripts" || route == "pendingRevisions" || route == "script/{id}" || route == "review/{id}" || route == "diagnostic" ||
         listOf("speaking", "mock", "sail", "coach", "morning").any { route.startsWith(it) }
     )
 

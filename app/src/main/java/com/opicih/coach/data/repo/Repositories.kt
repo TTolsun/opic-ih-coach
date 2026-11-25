@@ -48,6 +48,9 @@ import com.opicih.coach.learning.ScoreKind
 import com.opicih.coach.learning.SpeakingDiagnostic
 import com.opicih.coach.learning.SrsScheduler
 import com.opicih.coach.learning.MorningReviewRules
+import com.opicih.coach.learning.MorningRoutineBuilder
+import com.opicih.coach.learning.MorningItem
+import com.opicih.coach.learning.Glossary
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import java.time.LocalDate
@@ -68,8 +71,9 @@ data class AttemptMetrics(
     val transfer: TransferCheck? = null,
     val coaching: CoachingRecord? = null,
     val diagnostic: DiagnosticReport? = null,
+    val guidedRetry: Boolean = false,
 ) {
-    val usableForIndependentAssessment: Boolean get() = coaching?.usableForIndependentAssessment != false
+    val usableForIndependentAssessment: Boolean get() = !guidedRetry && coaching?.usableForIndependentAssessment != false
 
     companion object {
         fun from(attempt: PracticeAttemptEntity): AttemptMetrics? =
@@ -133,8 +137,9 @@ class ScriptRepository(private val db: AppDatabase) {
     /** [revisions] improvement versions waiting for approval; [glossary] new expression meanings that were added. */
     data class Improvement(val revisions: Int, val glossary: Int)
 
-    suspend fun requestImprovement(s: ScriptEntity, coach: AiCoach, storyHints: String, glossary: GlossaryRepository? = null): Result<Improvement> {
-        val r = coach.improveScript(ScriptInput(s.topic, s.question, s.original, storyHints))
+    suspend fun requestImprovement(s: ScriptEntity, coach: AiCoach, storyHints: String, glossary: GlossaryRepository? = null,
+        sharedSentences: List<String> = emptyList()): Result<Improvement> {
+        val r = coach.improveScript(ScriptInput(s.topic, s.question, s.original, storyHints, sharedSentences))
         return r.map { v ->
             val origin = if (coach.isRealAi) RevisionOrigin.AI_CLAUDE.name else RevisionOrigin.LOCAL.name
             val revs = buildList {
@@ -205,6 +210,7 @@ class PracticeRepository(private val db: AppDatabase) {
         val captureNote: String? = null,
         val speakingReviewId: Long? = null,
         val missionQuestion: String? = null,
+        val guidedRetry: Boolean = false,
     )
 
     /**
@@ -345,6 +351,7 @@ class PracticeRepository(private val db: AppDatabase) {
                 local.score.takeIf { local.scoreMeasured }, speakingFlow = scoreKind == ScoreKind.SPEAKING,
                 transfer = transfer,
                 hotelStage = req.hotelStage,
+                guidedRetry = req.guidedRetry,
             )
             val speechMs = req.pauses?.speechMs ?: 0L
             val attempt = PracticeAttemptEntity(
@@ -407,6 +414,14 @@ class PracticeRepository(private val db: AppDatabase) {
             )
         }
         return result.copy(attempt = attempt.copy(id = id), previous = previous, metrics = metrics)
+    }
+
+    suspend fun morningItems(today: Long, glossary: Glossary): List<MorningItem> = db.withTransaction {
+        val pool = MorningRoutineBuilder.pool(dao.scripts(), glossary, dao.chunks())
+        val items = MorningRoutineBuilder.build(pool, today)
+        val newCards = items.map { it.chunk }.filter { it.id == 0L }.distinct()
+        val ids = newCards.zip(dao.insertChunks(newCards)).toMap()
+        items.map { item -> ids[item.chunk]?.let { item.copy(chunk = item.chunk.copy(id = it)) } ?: item }
     }
 
     suspend fun saveMorningReview(review: MorningReviewEntity, finishesRoutine: Boolean) = db.withTransaction {
